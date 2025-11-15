@@ -535,267 +535,149 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                 }
                               }}
                             >
-                              <div className={`p-4 rounded-lg border transition-all duration-200 ${
+                              <div className={`rounded-lg border transition-all duration-200 overflow-hidden ${
                                 isSelected
                                   ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50 border-blue-300'
                                   : occurrence.isPast 
-                                    ? 'bg-gray-50 border-gray-200 group-hover:bg-gray-100 group-hover:border-gray-300' 
+                                    ? 'bg-white border-gray-200 group-hover:border-gray-300' 
                                     : occurrence.isToday 
-                                      ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md group-hover:bg-indigo-100'
-                                      : 'bg-white border-gray-200 group-hover:bg-gray-50 group-hover:border-gray-300'
+                                      ? 'border-2 border-indigo-500 shadow-md'
+                                      : 'bg-white border-gray-200 group-hover:border-gray-300'
                               } shadow-sm flex`}>
-                              {/* Days indicator */}
-                              <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${
+                              {/* Days indicator - Teal background */}
+                              <div className={`flex flex-col items-center justify-center min-w-[120px] px-6 py-8 rounded-l-lg ${
                                 occurrence.isPast 
-                                  ? 'bg-gray-200 text-gray-600' 
+                                  ? 'bg-gray-300' 
                                   : occurrence.isToday 
-                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
-                                    : 'bg-blue-500 text-white'
-                              }`}>
+                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                                    : 'bg-teal-500'
+                              } text-white`}>
                                 {occurrence.isToday ? (
-                                  <div className="flex flex-col items-center justify-center py-2">
+                                  <div className="flex flex-col items-center justify-center">
                                     <SparklesIcon className="h-8 w-8 mb-1" />
                                     <div className="text-xs font-medium">TODAY</div>
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="text-2xl font-bold">
+                                    <div className="text-5xl font-bold leading-none">
                                       {occurrence.isPast 
                                         ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
                                         : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
                                       }
                                     </div>
-                                    <div className="text-xs font-medium">
+                                    <div className="text-sm font-medium mt-2">
                                       {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
                                     </div>
                                   </>
                                 )}
                               </div>
 
-                              <div className="flex-1 space-y-3">
-                                {/* Event description and date row */}
-                                <div className="flex items-start justify-between">
-                                  <div className="space-y-1">
-                                    <h3 className={`text-lg font-medium ${
-                                      occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
-                                    }`}>
-                                      {occurrence.event.content.includes('meta::event_hidden') ? (
-                                        <div className="flex items-center gap-2">
-                                          <span>XXXXXXXXXXXX</span>
-                                          <button
-                                            onClick={() => handleToggleHidden(occurrence.event)}
-                                            className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                                          >
-                                            Reveal
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        occurrence.event.description
-                                      )}
-                                      {occurrence.isToday && (
-                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                          Today
-                                        </span>
-                                      )}
-                                      {occurrence.event.content.includes('meta::event_deadline') && (
-                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                          Deadline
-                                        </span>
-                                      )}
-                                    </h3>
-                                    {occurrence.event.notes && (
-                                      <p 
-                                        className="text-xs text-gray-500 mt-1"
-                                        dangerouslySetInnerHTML={{ __html: parseLinks(occurrence.event.notes) }}
-                                      />
-                                    )}
-                                    <div className="flex flex-col gap-1">
-                                      <div className="grid grid-cols-[120px_1fr] gap-x-2">
-                                        <p className="text-sm text-gray-600">
-                                          <span className="font-medium">Original date:</span>
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                          {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
-                                            weekday: 'long',
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                          })}
-                                        </p>
-                                        {showDetails && (
-                                          <>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                                            }`}>
-                                              <span className="font-medium">Date:</span>
-                                            </p>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                                            }`}>
-                                              {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
-                                            </p>
-                                          </>
-                                        )}
-                                        {occurrence.event.recurrence !== 'none' && occurrence.age && (
-                                          <>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
-                                            }`}>
-                                              <span className="font-medium">Age:</span>
-                                            </p>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
-                                            }`}>
-                                              {occurrence.age}
-                                            </p>
-                                          </>
-                                        )}
-                                        {/* Display custom fields */}
-                                        {Object.entries(occurrence.event.customFields || {}).map(([key, value]) => (
-                                          <React.Fragment key={key}>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
-                                            }`}>
-                                              <span className="font-medium">{key}:</span>
-                                            </p>
-                                            <p className={`text-sm ${
-                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
-                                            }`}>
-                                              {value}
-                                            </p>
-                                          </React.Fragment>
-                                        ))}
-                                      </div>
-                                      {/* Tags display */}
-                                      {(() => {
-                                        const timelines = getTimelineInfo(occurrence.event.content);
-                                        const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
-                                        const hasTimelines = timelines.length > 0;
-                                        
-                                        if (!hasTags && !hasTimelines) {
-                                          return null;
-                                        }
-                                        
-                                        return (
-                                          <div className="mt-2 flex flex-wrap gap-1">
-                                            {occurrence.event.tags && occurrence.event.tags.map(tag => (
-                                              <span
-                                                key={tag}
-                                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                  occurrence.isToday 
-                                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                                }`}
-                                              >
-                                                {tag}
-                                              </span>
-                                            ))}
-                                            {timelines.map((timelineInfo) => (
-                                              <button
-                                                key={timelineInfo.id}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  // Navigate to timelines page with this timeline selected
-                                                  window.location.href = `/#/timelines?timeline=${timelineInfo.id}`;
-                                                }}
-                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                                                  occurrence.isToday 
-                                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200'
-                                                    : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                                                }`}
-                                                title={`View timeline: ${timelineInfo.title}`}
-                                              >
-                                                <LinkIcon className="h-3 w-3" />
-                                                <span>{timelineInfo.title}</span>
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleInitiateUnlink(occurrence.event.id, timelineInfo.id, timelineInfo.title);
-                                                  }}
-                                                  className="ml-1 hover:bg-red-200 rounded-full p-0.5 transition-colors flex items-center justify-center"
-                                                  title="Unlink from timeline"
-                                                >
-                                                  <XMarkIcon className="h-3 w-3 text-gray-600 hover:text-red-600" />
-                                                </button>
-                                              </button>
-                                            ))}
-                                          </div>
-                                        );
-                                      })()}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-start gap-2">
-                                    {occurrence.event.recurrence !== 'none' && (
-                                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                                        occurrence.isPast 
-                                          ? 'bg-gray-100 text-gray-500' 
-                                          : 'bg-indigo-100 text-indigo-700'
-                                      }`}>
-                                        {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
-                                      </span>
-                                    )}
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => handleToggleHidden(occurrence.event)}
-                                        className={`p-2 rounded-lg transition-colors ${
-                                          occurrence.event.content.includes('meta::event_hidden')
-                                            ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                        }`}
-                                        title={occurrence.event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
-                                      >
-                                        {occurrence.event.content.includes('meta::event_hidden') ? (
-                                          <EyeSlashIcon className="h-5 w-5" />
-                                        ) : (
-                                          <EyeIcon className="h-5 w-5" />
-                                        )}
-                                      </button>
-                                      <button
-                                        onClick={() => handleToggleDeadline(occurrence.event)}
-                                        className={`p-2 rounded-lg transition-colors ${
-                                          occurrence.event.content.includes('meta::event_deadline')
-                                            ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                        }`}
-                                        title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
-                                      >
-                                        <FlagIcon className="h-5 w-5" />
-                                      </button>
-                                      <button
-                                        onClick={() => setRawNote(occurrence.event)}
-                                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                        title="View raw note"
-                                      >
-                                        <CodeBracketIcon className="h-5 w-5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleEditEvent(occurrence.event)}
-                                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                        title="Edit event"
-                                      >
-                                        <PencilIcon className="h-5 w-5" />
-                                      </button>
-                                      {occurrence.event.dateTime && (
-                                        <a
-                                          href={`https://photos.google.com/search/${moment(occurrence.event.dateTime).format('YYYY-MM-DD')}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
-                                          title="View photos"
+                              <div className="flex-1 px-6 py-4 flex flex-col">
+                                {/* Icons on top - horizontal */}
+                                <div className="flex items-center gap-2 mb-3 justify-end">
+                                  <button
+                                    onClick={() => handleToggleDeadline(occurrence.event)}
+                                    className={`p-2 rounded transition-colors ${
+                                      occurrence.event.content.includes('meta::event_deadline')
+                                        ? 'text-red-500 hover:text-red-600'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                    title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
+                                  >
+                                    <FlagIcon className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setRawNote(occurrence.event)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    title="View raw note"
+                                  >
+                                    <CodeBracketIcon className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenTimelineModal(occurrence.event)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    title="Link to timeline"
+                                  >
+                                    <LinkIcon className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditEvent(occurrence.event)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    title="Edit event"
+                                  >
+                                    <PencilIcon className="h-5 w-5" />
+                                  </button>
+                                  {occurrence.event.dateTime && (
+                                    <a
+                                      href={`https://photos.google.com/search/${moment(occurrence.event.dateTime).format('YYYY-MM-DD')}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="View photos"
+                                    >
+                                      <PhotoIcon className="h-5 w-5" />
+                                    </a>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 space-y-2">
+                                  {/* Event title */}
+                                  <h3 className={`text-xl font-bold ${
+                                    occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
+                                  }`}>
+                                    {occurrence.event.content.includes('meta::event_hidden') ? (
+                                      <div className="flex items-center gap-2">
+                                        <span>XXXXXXXXXXXX</span>
+                                        <button
+                                          onClick={() => handleToggleHidden(occurrence.event)}
+                                          className="text-xs text-indigo-600 hover:text-indigo-700 underline"
                                         >
-                                          <PhotoIcon className="h-5 w-5" />
-                                        </a>
-                                      )}
-                                      <button
-                                        onClick={() => handleOpenTimelineModal(occurrence.event)}
-                                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                        title="Link to timeline"
-                                      >
-                                        <LinkIcon className="h-5 w-5" />
-                                      </button>
-                                    </div>
-                                  </div>
+                                          Reveal
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      occurrence.event.description
+                                    )}
+                                  </h3>
+                                  
+                                  {/* Original Date */}
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Original Date:</span>{' '}
+                                    {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                  
+                                  {/* Age */}
+                                  {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                                    <p className="text-sm text-gray-600">
+                                      <span className="font-medium">Age:</span> {occurrence.age}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Tag button */}
+                                  {(() => {
+                                    const timelines = getTimelineInfo(occurrence.event.content);
+                                    const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
+                                    const primaryTag = occurrence.event.tags && occurrence.event.tags.length > 0 
+                                      ? occurrence.event.tags[0] 
+                                      : null;
+                                    
+                                    if (primaryTag) {
+                                      return (
+                                        <button
+                                          className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                                        >
+                                          {primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1)}
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </div>
                               </div>
                             </div>

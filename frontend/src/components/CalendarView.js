@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { 
@@ -55,6 +56,7 @@ const parseLinks = (text) => {
 };
 
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect, showPastEvents: showPastEventsProp, onShowPastEventsChange, onTimelineUpdated }) => {
+  const navigate = useNavigate();
   const [showPastEventsInternal, setShowPastEventsInternal] = useState(false);
   // Use prop if provided, otherwise use internal state
   const showPastEvents = showPastEventsProp !== undefined ? showPastEventsProp : showPastEventsInternal;
@@ -606,6 +608,15 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                     title="Edit event"
                                   >
                                     <PencilIcon className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      navigate(`/notes?note=${occurrence.event.id}`);
+                                    }}
+                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    title="View original note"
+                                  >
+                                    <DocumentTextIcon className="h-5 w-5" />
                                   </button>
                                   {occurrence.event.dateTime && (
                                     <a

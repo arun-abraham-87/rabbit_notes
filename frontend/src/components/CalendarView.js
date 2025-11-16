@@ -659,25 +659,44 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                     </p>
                                   )}
                                   
-                                  {/* Tag button */}
-                                  {(() => {
-                                    const timelines = getTimelineInfo(occurrence.event.content);
-                                    const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
-                                    const primaryTag = occurrence.event.tags && occurrence.event.tags.length > 0 
-                                      ? occurrence.event.tags[0] 
-                                      : null;
+                                  {/* Tags and Timeline */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {/* Tag button */}
+                                    {(() => {
+                                      const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
+                                      const primaryTag = occurrence.event.tags && occurrence.event.tags.length > 0 
+                                        ? occurrence.event.tags[0] 
+                                        : null;
+                                      
+                                      if (primaryTag) {
+                                        return (
+                                          <button
+                                            className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                                          >
+                                            {primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1)}
+                                          </button>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                     
-                                    if (primaryTag) {
-                                      return (
-                                        <button
-                                          className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
-                                        >
-                                          {primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1)}
-                                        </button>
-                                      );
-                                    }
-                                    return null;
-                                  })()}
+                                    {/* Timeline badges */}
+                                    {(() => {
+                                      const timelines = getTimelineInfo(occurrence.event.content);
+                                      if (timelines && timelines.length > 0) {
+                                        return timelines.map((timeline) => (
+                                          <span
+                                            key={timeline.id}
+                                            className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md"
+                                            title={`Linked to timeline: ${timeline.title}`}
+                                          >
+                                            📅 {timeline.title}
+                                          </span>
+                                        ));
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
                                 </div>
                               </div>
                             </div>

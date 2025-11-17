@@ -1321,33 +1321,55 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Handle adding a new event via EditEventModal (like EventsPage)
   const handleAddEventFromTimeline = async (content) => {
     try {
-      devLog('[Timelines] handleAddEventFromTimeline: Creating event with content:', content);
+      console.log('[Timelines] ========== handleAddEventFromTimeline START ==========');
+      console.log('[Timelines] Creating event with content:', content.substring(0, 200));
+      console.log('[Timelines] Current notes length before create:', notes.length);
+      
       const response = await createNote(content);
-      devLog('[Timelines] handleAddEventFromTimeline response:', response);
+      console.log('[Timelines] Event created successfully:', {
+        id: response?.id,
+        contentLength: response?.content?.length,
+        hasEventMeta: response?.content?.includes('meta::event::')
+      });
       
       // Store the new event note in ref AND state for immediate use
       newEventNoteRef.current = response;
       setPendingNewEventNote(response);
       newEventSeenCountRef.current = 0; // Reset counter for new event
-      devLog('[Timelines] Stored new event note in ref and state:', response.id, response);
+      console.log('[Timelines] Stored new event note in ref and state:', {
+        id: response.id,
+        refSet: !!newEventNoteRef.current,
+        stateSet: true
+      });
       
       // Add the new event to notes via setAllNotes (which updates App's allNotes)
       if (setAllNotes) {
+        console.log('[Timelines] Calling setAllNotes to add new event to parent state');
         setAllNotes(prevNotes => {
+          const alreadyExists = prevNotes.find(n => n.id === response.id);
+          console.log('[Timelines] setAllNotes callback - prevNotes length:', prevNotes.length, 'alreadyExists:', !!alreadyExists);
+          if (alreadyExists) {
+            console.log('[Timelines] Event already in notes, returning prevNotes');
+            return prevNotes;
+          }
           const updated = [...prevNotes, response];
-          devLog('[Timelines] setAllNotes: Updated notes array length:', updated.length);
+          console.log('[Timelines] setAllNotes: Updated notes array length:', updated.length, 'new event ID:', response.id);
           return updated;
         });
+      } else {
+        console.warn('[Timelines] setAllNotes is not available!');
       }
       
       // Add to search index
       if (response && response.content) {
+        console.log('[Timelines] Adding event to search index');
         addNoteToIndex(response);
       }
       
+      console.log('[Timelines] ========== handleAddEventFromTimeline END ==========');
       return response; // Return the note object with id for timeline linking
     } catch (error) {
-      console.error('Error adding event:', error);
+      console.error('[Timelines] Error adding event:', error);
       throw error;
     }
   };
@@ -1375,26 +1397,32 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     let notesToUse = getNotesWithNewEvent();
     const newEventNoteId = newEventNote?.id;
     
+    console.log('[Timelines] Notes to use length (from getNotesWithNewEvent):', notesToUse.length);
+    console.log('[Timelines] Includes new event:', notesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+    console.log('[Timelines] New event note ID:', newEventNoteId);
+    
     // If ref is cleared but notes prop doesn't have the new event yet, we need to restore it
     // This can happen if useEffect cleared the ref before handleTimelineUpdated ran
     if (!newEventNote && newEventNoteId && !notes.find(n => n.id === newEventNoteId)) {
-      devLog('[Timelines] WARNING: Ref was cleared but notes prop does not have new event yet');
+      console.warn('[Timelines] WARNING: Ref was cleared but notes prop does not have new event yet');
       // Try to get the new event from the result that was passed to onSave
       // But we don't have access to it here, so we'll need to work around this
       // For now, we'll trigger a re-render after a delay to ensure the notes prop is updated
     }
-    
-    devLog('[Timelines] Notes to use length (from getNotesWithNewEvent):', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
     
     // Update the timeline note in the notes array
     const updatedNotes = notesToUse.map(n => 
       n.id === timelineId ? { ...n, content: updatedContent } : n
     );
     
-    devLog('[Timelines] Updated timeline note in array:', updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100));
+    console.log('[Timelines] Updated timeline note in array:', {
+      timelineId,
+      contentPreview: updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100)
+    });
     
     // Update timelineNotes with PARSED timeline data merged with original note properties
     // This is critical - timelineNotes must contain both original note data AND parsed timeline data
+    console.log('[Timelines] Parsing timeline data for all timeline notes');
     const filteredNotes = updatedNotes
       .filter(note => note.content && note.content.includes('meta::timeline'))
       .map(note => {
@@ -1407,16 +1435,20 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         };
       });
     
-    devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
-    devLog('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.timeline })));
-    
+    console.log('[Timelines] Filtered timeline notes count:', filteredNotes.length);
+    console.log('[Timelines] Timeline IDs:', filteredNotes.map(n => n.id));
+    console.log('[Timelines] Setting timelineNotes');
     setTimelineNotes(filteredNotes);
     
     // Force a re-render after a delay to ensure the new event is included
     // This is a workaround for the race condition where useEffect clears the ref too early
     setTimeout(() => {
-      devLog('[Timelines] Delayed refresh: Checking if new event is now in notes prop');
+      console.log('[Timelines] ========== handleTimelineUpdated delayed refresh START ==========');
+      console.log('[Timelines] Checking if new event is now in notes prop');
       const delayedNotesToUse = getNotesWithNewEvent();
+      console.log('[Timelines] Delayed notes length:', delayedNotesToUse.length);
+      console.log('[Timelines] Includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+      
       const delayedUpdatedNotes = delayedNotesToUse
         .map(n => n.id === timelineId ? { ...n, content: updatedContent } : n);
       const delayedFilteredNotes = delayedUpdatedNotes
@@ -1431,14 +1463,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           };
         });
       
-      devLog('[Timelines] Delayed refresh: Notes length:', delayedNotesToUse.length, 'includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+      console.log('[Timelines] Delayed filtered notes count:', delayedFilteredNotes.length);
       
       if (delayedNotesToUse.find(n => n.id === newEventNoteId)) {
-        devLog('[Timelines] Delayed refresh: New event found, updating timelineNotes');
+        console.log('[Timelines] New event found in delayed refresh, updating timelineNotes');
         setTimelineNotes(delayedFilteredNotes);
+      } else {
+        console.log('[Timelines] New event NOT found in delayed refresh, skipping update');
       }
+      console.log('[Timelines] ========== handleTimelineUpdated delayed refresh END ==========');
     }, 300);
     
+    console.log('[Timelines] ========== handleTimelineUpdated END ==========');
     // Don't clear the ref here - let the useEffect clear it once the notes prop is updated
     // The useEffect will check if the notes prop includes the new event and clear the ref accordingly
   };
@@ -2601,11 +2637,58 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                              console.log('[Timelines] ========== Edit button clicked (linked event section) ==========');
+                                              console.log('[Timelines] event.linkedEventId:', event.linkedEventId);
+                                              console.log('[Timelines] Current notes prop length:', notes.length);
+                                              console.log('[Timelines] Searching for event in notes prop...');
+                                              
+                                              let eventNote = notes.find(n => n.id === event.linkedEventId);
+                                              console.log('[Timelines] Found in notes prop:', !!eventNote);
+                                              
+                                              // If not found in notes prop, check if it's the newly created event
+                                              if (!eventNote) {
+                                                console.log('[Timelines] Event not found in notes prop, checking newEventNoteRef and pendingNewEventNote');
+                                                const newEventFromRef = newEventNoteRef.current;
+                                                const newEventFromState = pendingNewEventNote;
+                                                console.log('[Timelines] newEventNoteRef.current:', newEventFromRef?.id);
+                                                console.log('[Timelines] pendingNewEventNote:', newEventFromState?.id);
+                                                
+                                                if (newEventFromRef && newEventFromRef.id === event.linkedEventId) {
+                                                  console.log('[Timelines] Found event in newEventNoteRef, using it');
+                                                  eventNote = newEventFromRef;
+                                                } else if (newEventFromState && newEventFromState.id === event.linkedEventId) {
+                                                  console.log('[Timelines] Found event in pendingNewEventNote, using it');
+                                                  eventNote = newEventFromState;
+                                                } else {
+                                                  // Try getNotesWithNewEvent
+                                                  const notesWithNewEvent = getNotesWithNewEvent();
+                                                  console.log('[Timelines] Trying getNotesWithNewEvent, length:', notesWithNewEvent.length);
+                                                  eventNote = notesWithNewEvent.find(n => n.id === event.linkedEventId);
+                                                  console.log('[Timelines] Found in getNotesWithNewEvent:', !!eventNote);
+                                                }
+                                              }
+                                              
                                               if (eventNote) {
+                                                console.log('[Timelines] Event note found, opening edit modal:', {
+                                                  id: eventNote.id,
+                                                  contentLength: eventNote.content?.length
+                                                });
                                                 setEditingEventId(event.linkedEventId);
                                                 setEditingTimelineId(note.id);
                                                 setShowEditEventModal(true);
+                                                console.log('[Timelines] Edit modal state set:', {
+                                                  editingEventId: event.linkedEventId,
+                                                  editingTimelineId: note.id,
+                                                  showEditEventModal: true
+                                                });
+                                              } else {
+                                                console.error('[Timelines] ERROR: Event note not found!', {
+                                                  linkedEventId: event.linkedEventId,
+                                                  notesLength: notes.length,
+                                                  newEventRefId: newEventNoteRef.current?.id,
+                                                  pendingNewEventId: pendingNewEventNote?.id
+                                                });
+                                                alert(`Event not found. ID: ${event.linkedEventId}`);
                                               }
                                             }}
                                             className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
@@ -2678,14 +2761,64 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
+                                            console.log('[Timelines] ========== Link button clicked ==========');
+                                            console.log('[Timelines] event.isLinkedEvent:', event.isLinkedEvent);
+                                            console.log('[Timelines] event.linkedEventId:', event.linkedEventId);
+                                            
                                             if (event.isLinkedEvent && event.linkedEventId) {
                                               // For linked events, open the event edit modal with focus on notes
-                                              const linkedNote = notes.find(n => n.id === event.linkedEventId);
+                                              console.log('[Timelines] This is a linked event, searching for note...');
+                                              console.log('[Timelines] Current notes prop length:', notes.length);
+                                              
+                                              let linkedNote = notes.find(n => n.id === event.linkedEventId);
+                                              console.log('[Timelines] Found in notes prop:', !!linkedNote);
+                                              
+                                              // If not found in notes prop, check if it's the newly created event
+                                              if (!linkedNote) {
+                                                console.log('[Timelines] Event not found in notes prop, checking newEventNoteRef and pendingNewEventNote');
+                                                const newEventFromRef = newEventNoteRef.current;
+                                                const newEventFromState = pendingNewEventNote;
+                                                console.log('[Timelines] newEventNoteRef.current:', newEventFromRef?.id);
+                                                console.log('[Timelines] pendingNewEventNote:', newEventFromState?.id);
+                                                
+                                                if (newEventFromRef && newEventFromRef.id === event.linkedEventId) {
+                                                  console.log('[Timelines] Found event in newEventNoteRef, using it');
+                                                  linkedNote = newEventFromRef;
+                                                } else if (newEventFromState && newEventFromState.id === event.linkedEventId) {
+                                                  console.log('[Timelines] Found event in pendingNewEventNote, using it');
+                                                  linkedNote = newEventFromState;
+                                                } else {
+                                                  // Try getNotesWithNewEvent
+                                                  const notesWithNewEvent = getNotesWithNewEvent();
+                                                  console.log('[Timelines] Trying getNotesWithNewEvent, length:', notesWithNewEvent.length);
+                                                  linkedNote = notesWithNewEvent.find(n => n.id === event.linkedEventId);
+                                                  console.log('[Timelines] Found in getNotesWithNewEvent:', !!linkedNote);
+                                                }
+                                              }
+                                              
                                               if (linkedNote) {
+                                                console.log('[Timelines] Linked note found, opening edit modal:', {
+                                                  id: linkedNote.id,
+                                                  contentLength: linkedNote.content?.length
+                                                });
                                                 setFocusOnNotesField(true);
                                                 setEditingEventId(event.linkedEventId);
                                                 setEditingTimelineId(note.id);
                                                 setShowEditEventModal(true);
+                                                console.log('[Timelines] Edit modal state set:', {
+                                                  editingEventId: event.linkedEventId,
+                                                  editingTimelineId: note.id,
+                                                  showEditEventModal: true,
+                                                  focusOnNotesField: true
+                                                });
+                                              } else {
+                                                console.error('[Timelines] ERROR: Linked note not found!', {
+                                                  linkedEventId: event.linkedEventId,
+                                                  notesLength: notes.length,
+                                                  newEventRefId: newEventNoteRef.current?.id,
+                                                  pendingNewEventId: pendingNewEventNote?.id
+                                                });
+                                                alert(`Event not found. ID: ${event.linkedEventId}`);
                                               }
                                             } else {
                                               // For regular timeline events, use the add link modal
@@ -3185,10 +3318,63 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         {/* Add Event Modal */}
         <EditEventModal
           isOpen={showEditEventModal}
-          note={editingEventId ? notes.find(n => n.id === editingEventId) : (convertingEvent ? {
-            id: null,
-            content: `event_description: ${convertingEvent.event.event}\nevent_date: ${convertingEvent.event.date.format('YYYY-MM-DD')}${convertingEvent.event.dollarAmount && convertingEvent.event.dollarAmount > 0 ? `\nevent_$: ${convertingEvent.event.dollarAmount.toFixed(2)}` : ''}\nmeta::linked_to_timeline::${convertingEvent.timelineId}`
-          } : null)}
+          note={(() => {
+            console.log('[Timelines] ========== EditEventModal note prop calculation ==========');
+            console.log('[Timelines] showEditEventModal:', showEditEventModal);
+            console.log('[Timelines] editingEventId:', editingEventId);
+            console.log('[Timelines] convertingEvent:', !!convertingEvent);
+            
+            if (editingEventId) {
+              console.log('[Timelines] Looking for note with ID:', editingEventId);
+              console.log('[Timelines] Current notes prop length:', notes.length);
+              
+              let foundNote = notes.find(n => n.id === editingEventId);
+              console.log('[Timelines] Found in notes prop:', !!foundNote);
+              
+              // If not found in notes prop, check if it's the newly created event
+              if (!foundNote) {
+                console.log('[Timelines] Note not found in notes prop, checking newEventNoteRef and pendingNewEventNote');
+                const newEventFromRef = newEventNoteRef.current;
+                const newEventFromState = pendingNewEventNote;
+                console.log('[Timelines] newEventNoteRef.current:', newEventFromRef?.id);
+                console.log('[Timelines] pendingNewEventNote:', newEventFromState?.id);
+                
+                if (newEventFromRef && newEventFromRef.id === editingEventId) {
+                  console.log('[Timelines] Found note in newEventNoteRef, using it');
+                  foundNote = newEventFromRef;
+                } else if (newEventFromState && newEventFromState.id === editingEventId) {
+                  console.log('[Timelines] Found note in pendingNewEventNote, using it');
+                  foundNote = newEventFromState;
+                } else {
+                  // Try getNotesWithNewEvent
+                  const notesWithNewEvent = getNotesWithNewEvent();
+                  console.log('[Timelines] Trying getNotesWithNewEvent, length:', notesWithNewEvent.length);
+                  foundNote = notesWithNewEvent.find(n => n.id === editingEventId);
+                  console.log('[Timelines] Found in getNotesWithNewEvent:', !!foundNote);
+                }
+              }
+              
+              if (foundNote) {
+                console.log('[Timelines] Returning found note:', {
+                  id: foundNote.id,
+                  contentLength: foundNote.content?.length
+                });
+              } else {
+                console.error('[Timelines] ERROR: Note not found for editingEventId:', editingEventId);
+              }
+              
+              return foundNote;
+            } else if (convertingEvent) {
+              console.log('[Timelines] Converting event, creating note from convertingEvent');
+              return {
+                id: null,
+                content: `event_description: ${convertingEvent.event.event}\nevent_date: ${convertingEvent.event.date.format('YYYY-MM-DD')}${convertingEvent.event.dollarAmount && convertingEvent.event.dollarAmount > 0 ? `\nevent_$: ${convertingEvent.event.dollarAmount.toFixed(2)}` : ''}\nmeta::linked_to_timeline::${convertingEvent.timelineId}`
+              };
+            } else {
+              console.log('[Timelines] No editingEventId and no convertingEvent, returning null');
+              return null;
+            }
+          })()}
           onSave={async (content) => {
             devLog('[Timelines] onSave called with content:', content.substring(0, 100));
             const timelineId = editingTimelineId; // Capture before reset
@@ -3243,14 +3429,23 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               }
             } else {
               // Creating new event (either from Add Event or Convert to Event)
+              console.log('[Timelines] ========== onSave: Creating NEW event ==========');
+              console.log('[Timelines] timelineId:', timelineId, 'isConverting:', isConverting);
+              console.log('[Timelines] Content before processing:', content.substring(0, 200));
+              
               // Ensure timeline link is added if converting
               let finalContent = content;
               if (isConverting && timelineId && !content.includes(`meta::linked_to_timeline::${timelineId}`)) {
                 finalContent = content + `\nmeta::linked_to_timeline::${timelineId}`;
+                console.log('[Timelines] Added timeline link to content');
               }
               
+              console.log('[Timelines] Calling handleAddEventFromTimeline with finalContent');
               const result = await handleAddEventFromTimeline(finalContent);
-              devLog('[Timelines] Event created, result:', result?.id);
+              console.log('[Timelines] Event created, result:', {
+                id: result?.id,
+                contentLength: result?.content?.length
+              });
               
               // If converting, also update the timeline note to link the event
               if (isConverting && timelineId && result?.id) {
@@ -3284,7 +3479,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               }
               
               setShowEditEventModal(false);
-              devLog('[Timelines] Closed edit modal');
+              console.log('[Timelines] Closed edit modal');
               
               // Ensure timeline stays open after adding event
               if (timelineId) {
@@ -3292,34 +3487,72 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                   const newSet = new Set(prev);
                   newSet.delete(timelineId);
                   saveCollapseStates(newSet);
-                  devLog('[Timelines] Expanded timeline:', timelineId);
+                  console.log('[Timelines] Expanded timeline:', timelineId);
                   return newSet;
                 });
               }
               
               setEditingTimelineId(null);
               setConvertingEvent(null);
-              devLog('[Timelines] Reset editing timeline ID');
+              console.log('[Timelines] Reset editing timeline ID');
               
-              // The handleTimelineUpdated callback will refresh timelineNotes
-              // But we also refresh here as a fallback after a delay
-              // Include the new event note in the notes array
+              // IMMEDIATELY refresh timelineNotes with the new event included
+              console.log('[Timelines] ========== IMMEDIATE REFRESH START ==========');
+              console.log('[Timelines] Current notes prop length:', notes.length);
+              console.log('[Timelines] Result from handleAddEventFromTimeline:', {
+                id: result?.id,
+                hasResult: !!result
+              });
+              
+              // Use getNotesWithNewEvent to ensure we have the new event
+              const notesWithNewEvent = getNotesWithNewEvent();
+              console.log('[Timelines] Notes with new event length:', notesWithNewEvent.length);
+              console.log('[Timelines] Notes includes new event:', notesWithNewEvent.find(n => n.id === result?.id) ? 'YES' : 'NO');
+              
+              // Refresh timelineNotes immediately
+              const immediateFilteredNotes = notesWithNewEvent
+                .filter(note => note.content && note.content.includes('meta::timeline'))
+                .map(note => {
+                  const timelineData = parseTimelineData(note.content, notesWithNewEvent);
+                  return {
+                    ...note,
+                    ...timelineData,
+                    isFlagged: note.content.includes('meta::flagged_timeline'),
+                    isTracked: note.content.includes('meta::tracked')
+                  };
+                });
+              
+              console.log('[Timelines] Immediate filtered timeline notes count:', immediateFilteredNotes.length);
+              console.log('[Timelines] Setting timelineNotes immediately');
+              setTimelineNotes(immediateFilteredNotes);
+              
+              // Also refresh timeline events cache if timeline is expanded
+              if (timelineId && !collapsedTimelines.has(timelineId)) {
+                console.log('[Timelines] Clearing cache and reloading timeline events for timeline:', timelineId);
+                setTimelineEventsCache(prev => {
+                  const updated = { ...prev };
+                  delete updated[timelineId];
+                  return updated;
+                });
+                loadTimelineEvents(timelineId);
+              }
+              
+              // Fallback refresh after a delay to catch any prop updates
               setTimeout(() => {
-                devLog('[Timelines] setTimeout fallback refresh triggered');
-                devLog('[Timelines] Result:', result);
-                devLog('[Timelines] Current notes length:', notes.length);
-                devLog('[Timelines] Notes includes result:', notes.find(n => n.id === result?.id) ? 'YES' : 'NO');
+                console.log('[Timelines] ========== setTimeout fallback refresh START ==========');
+                console.log('[Timelines] Current notes prop length:', notes.length);
+                console.log('[Timelines] Notes includes result:', notes.find(n => n.id === result?.id) ? 'YES' : 'NO');
+                console.log('[Timelines] newEventNoteRef.current:', newEventNoteRef.current?.id);
+                console.log('[Timelines] pendingNewEventNote:', pendingNewEventNote?.id);
                 
-                const updatedNotes = result && !notes.find(n => n.id === result.id)
-                  ? [...notes, result]
-                  : notes;
+                const delayedNotesWithNewEvent = getNotesWithNewEvent();
+                console.log('[Timelines] Delayed notes with new event length:', delayedNotesWithNewEvent.length);
+                console.log('[Timelines] Delayed notes includes new event:', delayedNotesWithNewEvent.find(n => n.id === result?.id) ? 'YES' : 'NO');
                 
-                devLog('[Timelines] Updated notes length:', updatedNotes.length);
-                
-                const filteredNotes = updatedNotes
+                const delayedFilteredNotes = delayedNotesWithNewEvent
                   .filter(note => note.content && note.content.includes('meta::timeline'))
                   .map(note => {
-                    const timelineData = parseTimelineData(note.content, updatedNotes);
+                    const timelineData = parseTimelineData(note.content, delayedNotesWithNewEvent);
                     return {
                       ...note,
                       ...timelineData,
@@ -3328,10 +3561,13 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     };
                   });
                 
-                devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
-                setTimelineNotes(filteredNotes);
+                console.log('[Timelines] Delayed filtered timeline notes count:', delayedFilteredNotes.length);
+                console.log('[Timelines] Setting timelineNotes in fallback');
+                setTimelineNotes(delayedFilteredNotes);
+                console.log('[Timelines] ========== setTimeout fallback refresh END ==========');
               }, 500);
               
+              console.log('[Timelines] ========== IMMEDIATE REFRESH END ==========');
               return result;
             }
           }}
@@ -3357,8 +3593,116 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             setConvertingEvent(null);
             setFocusOnNotesField(false);
           }}
-          onDelete={() => {
-            // Delete not applicable for new events
+          onDelete={async (eventId) => {
+            console.log('[Timelines] ========== onDelete called ==========');
+            console.log('[Timelines] eventId:', eventId);
+            console.log('[Timelines] editingTimelineId:', editingTimelineId);
+            console.log('[Timelines] Current notes length:', notes.length);
+            
+            try {
+              // Remove the event from notes via setAllNotes
+              if (setAllNotes) {
+                console.log('[Timelines] Removing event from setAllNotes');
+                setAllNotes(prev => {
+                  const filtered = prev.filter(n => n.id !== eventId);
+                  console.log('[Timelines] setAllNotes: Removed event, new length:', filtered.length);
+                  return filtered;
+                });
+              }
+              
+              // If this event was linked to a timeline, remove it from the timeline
+              if (editingTimelineId) {
+                console.log('[Timelines] Event was linked to timeline:', editingTimelineId);
+                const timelineNote = timelineNotes.find(n => n.id === editingTimelineId);
+                
+                if (timelineNote) {
+                  console.log('[Timelines] Found timeline note, removing event link');
+                  const timelineContent = timelineNote.content;
+                  const linkedEventsLine = timelineContent.split('\n').find(line => line.startsWith('meta::linked_from_events::'));
+                  
+                  if (linkedEventsLine) {
+                    console.log('[Timelines] Found linked_from_events line:', linkedEventsLine);
+                    // Remove the event ID from the linked events list
+                    const existingIds = linkedEventsLine.replace('meta::linked_from_events::', '').trim().split(',').map(id => id.trim()).filter(id => id);
+                    console.log('[Timelines] Existing linked event IDs:', existingIds);
+                    
+                    const updatedIds = existingIds.filter(id => id !== eventId);
+                    console.log('[Timelines] Updated linked event IDs (after removal):', updatedIds);
+                    
+                    let updatedContent;
+                    if (updatedIds.length > 0) {
+                      updatedContent = timelineContent.replace(
+                        linkedEventsLine,
+                        `meta::linked_from_events::${updatedIds.join(', ')}`
+                      );
+                    } else {
+                      // Remove the line entirely if no linked events remain
+                      updatedContent = timelineContent.replace(linkedEventsLine + '\n', '').replace('\n' + linkedEventsLine, '').replace(linkedEventsLine, '');
+                    }
+                    
+                    console.log('[Timelines] Updating timeline note content');
+                    await updateNoteById(editingTimelineId, updatedContent);
+                    
+                    // Update the timeline in the notes array
+                    if (updateNote) {
+                      console.log('[Timelines] Calling updateNote for timeline');
+                      updateNote(editingTimelineId, updatedContent);
+                    }
+                    
+                    // Refresh timeline display
+                    console.log('[Timelines] Refreshing timeline display');
+                    handleTimelineUpdated(editingTimelineId, updatedContent);
+                  } else {
+                    console.log('[Timelines] No linked_from_events line found in timeline');
+                  }
+                } else {
+                  console.warn('[Timelines] Timeline note not found:', editingTimelineId);
+                }
+              } else {
+                console.log('[Timelines] No editingTimelineId, event was not linked to a timeline');
+              }
+              
+              // Clear cache and reload timeline events if timeline is expanded
+              if (editingTimelineId && !collapsedTimelines.has(editingTimelineId)) {
+                console.log('[Timelines] Clearing cache and reloading timeline events');
+                setTimelineEventsCache(prev => {
+                  const updated = { ...prev };
+                  delete updated[editingTimelineId];
+                  return updated;
+                });
+                loadTimelineEvents(editingTimelineId);
+              }
+              
+              // Also refresh timelineNotes to reflect the deletion
+              console.log('[Timelines] Refreshing timelineNotes');
+              const notesAfterDelete = notes.filter(n => n.id !== eventId);
+              const filteredNotes = notesAfterDelete
+                .filter(note => note.content && note.content.includes('meta::timeline'))
+                .map(note => {
+                  const timelineData = parseTimelineData(note.content, notesAfterDelete);
+                  return {
+                    ...note,
+                    ...timelineData,
+                    isFlagged: note.content.includes('meta::flagged_timeline'),
+                    isTracked: note.content.includes('meta::tracked')
+                  };
+                });
+              
+              console.log('[Timelines] Setting timelineNotes with filtered notes, count:', filteredNotes.length);
+              setTimelineNotes(filteredNotes);
+              
+              // Close the modal
+              setShowEditEventModal(false);
+              setEditingEventId(null);
+              setEditingTimelineId(null);
+              setConvertingEvent(null);
+              setFocusOnNotesField(false);
+              
+              console.log('[Timelines] ========== onDelete completed ==========');
+            } catch (error) {
+              console.error('[Timelines] Error in onDelete handler:', error);
+              alert('Failed to delete event. Please try again.');
+            }
           }}
           notes={notes}
           initialTimelineId={editingTimelineId}

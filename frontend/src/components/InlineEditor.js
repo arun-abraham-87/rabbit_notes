@@ -255,6 +255,30 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }
   }, [pendingUrl]);
 
+  // Handle 'j' and 'k' keys in capture phase when URL popup is open
+  // Note: We DON'T stop propagation here - we let the event reach the input field
+  // The vim handler will ignore it due to input context check
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (pendingUrl && (e.key === 'j' || e.key === 'k')) {
+        const activeElement = document.activeElement;
+        // Check if we're in the URL popup input field
+        const linkTextPopup = document.querySelector('[data-link-text-popup="true"]');
+        if (activeElement && linkTextPopup && linkTextPopup.contains(activeElement)) {
+          // DON'T prevent default or stop propagation - let the event reach the input field
+          // The input field's onKeyDown will handle it, and the vim handler will ignore it
+        }
+      }
+    };
+
+    if (pendingUrl) {
+      document.addEventListener('keydown', handleKeyDown, true);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown, true);
+      };
+    }
+  }, [pendingUrl]);
+
   // Compress image while maintaining dimensions
   const compressImage = (file, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -585,6 +609,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           <div 
             className="bg-white p-4 rounded shadow-lg w-80"
             data-modal="true"
+            data-link-text-popup="true"
             onClick={(e) => e.stopPropagation()}
           >
             <label className="block text-sm mb-2">Link text:</label>
@@ -594,6 +619,18 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
               value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
               onKeyDown={e => {
+                // Stop propagation of 'j' and 'k' keys to prevent vim bindings from intercepting
+                if (e.key === 'j' || e.key === 'k') {
+                  // DON'T prevent default - we want the character to be typed!
+                  // Just stop propagation to prevent vim handler from seeing it
+                  if (typeof e.stopPropagation === 'function') {
+                    e.stopPropagation();
+                  }
+                  if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                  }
+                  return; // Allow default behavior to proceed
+                }
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   e.stopPropagation();

@@ -611,8 +611,21 @@ const NotesList = ({
   // Global event listener to block arrow keys when modals are open
   useEffect(() => {
     const handleGlobalArrowKeys = (e) => {
+      // Check if we're in the link text popup input - if so, allow all keys
+      const isLinkTextPopupOpen = document.querySelector('[data-link-text-popup="true"]');
+      const activeElement = document.activeElement;
+      if (isLinkTextPopupOpen && activeElement && (
+        isLinkTextPopupOpen.contains(activeElement) ||
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA'
+      )) {
+        return; // Don't block - let the input handle it
+      }
+      
       // Only block arrow keys if we're in a modal but NOT in a note editor
-      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
+      const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
+      const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
       
       // Check if we're in a note editor
@@ -621,7 +634,6 @@ const NotesList = ({
       
       // Only block if we're in a modal but NOT in a note editor
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
-        
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -637,10 +649,21 @@ const NotesList = ({
   // Handle keyboard navigation between notes
   useEffect(() => {
     const handleKeyDown = (e) => {
-      
+      // Check if we're in the link text popup input - if so, allow all keys
+      const isLinkTextPopupOpen = document.querySelector('[data-link-text-popup="true"]');
+      const activeElement = document.activeElement;
+      if (isLinkTextPopupOpen && activeElement && (
+        isLinkTextPopupOpen.contains(activeElement) ||
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA'
+      )) {
+        return; // Don't block - let the input handle it
+      }
       
       // Check if any modal or popup is open and block arrow keys completely
-      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
+      const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
+      const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
       
       // Check if we're in a note editor specifically
@@ -651,7 +674,6 @@ const NotesList = ({
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor) {
         // Block arrow keys when any modal is open BUT NOT when in note editor
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k') {
-          
           e.preventDefault();
           e.stopPropagation();
           return;
@@ -1206,16 +1228,60 @@ const NotesList = ({
   const [vimGPressed, setVimGPressed] = useState(false);
 
   const handleVimKeyDown = useCallback((e) => {
+    // First, check if any modal with input fields is open
+    const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
+    const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
+    const activeElement = document.activeElement;
+    console.log('[VimHandler] keydown event', {
+      key: e.key,
+      targetTag: e.target?.tagName,
+      activeTag: activeElement?.tagName,
+      isAddTextModalOpen: Boolean(isAddTextModalOpen),
+      isLinkEditPopupOpen: Boolean(isLinkEditPopupOpen)
+    });
+    if (isAddTextModalOpen || isLinkEditPopupOpen) {
+      // If modal is open, check if the active element is an input
+      if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable ||
+        activeElement.closest('input') ||
+        activeElement.closest('textarea')
+      )) {
+        return;
+      }
+    }
+    
     // Ignore if in input/textarea/contentEditable
-    if (
-      e.target.tagName === 'INPUT' ||
-      e.target.tagName === 'TEXTAREA' ||
-      e.target.isContentEditable
-    ) {
+    const target = e.target;
+    const isInputContext = (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable ||
+      activeElement?.tagName === 'INPUT' ||
+      activeElement?.tagName === 'TEXTAREA' ||
+      activeElement?.isContentEditable ||
+      target.closest('input') ||
+      target.closest('textarea') ||
+      activeElement?.closest('input') ||
+      activeElement?.closest('textarea')
+    );
+    console.log('[VimHandler] Input context check', {
+      targetTag: target.tagName,
+      targetId: target.id,
+      activeElementTag: activeElement?.tagName,
+      activeElementId: activeElement?.id,
+      isInputContext: !!isInputContext,
+      willReturn: !!isInputContext
+    });
+    if (isInputContext) {
+      console.log('[VimHandler] ignoring key due to input context - RETURNING EARLY');
       return;
     }
-    // Ignore if popup/modal is open
-    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible) {
+    // Ignore if popup/modal is open - check both by state and by DOM
+    const isLinkTextPopupOpen = document.querySelector('[data-link-text-popup="true"]');
+    const isInModal = target.closest('[data-modal="true"]') || activeElement?.closest('[data-modal="true"]');
+    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen || isLinkTextPopupOpen || isInModal) {
       return;
     }
     // Vim navigation logic
@@ -1313,7 +1379,9 @@ const NotesList = ({
   // Disable Vim keydown when NoteActionPopup is open
   if (showNoteActionPopup.visible) return;
   document.addEventListener('keydown', handleVimKeyDown, true);
-  return () => document.removeEventListener('keydown', handleVimKeyDown, true);
+  return () => {
+    document.removeEventListener('keydown', handleVimKeyDown, true);
+  };
 }, [location.pathname, handleVimKeyDown, showNoteActionPopup.visible]);
 
   // Add Vim navigation state
@@ -1941,7 +2009,7 @@ const NotesList = ({
 
       {/* Link edit popup UI */}
       {showLinkEditPopup && editingLink && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-modal="true" data-link-edit-popup="true">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-lg font-semibold mb-4">Edit Link</h2>
             <div className="mb-4">
@@ -1951,6 +2019,18 @@ const NotesList = ({
                 className="w-full border px-3 py-2 rounded mb-2"
                 value={editLinkText}
                 onChange={e => setEditLinkText(e.target.value)}
+                onKeyDown={(e) => {
+                  // Stop propagation of 'j' and 'k' keys to prevent vim bindings from intercepting
+                  // Use capture phase to intercept before vim handler
+                  if (e.key === 'j' || e.key === 'k') {
+                    console.log('[LinkEditPopup] editLinkText input - stopping propagation (NOT preventing default) - allowing character to be typed', e.key);
+                    // DON'T prevent default - we want the character to be typed!
+                    // Just stop propagation to prevent vim handler from seeing it
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return true; // Allow default behavior
+                  }
+                }}
                 autoFocus
               />
               <label className="block text-sm font-medium mb-1">URL</label>
@@ -1959,6 +2039,18 @@ const NotesList = ({
                 className="w-full border px-3 py-2 rounded"
                 value={editLinkUrl}
                 onChange={e => setEditLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  // Stop propagation of 'j' and 'k' keys to prevent vim bindings from intercepting
+                  // Use capture phase to intercept before vim handler
+                  if (e.key === 'j' || e.key === 'k') {
+                    console.log('[LinkEditPopup] editLinkText input - stopping propagation (NOT preventing default) - allowing character to be typed', e.key);
+                    // DON'T prevent default - we want the character to be typed!
+                    // Just stop propagation to prevent vim handler from seeing it
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return true; // Allow default behavior
+                  }
+                }}
               />
             </div>
             <div className="flex justify-end gap-2">

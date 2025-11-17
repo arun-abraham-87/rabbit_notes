@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false, initialText = '', noteContent = '' }) => {
   const [customText, setCustomText] = useState(initialText);
   const [customUrl, setCustomUrl] = useState(url);
   const [availableTextOptions, setAvailableTextOptions] = useState([]);
+  const customTextInputRef = useRef(null);
+  const customUrlInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -77,6 +79,32 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
   // Handle Cmd+Enter to save and close
   useEffect(() => {
     const handleKeyDown = (e) => {
+      console.log('[AddTextModal] capture keydown', {
+        key: e.key,
+        targetTag: e.target?.tagName,
+        activeTag: document.activeElement?.tagName,
+        isOpen
+      });
+      // Block 'j' and 'k' keys at capture phase when modal is open
+      if (isOpen && (e.key === 'j' || e.key === 'k')) {
+        const activeElement = document.activeElement;
+        if (activeElement && (
+          activeElement === customTextInputRef.current ||
+          activeElement === customUrlInputRef.current ||
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA'
+        )) {
+          console.log('[AddTextModal] stopping propagation (NOT preventing default) - allowing character to be typed', {
+            key: e.key,
+            activeElementTag: activeElement?.tagName
+          });
+          // DON'T prevent default - we want the character to be typed!
+          // Just stop propagation to prevent vim handler from seeing it
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          return false;
+        }
+      }
       
       if (isOpen && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         
@@ -107,19 +135,39 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
     };
 
     if (isOpen) {
-      
-      document.addEventListener('keydown', handleKeyDown);
+      // Use capture phase to intercept before vim handler
+      document.addEventListener('keydown', handleKeyDown, true);
       return () => {
         
-        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
-  }, [isOpen, customText, customUrl, noteId, onSave, onClose]);
+  }, [isOpen, customText, customUrl, noteId, onSave, onClose, noteContent, availableTextOptions]);
+
+  // Log when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[AddTextModal] Modal opened - checking DOM', {
+        modalElement: document.querySelector('[data-add-text-modal="true"]'),
+        allModals: document.querySelectorAll('[data-modal="true"]').length
+      });
+      // Verify the modal is in DOM after a brief delay
+      setTimeout(() => {
+        const modalEl = document.querySelector('[data-add-text-modal="true"]');
+        console.log('[AddTextModal] Modal DOM check after delay', {
+          found: !!modalEl,
+          element: modalEl
+        });
+      }, 100);
+    } else {
+      console.log('[AddTextModal] Modal closed');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-modal="true" data-add-text-modal="true">
       <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">
@@ -163,11 +211,21 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               Custom Text
             </label>
             <input
+              ref={customTextInputRef}
               type="text"
               id="customText"
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               onKeyDown={(e) => {
+                // Stop propagation of 'j' and 'k' keys to prevent vim bindings from intercepting
+                if (e.key === 'j' || e.key === 'k') {
+                  console.log('[AddTextModal] customText input - stopping propagation (NOT preventing default) - allowing character to be typed', e.key);
+                  // DON'T prevent default - we want the character to be typed!
+                  // Just stop propagation to prevent vim handler from seeing it
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  return true; // Allow default behavior
+                }
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
                   
@@ -204,11 +262,21 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               URL
             </label>
             <input
+              ref={customUrlInputRef}
               type="url"
               id="customUrl"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
               onKeyDown={(e) => {
+                // Stop propagation of 'j' and 'k' keys to prevent vim bindings from intercepting
+                if (e.key === 'j' || e.key === 'k') {
+                  console.log('[AddTextModal] customUrl input - stopping propagation (NOT preventing default) - allowing character to be typed', e.key);
+                  // DON'T prevent default - we want the character to be typed!
+                  // Just stop propagation to prevent vim handler from seeing it
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  return true; // Allow default behavior
+                }
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
                   

@@ -2596,44 +2596,26 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         </a>
                                       ) : event.isLinkedEvent ? (
                                         <div className="flex items-center gap-2 flex-1">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              // console.log('[Timelines] Clicked linked event (open/closed section):', {
-                                              //   linkedEventId: event.linkedEventId,
-                                              //   event: event.event,
-                                              //   fullEvent: event
-                                              // });
-                                              // For HashRouter, we need to use hash with query params
-                                              const targetUrl = `/events?note=${event.linkedEventId}`;
-                                              //console.log('[Timelines] Navigating to:', targetUrl);
-                                              ////console.log('[Timelines] Current window location:', window.location.href);
-                                              navigate(targetUrl, { replace: false });
-                                              //console.log('[Timelines] After navigate, window location:', window.location.href);
-                                            }}
-                                            className="text-left hover:underline cursor-pointer flex-1"
-                                          >
-                                            <h3 className={`text-lg font-semibold ${
-                                              event.isToday
-                                                ? 'text-emerald-700 font-bold'
-                                                : 'text-indigo-600 font-semibold'
-                                            }`}>
-                                              {event.isTotal || event.isDuration ? (
-                                                <span title={event.event.length > 50 ? event.event : undefined}>
-                                                  {truncateText(event.event)}
-                                                </span>
-                                              ) : (
-                                                <span 
-                                                  title={event.event.length > 50 ? event.event : undefined}
-                                                  dangerouslySetInnerHTML={{
-                                                    __html: highlightDollarValues(
-                                                      truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                    )
-                                                  }}
-                                                />
-                                              )}
-                                            </h3>
-                                          </button>
+                                          <h3 className={`text-lg font-semibold ${
+                                            event.isToday
+                                              ? 'text-emerald-700 font-bold'
+                                              : 'text-indigo-600 font-semibold'
+                                          }`}>
+                                            {event.isTotal || event.isDuration ? (
+                                              <span title={event.event.length > 50 ? event.event : undefined}>
+                                                {truncateText(event.event)}
+                                              </span>
+                                            ) : (
+                                              <span 
+                                                title={event.event.length > 50 ? event.event : undefined}
+                                                dangerouslySetInnerHTML={{
+                                                  __html: highlightDollarValues(
+                                                    truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                  )
+                                                }}
+                                              />
+                                            )}
+                                          </h3>
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -2758,70 +2740,71 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         </div>
                                       )}
                                       {!event.isTotal && !event.isDuration && !event.isVirtual && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            console.log('[Timelines] ========== Link button clicked ==========');
-                                            console.log('[Timelines] event.isLinkedEvent:', event.isLinkedEvent);
-                                            console.log('[Timelines] event.linkedEventId:', event.linkedEventId);
-                                            
-                                            if (event.isLinkedEvent && event.linkedEventId) {
-                                              // For linked events, open the event edit modal with focus on notes
-                                              console.log('[Timelines] This is a linked event, searching for note...');
-                                              console.log('[Timelines] Current notes prop length:', notes.length);
+                                        <div className="flex items-center gap-2 ml-auto">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              console.log('[Timelines] ========== Link button clicked ==========');
+                                              console.log('[Timelines] event.isLinkedEvent:', event.isLinkedEvent);
+                                              console.log('[Timelines] event.linkedEventId:', event.linkedEventId);
                                               
-                                              let linkedNote = notes.find(n => n.id === event.linkedEventId);
-                                              console.log('[Timelines] Found in notes prop:', !!linkedNote);
-                                              
-                                              // If not found in notes prop, check if it's the newly created event
-                                              if (!linkedNote) {
-                                                console.log('[Timelines] Event not found in notes prop, checking newEventNoteRef and pendingNewEventNote');
-                                                const newEventFromRef = newEventNoteRef.current;
-                                                const newEventFromState = pendingNewEventNote;
-                                                console.log('[Timelines] newEventNoteRef.current:', newEventFromRef?.id);
-                                                console.log('[Timelines] pendingNewEventNote:', newEventFromState?.id);
+                                              if (event.isLinkedEvent && event.linkedEventId) {
+                                                // For linked events, open the event edit modal with focus on notes
+                                                console.log('[Timelines] This is a linked event, searching for note...');
+                                                console.log('[Timelines] Current notes prop length:', notes.length);
                                                 
-                                                if (newEventFromRef && newEventFromRef.id === event.linkedEventId) {
-                                                  console.log('[Timelines] Found event in newEventNoteRef, using it');
-                                                  linkedNote = newEventFromRef;
-                                                } else if (newEventFromState && newEventFromState.id === event.linkedEventId) {
-                                                  console.log('[Timelines] Found event in pendingNewEventNote, using it');
-                                                  linkedNote = newEventFromState;
-                                                } else {
-                                                  // Try getNotesWithNewEvent
-                                                  const notesWithNewEvent = getNotesWithNewEvent();
-                                                  console.log('[Timelines] Trying getNotesWithNewEvent, length:', notesWithNewEvent.length);
-                                                  linkedNote = notesWithNewEvent.find(n => n.id === event.linkedEventId);
-                                                  console.log('[Timelines] Found in getNotesWithNewEvent:', !!linkedNote);
+                                                let linkedNote = notes.find(n => n.id === event.linkedEventId);
+                                                console.log('[Timelines] Found in notes prop:', !!linkedNote);
+                                                
+                                                // If not found in notes prop, check if it's the newly created event
+                                                if (!linkedNote) {
+                                                  console.log('[Timelines] Event not found in notes prop, checking newEventNoteRef and pendingNewEventNote');
+                                                  const newEventFromRef = newEventNoteRef.current;
+                                                  const newEventFromState = pendingNewEventNote;
+                                                  console.log('[Timelines] newEventNoteRef.current:', newEventFromRef?.id);
+                                                  console.log('[Timelines] pendingNewEventNote:', newEventFromState?.id);
+                                                  
+                                                  if (newEventFromRef && newEventFromRef.id === event.linkedEventId) {
+                                                    console.log('[Timelines] Found event in newEventNoteRef, using it');
+                                                    linkedNote = newEventFromRef;
+                                                  } else if (newEventFromState && newEventFromState.id === event.linkedEventId) {
+                                                    console.log('[Timelines] Found event in pendingNewEventNote, using it');
+                                                    linkedNote = newEventFromState;
+                                                  } else {
+                                                    // Try getNotesWithNewEvent
+                                                    const notesWithNewEvent = getNotesWithNewEvent();
+                                                    console.log('[Timelines] Trying getNotesWithNewEvent, length:', notesWithNewEvent.length);
+                                                    linkedNote = notesWithNewEvent.find(n => n.id === event.linkedEventId);
+                                                    console.log('[Timelines] Found in getNotesWithNewEvent:', !!linkedNote);
+                                                  }
                                                 }
-                                              }
-                                              
-                                              if (linkedNote) {
-                                                console.log('[Timelines] Linked note found, opening edit modal:', {
-                                                  id: linkedNote.id,
-                                                  contentLength: linkedNote.content?.length
-                                                });
-                                                setFocusOnNotesField(true);
-                                                setEditingEventId(event.linkedEventId);
-                                                setEditingTimelineId(note.id);
-                                                setShowEditEventModal(true);
-                                                console.log('[Timelines] Edit modal state set:', {
-                                                  editingEventId: event.linkedEventId,
-                                                  editingTimelineId: note.id,
-                                                  showEditEventModal: true,
-                                                  focusOnNotesField: true
-                                                });
+                                                
+                                                if (linkedNote) {
+                                                  console.log('[Timelines] Linked note found, opening edit modal:', {
+                                                    id: linkedNote.id,
+                                                    contentLength: linkedNote.content?.length
+                                                  });
+                                                  setFocusOnNotesField(true);
+                                                  setEditingEventId(event.linkedEventId);
+                                                  setEditingTimelineId(note.id);
+                                                  setShowEditEventModal(true);
+                                                  console.log('[Timelines] Edit modal state set:', {
+                                                    editingEventId: event.linkedEventId,
+                                                    editingTimelineId: note.id,
+                                                    showEditEventModal: true,
+                                                    focusOnNotesField: true
+                                                  });
+                                                } else {
+                                                  console.error('[Timelines] ERROR: Linked note not found!', {
+                                                    linkedEventId: event.linkedEventId,
+                                                    notesLength: notes.length,
+                                                    newEventRefId: newEventNoteRef.current?.id,
+                                                    pendingNewEventId: pendingNewEventNote?.id
+                                                  });
+                                                  alert(`Event not found. ID: ${event.linkedEventId}`);
+                                                }
                                               } else {
-                                                console.error('[Timelines] ERROR: Linked note not found!', {
-                                                  linkedEventId: event.linkedEventId,
-                                                  notesLength: notes.length,
-                                                  newEventRefId: newEventNoteRef.current?.id,
-                                                  pendingNewEventId: pendingNewEventNote?.id
-                                                });
-                                                alert(`Event not found. ID: ${event.linkedEventId}`);
-                                              }
-                                            } else {
-                                              // For regular timeline events, use the add link modal
+                                                // For regular timeline events, use the add link modal
                                             const timelineData = parseTimelineData(note.content, notes);
                                             const eventToLink = timelineData.events[index];
                                             setAddLinkModal({ 
@@ -2832,12 +2815,26 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                             });
                                             }
                                           }}
-                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors ml-auto"
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors"
                                           title={event.link ? 'Edit link' : 'Add link'}
                                         >
                                           <LinkIcon className="h-3 w-3 mr-1" />
                                           {event.link ? 'Edit' : 'Add'} Link
                                         </button>
+                                        {event.isLinkedEvent && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
+                                            }}
+                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                            title="Unlink event from timeline"
+                                          >
+                                            <XMarkIcon className="h-3 w-3 mr-1" />
+                                            Unlink
+                                          </button>
+                                        )}
+                                        </div>
                                       )}
                                       {!event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
                                         <button
@@ -3091,24 +3088,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                             }
                                           })()}
                                         </span>
-                                      )}
-                                      {event.isLinkedEvent && (
-                                        <>
-                                          <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
-                                            Linked
-                                          </span>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
-                                            }}
-                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
-                                            title="Unlink event from timeline"
-                                          >
-                                            <XMarkIcon className="h-3 w-3 mr-1" />
-                                            Unlink
-                                          </button>
-                                        </>
                                       )}
                                     </div>
                                   )}

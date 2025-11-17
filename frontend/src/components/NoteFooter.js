@@ -547,6 +547,26 @@ const NoteFooter = ({
           <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
         ) : null}
 
+        {/* Convert to Bookmark - Card location */}
+        {shouldShowOption('convertToBookmark') && getOptionLocation('convertToBookmark') === 'card' && (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={() => setShowConvertToBookmarkModal(true)}
+              className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+            >
+              <GlobeAltIcon className="h-4 w-4 text-gray-500" />
+              <span>Bookmark</span>
+            </button>
+          </div>
+        )}
+
+        {/* Separator before Edit/Delete if Convert to Bookmark is on card */}
+        {shouldShowOption('convertToBookmark') && getOptionLocation('convertToBookmark') === 'card' &&
+         ((shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+          (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
+          <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        ) : null}
+
         {/* Edit/Delete Group */}
         {((shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
           (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
@@ -582,6 +602,7 @@ const NoteFooter = ({
             (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
             (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
             (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
+            (shouldShowOption('convertToBookmark') && getOptionLocation('convertToBookmark') === 'card') ||
             (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
             (shouldShowOption('delete') && getOptionLocation('delete') === 'card');
           

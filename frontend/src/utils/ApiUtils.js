@@ -520,9 +520,10 @@ export const exportAllNotes = async () => {
     // Create a new ZIP file
     const zip = new JSZip();
     
-    // Create folders for notes and journals
+    // Create folders for notes, journals, and images
     const notesFolder = zip.folder('notes');
     const journalsFolder = zip.folder('journals');
+    const imagesFolder = zip.folder('images');
 
     // Fetch all notes and journals metadata
     const [notesData, journalsMetadata] = await Promise.all([
@@ -548,6 +549,90 @@ export const exportAllNotes = async () => {
         console.error(`Error loading journal ${journal.date}:`, error);
       }
     }
+
+    // Fetch list of all images from the backend
+    let allImages = [];
+    try {
+      const imagesResponse = await fetch(`${API_BASE_URL}/images`);
+      if (imagesResponse.ok) {
+        const imagesData = await imagesResponse.json();
+        allImages = imagesData.images || [];
+        console.log(`Found ${allImages.length} images in the images directory`);
+      } else {
+        console.warn('Failed to fetch images list from backend, will try to extract from notes');
+        // Fallback: extract image IDs from notes if backend endpoint fails
+        const allImageIds = new Set();
+        notesData.notes.forEach((note) => {
+          const imageIds = extractImageIds(note.content);
+          imageIds.forEach(id => allImageIds.add(id));
+        });
+        // Convert to image objects with unknown extension
+        allImages = Array.from(allImageIds).map(id => ({ filename: id, id, extension: 'unknown' }));
+      }
+    } catch (error) {
+      console.error('Error fetching images list:', error);
+      // Fallback: extract image IDs from notes
+      const allImageIds = new Set();
+      notesData.notes.forEach((note) => {
+        const imageIds = extractImageIds(note.content);
+        imageIds.forEach(id => allImageIds.add(id));
+      });
+      allImages = Array.from(allImageIds).map(id => ({ filename: id, id, extension: 'unknown' }));
+    }
+
+    // Fetch and add all images to the ZIP
+    const imageFetchPromises = allImages.map(async (imageInfo) => {
+      try {
+        const { filename, id, extension } = imageInfo;
+        
+        // If we have the full filename, use it directly
+        if (filename && filename.includes('.')) {
+          try {
+            const imageUrl = `${API_BASE_URL}/images/${filename}`;
+            const response = await fetch(imageUrl);
+            
+            if (response.ok && response.status === 200) {
+              const blob = await response.blob();
+              imagesFolder.file(filename, blob);
+              console.log(`Added image to backup: ${filename}`);
+              return;
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch image ${filename}:`, error);
+          }
+        }
+        
+        // Fallback: try different extensions if we only have the ID
+        const extensions = extension && extension !== 'unknown' 
+          ? [extension, extension.toUpperCase()]
+          : ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'JPEG', 'gif', 'GIF', 'webp', 'WEBP', 'heic', 'HEIC'];
+        
+        for (const ext of extensions) {
+          try {
+            const imageUrl = `${API_BASE_URL}/images/${id}.${ext}`;
+            const response = await fetch(imageUrl);
+            
+            if (response.ok && response.status === 200) {
+              const blob = await response.blob();
+              const fileName = `${id}.${ext}`;
+              imagesFolder.file(fileName, blob);
+              console.log(`Added image to backup: ${fileName}`);
+              return; // Successfully added
+            }
+          } catch (error) {
+            // Try next extension
+            continue;
+          }
+        }
+        
+        console.warn(`Could not find image: ${filename || id}`);
+      } catch (error) {
+        console.error(`Error fetching image ${imageInfo.filename || imageInfo.id}:`, error);
+      }
+    });
+
+    // Wait for all images to be fetched and added
+    await Promise.all(imageFetchPromises);
 
     // Generate the ZIP file
     const content = await zip.generateAsync({ type: 'blob' });

@@ -635,61 +635,61 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                 <div className="flex-1 space-y-2">
                                   {/* Event title */}
                                   <h3 className={`text-xl font-bold ${
-                                    occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
-                                  }`}>
-                                    {occurrence.event.content.includes('meta::event_hidden') ? (
-                                      <div className="flex items-center gap-2">
-                                        <span>XXXXXXXXXXXX</span>
-                                        <button
-                                          onClick={() => handleToggleHidden(occurrence.event)}
-                                          className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                                        >
-                                          Reveal
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      occurrence.event.description
-                                    )}
-                                  </h3>
+                                      occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
+                                    }`}>
+                                      {occurrence.event.content.includes('meta::event_hidden') ? (
+                                        <div className="flex items-center gap-2">
+                                          <span>XXXXXXXXXXXX</span>
+                                          <button
+                                            onClick={() => handleToggleHidden(occurrence.event)}
+                                            className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                                          >
+                                            Reveal
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        occurrence.event.description
+                                      )}
+                                    </h3>
                                   
                                   {/* Original Date */}
-                                  <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-gray-600">
                                     <span className="font-medium">Original Date:</span>{' '}
-                                    {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
-                                      weekday: 'long',
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })}
-                                  </p>
+                                          {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                          })}
+                                        </p>
                                   
                                   {/* Age */}
-                                  {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                                        {occurrence.event.recurrence !== 'none' && occurrence.age && (
                                     <p className="text-sm text-gray-600">
                                       <span className="font-medium">Age:</span> {occurrence.age}
-                                    </p>
+                                            </p>
                                   )}
                                   
                                   {/* Tags and Timeline */}
                                   <div className="flex flex-wrap items-center gap-2">
                                     {/* Tag button */}
-                                    {(() => {
-                                      const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
+                                      {(() => {
+                                        const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
                                       const primaryTag = occurrence.event.tags && occurrence.event.tags.length > 0 
                                         ? occurrence.event.tags[0] 
                                         : null;
-                                      
+                                        
                                       if (primaryTag) {
                                         return (
-                                          <button
+                                              <button
                                             className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                                           >
                                             {primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1)}
-                                          </button>
+                                                </button>
                                         );
                                       }
                                       return null;
-                                    })()}
+                                      })()}
                                     
                                     {/* Timeline badges */}
                                     {(() => {

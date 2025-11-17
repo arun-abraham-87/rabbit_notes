@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById, getNoteById, addNewNoteCommon } from '../utils/ApiUtils';
 import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon, Cog6ToothIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
 import { toast } from 'react-hot-toast';
@@ -1140,6 +1141,92 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const daysSinceLastEntry = getDaysSinceLastEntry();
   const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry > 15;
 
+  // Calculate weekly progress
+  const getWeeklyProgress = () => {
+    const today = moment();
+    const startOfWeek = moment(today).startOf('week').subtract(dateOffset * 7, 'days');
+    const endOfWeek = moment(today).endOf('week').subtract(dateOffset * 7, 'days');
+    
+    const weekAnswers = answers.filter(ans => {
+      const answerDate = moment(ans.date);
+      return answerDate.isSameOrAfter(startOfWeek) && answerDate.isSameOrBefore(endOfWeek);
+    });
+    
+    // For yes/no trackers, count only "yes" answers
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    const completedDays = isYesNoTracker 
+      ? weekAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes').length
+      : weekAnswers.length;
+    
+    return {
+      completed: completedDays,
+      total: 7,
+      percentage: Math.round((completedDays / 7) * 100)
+    };
+  };
+
+  // Calculate current streak
+  const getCurrentStreak = () => {
+    if (!answers || answers.length === 0) return 0;
+    
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    
+    // Filter answers - for yes/no, only count "yes"
+    const validAnswers = isYesNoTracker
+      ? answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes')
+      : answers;
+    
+    if (validAnswers.length === 0) return 0;
+    
+    // Sort by date (most recent first)
+    const sortedAnswers = [...validAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+    
+    // Check if most recent answer is today or yesterday
+    const today = moment().startOf('day');
+    const mostRecent = moment(sortedAnswers[0].date).startOf('day');
+    const daysDiff = today.diff(mostRecent, 'days');
+    
+    // If most recent is more than 1 day ago, streak is broken
+    if (daysDiff > 1) return 0;
+    
+    // Count consecutive days
+    let streak = 0;
+    let currentDate = moment(today);
+    
+    for (const answer of sortedAnswers) {
+      const answerDate = moment(answer.date).startOf('day');
+      const diff = currentDate.diff(answerDate, 'days');
+      
+      if (diff === 0 || diff === 1) {
+        streak++;
+        currentDate = answerDate;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
+
+  // Calculate total check-ins
+  const getTotalCheckIns = () => {
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    
+    // For yes/no trackers, count only "yes" answers
+    if (isYesNoTracker) {
+      return answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes').length;
+    }
+    
+    return answers.length;
+  };
+
+  const weeklyProgress = getWeeklyProgress();
+  const currentStreak = getCurrentStreak();
+  const totalCheckIns = getTotalCheckIns();
+
   const handleCopyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(tracker.id);
@@ -1150,27 +1237,52 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     }
   };
 
+  // Get current week's days for display (with offset support)
+  const getCurrentWeekDays = () => {
+    const today = moment();
+    const startOfWeek = moment(today).startOf('week').subtract(dateOffset * 7, 'days');
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      days.push(moment(startOfWeek).add(i, 'days'));
+    }
+    return days;
+  };
+
+  const weekDays = getCurrentWeekDays();
+  const currentMonthYear = weekDays[0].format('MMM YYYY');
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 relative">
+    <div className="bg-white rounded-lg shadow-sm p-6 relative">
       {/* Red overdue indicator */}
       {isOverdue && (
         <div className="absolute top-2 left-2 w-3 h-3 bg-red-500 rounded-full z-10" title={`Overdue: ${daysSinceLastEntry} days since last entry`}></div>
       )}
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-gray-900">{tracker.title}</h3>
-          </div>
-          <p className="text-sm text-gray-600">{tracker.question}</p>
-        </div>
+      
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
+        <h3 className="text-xl font-bold text-gray-900">{tracker.title}</h3>
         {!isFocusMode && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => onEdit(tracker)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
               title="Edit tracker"
             >
               <PencilIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setShowMonthlyModal(true)}
+              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+              title="Settings"
+            >
+              <Cog6ToothIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
+              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+              title="Show stats"
+            >
+              <ChartBarIcon className="h-5 w-5" />
             </button>
             {onTrackerDeleted && (
               <button
@@ -1190,83 +1302,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     }
                   }
                 }}
-                className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                className="p-1.5 text-gray-500 hover:text-red-600 transition-colors"
                 title="Delete tracker"
               >
                 <TrashIcon className="h-5 w-5" />
               </button>
             )}
-            <button
-              onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title="Show stats"
-            >
-              <ChartBarIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setShowMonthlyModal(true)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title="Show monthly check-ins"
-            >
-              <CalendarIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setShowLastValuesModal(true)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title="Show all recorded values"
-            >
-              <ClockIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => {
-                const type = tracker.type ? tracker.type.toLowerCase() : '';
-                const isAdhocDate = type === 'adhoc_date';
-                const isAdhocValue = type === 'adhoc_value';
-                
-                if (isAdhocDate) {
-                  setAdhocDate(moment().format('YYYY-MM-DD'));
-                  setAdhocNotes('');
-                  setEditingAdhocAnswer(null);
-                  setShowAdhocDateModal(true);
-                } else if (isAdhocValue) {
-                  setAdhocDate(moment().format('YYYY-MM-DD'));
-                  setAdhocValue('');
-                  setAdhocNotes('');
-                  setEditingAdhocAnswer(null);
-                  setShowAdhocValueModal(true);
-                } else {
-                  const today = moment().format('YYYY-MM-DD');
-                  setCustomDate(today);
-                  setCustomValue('');
-                  const existing = getAnswerForDate(today);
-                  setCustomExistingAnswer(existing);
-                  if (existing) {
-                    if (type === 'value') {
-                      setCustomValue(existing.value || existing.answer || '');
-                    } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
-                      setCustomValue(existing.answer || '');
-                    }
-                  }
-                  setShowCustomDateModal(true);
-                }
-              }}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title={(() => {
-                const type = tracker.type ? tracker.type.toLowerCase() : '';
-                if (type === 'adhoc_date' || type === 'adhoc_value') {
-                  return 'Add Event';
-                }
-                return 'Enter value for custom date';
-              })()}
-            >
-              <PlusIcon className="h-5 w-5" />
-            </button>
-            {/* Convert Type Menu - Moved to last position */}
             <div className="relative">
               <button
                 onClick={() => setShowConvertMenu(!showConvertMenu)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                title="Convert tracker type"
+                className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                title="More options"
               >
                 <EllipsisVerticalIcon className="h-5 w-5" />
               </button>
@@ -1335,67 +1381,67 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           }
           
           return (
-            <div className="flex gap-2 justify-center items-center">
-              {displayAnswers.length === 0 ? (
-                <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
-              ) : (
-                <>
-                  {displayAnswers.map((answer) => {
-                    const dateMoment = moment(answer.date);
-                    const dateStr = answer.date;
-                    const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
-                    const weekdayLabel = dateMoment.format('ddd');
-                    const monthLabel = dateMoment.format('MMM YYYY');
-                    const dayNumber = dateMoment.date();
-                    
-                    const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
-                    
-                    return (
-                      <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
-                        <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
-                        <button
-                          onClick={() => {
-                            if (isAdhocDate) {
-                              setAdhocDate(answer.date);
-                              setAdhocNotes(answer.notes || '');
-                              setEditingAdhocAnswer(answer);
-                              setShowAdhocDateModal(true);
-                            } else {
-                              setAdhocDate(answer.date);
-                              setAdhocValue(answer.value || answer.answer || '');
-                              setAdhocNotes(answer.notes || '');
-                              setEditingAdhocAnswer(answer);
-                              setShowAdhocValueModal(true);
-                            }
-                          }}
-                          className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
-                            ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                            bg-green-300
-                          `}
-                          title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
-                        >
-                          {dayNumber}
-                        </button>
-                        {monthLabel && (
-                          <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
-                        )}
-                        {isAdhocValue && displayValue && (
-                          <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
-                            {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
+              <div className="flex gap-2 justify-center items-center">
+                {displayAnswers.length === 0 ? (
+                  <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
+                ) : (
+                  <>
+                    {displayAnswers.map((answer) => {
+                      const dateMoment = moment(answer.date);
+                      const dateStr = answer.date;
+                      const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
+                      const weekdayLabel = dateMoment.format('ddd');
+                      const monthLabel = dateMoment.format('MMM YYYY');
+                      const dayNumber = dateMoment.date();
+                      
+                      const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
+                      
+                      return (
+                        <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
+                          <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
+                          <button
+                            onClick={() => {
+                              if (isAdhocDate) {
+                                setAdhocDate(answer.date);
+                                setAdhocNotes(answer.notes || '');
+                                setEditingAdhocAnswer(answer);
+                                setShowAdhocDateModal(true);
+                              } else {
+                                setAdhocDate(answer.date);
+                                setAdhocValue(answer.value || answer.answer || '');
+                                setAdhocNotes(answer.notes || '');
+                                setEditingAdhocAnswer(answer);
+                                setShowAdhocValueModal(true);
+                              }
+                            }}
+                            className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
+                              ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                              bg-green-300
+                            `}
+                            title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
+                          >
+                            {dayNumber}
+                          </button>
+                          {monthLabel && (
+                            <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                          )}
+                          {isAdhocValue && displayValue && (
+                            <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
+                              {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               {/* Days from last logging - for both adhoc_date and adhoc_value */}
               {(isAdhocDate || isAdhocValue) && daysFromLastLogging !== null && (
                 <div className="bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-center">
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-700 font-medium leading-tight">
                       {daysFromLastLogging === 0 ? 'Today' : `${daysFromLastLogging} day${daysFromLastLogging !== 1 ? 's' : ''}`}
-                    </span>
+                  </span>
                     {daysFromLastLogging !== 0 && (
                       <span className="text-[10px] text-gray-600 leading-tight">
                         since last logging
@@ -1408,106 +1454,119 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           );
         }
         
-        // Regular trackers - show date buttons
+        // Regular trackers - show weekly progress
         return (
-          <div className="flex gap-2 justify-center items-center">
-            {/* Left chevron for previous 7 */}
+          <div className="space-y-6">
+            {/* This Week's Progress */}
+            <div>
+              <p className="text-sm text-gray-500 mb-3">This Week's Progress</p>
+              
+              {/* Weekly check-ins */}
+              <div className="flex items-center gap-2 mb-3">
             <button
-              className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+                  className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
               onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
-              aria-label="Show previous 7"
+                  aria-label="Previous week"
             >
-              <span className="text-xl">&#8592;</span>
+                  <ChevronLeftIcon className="h-5 w-5 text-gray-400" />
             </button>
-            {getButtonsWithOffset().map((item, idx) => {
-          let dateStr, label, isToday = false, done = false, monthLabel = '', weekdayLabel = '';
-          if (buttonType === 'day') {
-            dateStr = item.format('YYYY-MM-DD');
-            label = item.date();
-            isToday = (item.format('YYYY-MM-DD') === now.format('YYYY-MM-DD'));
-            // Find answer for this date
+                
+                <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+                  {weekDays.map((day) => {
+                    const dateStr = day.format('YYYY-MM-DD');
+                    const dayNumber = day.date();
+                    const weekdayLabel = day.format('ddd').toUpperCase();
+                    const isToday = day.format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+                    
+                    // Check if this day is completed
             const answerObj = answers.find(ans => ans.date === dateStr);
-            if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
-              // Yes/No tracker
+                    const type = tracker.type ? tracker.type.toLowerCase() : '';
+                    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+                    let isCompleted = false;
+                    
+                    if (isYesNoTracker) {
               const answerValue = answerObj?.answer || answerObj?.value;
-              if (answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'yes') {
-                done = 'green';
-              } else if (answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'no') {
-                done = 'red';
+                      isCompleted = answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'yes';
               } else {
-                done = false;
-              }
-            } else if (tracker.type && tracker.type.toLowerCase() === 'value') {
-              // Value tracker
-              done = answerObj ? 'green' : false;
-            } else {
-              // Other types
-              done = answerObj ? 'green' : false;
+                      isCompleted = !!answerObj;
             }
-            // For weekly cadence, always show weekday label above
-            if (cadence === 'weekly') {
-              weekdayLabel = item.format('ddd');
-            } else {
-              weekdayLabel = item.format('ddd');
-            }
-            monthLabel = item.format('MMM YYYY');
-          } else if (buttonType === 'month') {
-            dateStr = formatMonthDateString(item);
-            label = getMonthShortName(item.month());
-            isToday = (item.month() === now.month() && item.year() === now.year());
-            done = false;
-            monthLabel = '';
-            weekdayLabel = '';
-          } else if (buttonType === 'year') {
-            dateStr = item + '-01-01';
-            label = item;
-            isToday = (item === now.year());
-            done = false;
-            monthLabel = '';
-            weekdayLabel = '';
-          }
+                    
           return (
-            <div key={dateStr} className={`flex flex-col items-center w-10${buttonType === 'year' ? ' mx-1' : ''}`}>
-              {weekdayLabel && (
-                <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
-              )}
+                      <div key={dateStr} className="flex flex-col items-center flex-shrink-0">
+                        <span className="text-xs text-gray-500 mb-1.5">{weekdayLabel}</span>
+                        <div className="relative">
               <button
-                onClick={() => handleDateClick(item, dateStr)}
-                className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
-                  ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                  ${done === 'green' ? 'bg-green-300' : ''}
-                  ${done === 'red' ? 'bg-red-300' : ''}
-                `}
-                title={buttonType === 'day' ? item.format('MMM D, YYYY') : (buttonType === 'month' ? item.format('MMMM YYYY') : label)}
+                            onClick={() => handleDateClick(day, dateStr)}
+                            className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all
+                              ${isToday 
+                                ? 'bg-blue-500 border-blue-500 text-white' 
+                                : isCompleted
+                                  ? 'bg-white border-gray-300 text-gray-700'
+                                  : 'bg-white border-gray-300 text-gray-700'
+                              }`}
+                            title={day.format('MMM D, YYYY')}
               >
-                {label}
+                            {dayNumber}
               </button>
-              {monthLabel && (
-                <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                          {isCompleted && !isToday && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
+                            <CheckIcon className="h-2.5 w-2.5 text-white" />
+                          </div>
               )}
+                        </div>
             </div>
           );
         })}
-            {/* Right chevron for next 7 (move forward towards today) */}
+                </div>
+                
             {dateOffset > 0 && (
               <button
-                className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+                    className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
                 onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
-                aria-label="Show next 7"
+                    aria-label="Next week"
               >
-                <span className="text-xl">&#8594;</span>
+                    <ChevronRightIcon className="h-5 w-5 text-gray-400" />
               </button>
             )}
-            {/* Refresh icon to reset to default if offset > 0 */}
-            {dateOffset > 0 && (
-              <button
-                className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-                onClick={() => setDateOffset(0)}
-                aria-label="Reset to current"
-              >
-                <ArrowPathIcon className="h-5 w-5 text-gray-500" />
-              </button>
-            )}
+              </div>
+              
+              {/* Month/Year */}
+              <p className="text-xs text-gray-400 text-center mb-3">{currentMonthYear}</p>
+              
+              {/* Progress Bar */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-gray-600">{weeklyProgress.percentage}% Complete This Week</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${weeklyProgress.percentage}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Your Momentum */}
+            <div>
+              <h4 className="text-base font-bold text-gray-900 mb-4">Your Momentum</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Total Check-ins */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Total Check-ins</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalCheckIns}</p>
+                  {totalCheckIns > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">You're doing great! Keep it up.</p>
+                  )}
+                </div>
+                
+                {/* Current Streak */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Current Streak</p>
+                  <p className="text-2xl font-bold text-blue-600">{currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}</p>
+                </div>
+              </div>
+            </div>
           </div>
         );
       })()}

@@ -300,43 +300,43 @@ const Weather = ({ forceExpanded = false }) => {
             <div className="mb-3 text-xs text-gray-500">
               <div>Location: {loc.latitude > 0 ? loc.latitude.toFixed(4) + '°N' : Math.abs(loc.latitude).toFixed(4) + '°S'}, {loc.longitude > 0 ? loc.longitude.toFixed(4) + '°E' : Math.abs(loc.longitude).toFixed(4) + '°W'}</div>
               <div>{formatTime(current.time, loc.timezone)}</div>
-            </div>
+        </div>
 
             {/* Main Temperature Display */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-start gap-2">
                 {current.is_day && <SunIcon className="h-5 w-5 text-yellow-500 mt-1" />}
-                <div>
+          <div>
                   <div className="text-4xl font-bold text-gray-900">
-                    {current.temperature_2m.toFixed(1)}°C
-                  </div>
-                  {current.apparent_temperature !== undefined && (
+              {current.temperature_2m.toFixed(1)}°C
+            </div>
+            {current.apparent_temperature !== undefined && (
                     <div className="text-sm text-gray-600 mt-1">
-                      Feels like {current.apparent_temperature.toFixed(1)}°C
-                    </div>
-                  )}
-                </div>
+                Feels like {current.apparent_temperature.toFixed(1)}°C
               </div>
+            )}
+            </div>
+          </div>
               <div className="mt-2">
                 {getWeatherIcon(current.rain, current.precipitation, current.temperature_2m)}
-              </div>
-            </div>
-
+          </div>
+        </div>
+        
             {/* Current Conditions */}
             <div className="space-y-1.5 mb-4 text-xs text-gray-700">
-              <div>
+            <div>
                 <span className="text-gray-500">Humidity:</span> {current.relative_humidity_2m?.toFixed(0)}%
-              </div>
+            </div>
               <div>
                 <span className="text-gray-500">Wind:</span> {current.wind_speed_10m?.toFixed(1)} km/h
               </div>
               <div>
                 <span className="text-gray-500">Precipitation:</span> {current.precipitation?.toFixed(1)}mm
-              </div>
-            </div>
+          </div>
+        </div>
 
             {/* Today's Forecast Sub-section */}
-            {today && (
+        {today && (
               <div className="border-t border-gray-200 pt-3 mt-3">
                 <div className="text-xs font-semibold text-gray-700 mb-2">Today's Forecast</div>
                 <div className="flex items-center justify-between mb-2">
@@ -368,9 +368,9 @@ const Weather = ({ forceExpanded = false }) => {
                     </div>
                   )}
                 </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
           {/* Next 24 Hours Section */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -391,12 +391,12 @@ const Weather = ({ forceExpanded = false }) => {
                   </div>
                   <div className="text-[10px] text-purple-600 font-medium">
                     {hour.precipitation_probability !== undefined ? Math.round(hour.precipitation_probability) + '%' : '0%'}
-                  </div>
-                </div>
-              ))}
+              </div>
             </div>
+              ))}
           </div>
-
+        </div>
+        
           {/* 7-Day Forecast Section */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between mb-3">
@@ -409,18 +409,18 @@ const Weather = ({ forceExpanded = false }) => {
               >
                 <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
-            </div>
-            
+        </div>
+
             <div className="space-y-2.5">
-              {next7Days.map((day, index) => (
-                <div
-                  key={index}
+          {next7Days.map((day, index) => (
+            <div
+              key={index}
                   className="border-b border-gray-100 pb-2.5 last:border-b-0 last:pb-0"
-                >
+            >
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="text-xs font-medium text-gray-900">
-                      {formatDate(day.time, loc.timezone)}
-                    </div>
+                  <div className="text-xs font-medium text-gray-900">
+                    {formatDate(day.time, loc.timezone)}
+                  </div>
                     <div className="text-xs font-medium text-gray-900">
                       {day.temperature_2m_max?.toFixed(0)}°/{day.temperature_2m_min?.toFixed(0)}°
                     </div>
@@ -428,18 +428,18 @@ const Weather = ({ forceExpanded = false }) => {
                   <div className="flex items-center justify-between">
                     <div className="text-xs text-gray-700">
                       {getWeatherCondition(day.rain_sum, day.precipitation_sum, day.temperature_2m_max)}
-                    </div>
+                </div>
                     <div className="flex items-center gap-2">
                       {getWeatherIcon(day.rain_sum, day.precipitation_sum, day.temperature_2m_max)}
-                    </div>
+              </div>
                   </div>
                   <div className="text-[10px] text-gray-500 mt-1">
                     Wind {day.wind_speed_10m_max?.toFixed(0)} km/h
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+          ))}
+        </div>
+        </div>
         </div>
       </div>
     </div>

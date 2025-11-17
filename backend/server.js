@@ -230,6 +230,32 @@ app.get('/api/images/:filename', (req, res) => {
   res.sendFile(path.resolve(imagePath));
 });
 
+// GET: List all images
+app.get('/api/images', (req, res) => {
+  try {
+    if (!fs.existsSync(IMAGES_DIR)) {
+      return res.json({ images: [] });
+    }
+    
+    const files = fs.readdirSync(IMAGES_DIR);
+    const images = files
+      .filter(file => {
+        const filePath = path.join(IMAGES_DIR, file);
+        return fs.lstatSync(filePath).isFile();
+      })
+      .map(file => ({
+        filename: file,
+        id: path.parse(file).name, // UUID without extension
+        extension: path.extname(file).slice(1).toLowerCase() // extension without dot
+      }));
+    
+    res.json({ images });
+  } catch (err) {
+    console.error('Error listing images:', err.message);
+    res.status(500).json({ error: 'Failed to list images.' });
+  }
+});
+
 app.get('/api/todos', (req, res) => {
   try {
     const files = fs.readdirSync(NOTES_DIR);

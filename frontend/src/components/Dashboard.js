@@ -1325,8 +1325,18 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             setIsAddingHoliday(false);
           }}
           onDelete={async (noteId) => {
-            // Remove the note from local state
-            setNotes(notes.filter(n => n.id !== noteId));
+            try {
+              // Update notes state by filtering out the deleted note
+              setNotes(prevNotes => {
+                const updatedNotes = prevNotes.filter(n => n.id !== noteId);
+                // Also update events state since events are derived from notes
+                const eventNotes = updatedNotes.filter(note => note && note.content && note.content.includes('meta::event::'));
+                setEvents(eventNotes);
+                return updatedNotes;
+              });
+            } catch (error) {
+              console.error('Error updating state after delete:', error);
+            }
             setShowEditEventModal(false);
             setEditingEvent(null);
             setIsAddingDeadline(false);

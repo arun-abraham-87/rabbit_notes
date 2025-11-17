@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { updateNoteById } from '../utils/ApiUtils';
-import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon, MoonIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import AddLinkModal from './AddLinkModal';
@@ -254,6 +255,7 @@ const getLinkTypeIndicator = (url) => {
 };
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes, isReviewsOverdueOnlyMode = false, searchInputRef }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [searchText, setSearchText] = useState('');
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -1326,6 +1328,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     <div className="mt-4">
                       <div className="flex flex-wrap gap-2 justify-end">
                         <button
+                          onClick={() => navigate(`/notes?note=${note.id}`)}
+                          className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150 flex items-center gap-1.5"
+                          title="View original note"
+                        >
+                          <DocumentTextIcon className="h-4 w-4" />
+                          View Note
+                        </button>
+                        <button
                           onClick={() => handleEditNote(note)}
                           className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                           title="Edit note"
@@ -1474,6 +1484,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     {expandedNotes[`actions-${note.id}`] && (
                       <div className="mt-4">
                         <div className="flex flex-wrap gap-2 justify-end">
+                          <button
+                            onClick={() => navigate(`/notes?note=${note.id}`)}
+                            className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150 flex items-center gap-1.5"
+                            title="View original note"
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
+                            View Note
+                          </button>
                           {/* Flag Button */}
                           <button
                             onClick={() => handleAddPriority(note)}

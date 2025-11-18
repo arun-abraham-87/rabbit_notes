@@ -16,6 +16,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
   });
   const [endDate, setEndDate] = useState('');
   const [trackFromYesterday, setTrackFromYesterday] = useState(false);
+  const [overdueDays, setOverdueDays] = useState('');
   const [selectedDays, setSelectedDays] = useState({
     Monday: false,
     Tuesday: false,
@@ -38,6 +39,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
       setStartDate(editingTracker.startDate || new Date().toISOString().split('T')[0]);
       setEndDate(editingTracker.endDate || '');
       setTrackFromYesterday(editingTracker.trackFromYesterday || false);
+      setOverdueDays(editingTracker.overdueDays || '');
       
       // Set selected days for weekly cadence
       if (editingTracker.days) {
@@ -110,6 +112,11 @@ Start Date: ${startDate}`;
         content += '\ntracking_as_of:yesterday';
       }
 
+      // Add overdue days if provided
+      if (overdueDays && overdueDays.trim() && !isNaN(parseInt(overdueDays))) {
+        content += `\noverdue:${overdueDays.trim()}`;
+      }
+
       content += '\nmeta::tracker';
 
       if (editingTracker) {
@@ -124,6 +131,7 @@ Start Date: ${startDate}`;
           startDate,
           endDate,
           trackFromYesterday,
+          overdueDays: overdueDays.trim() || undefined,
           days: cadence === 'Weekly' ? Object.entries(selectedDays)
             .filter(([_, selected]) => selected)
             .map(([day]) => day) : []
@@ -143,6 +151,7 @@ Start Date: ${startDate}`;
           startDate,
           endDate,
           trackFromYesterday,
+          overdueDays: overdueDays.trim() || undefined,
           days: cadence === 'Weekly' ? Object.entries(selectedDays)
             .filter(([_, selected]) => selected)
             .map(([day]) => day) : [],
@@ -158,6 +167,7 @@ Start Date: ${startDate}`;
         setStartDate(new Date().toISOString().split('T')[0]);
         setEndDate('');
         setTrackFromYesterday(false);
+        setOverdueDays('');
         setSelectedDays({
           Monday: false,
           Tuesday: false,
@@ -304,6 +314,25 @@ Start Date: ${startDate}`;
           <label htmlFor="trackFromYesterday" className="text-sm text-gray-700">
             Track as of yesterday
           </label>
+        </div>
+
+        {/* Overdue Days Input */}
+        <div>
+          <label htmlFor="overdueDays" className="block text-sm font-medium text-gray-700 mb-1">
+            Overdue Days (Optional)
+          </label>
+          <input
+            type="number"
+            id="overdueDays"
+            value={overdueDays}
+            onChange={(e) => setOverdueDays(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            placeholder="Enter number of days for overdue threshold"
+            min="1"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Number of days since last entry before tracker is considered overdue
+          </p>
         </div>
 
         {/* Week Days Selection - Only shown when cadence is Weekly */}

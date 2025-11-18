@@ -141,6 +141,7 @@ const TrackerListing = () => {
           const days = daysStr ? daysStr.split(',').map(day => day.trim()) : [];
           const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
           const endDate = lines.find(line => line.startsWith('End Date:'))?.replace('End Date:', '').trim();
+          const overdueDays = lines.find(line => line.startsWith('overdue:'))?.replace('overdue:', '').trim();
           
           return {
             id: note.id,
@@ -151,6 +152,7 @@ const TrackerListing = () => {
             days,
             startDate,
             endDate,
+            overdueDays: overdueDays || undefined,
             createdAt: note.createdAt,
             completions: {} // Initialize completions
           };
@@ -994,7 +996,7 @@ const TrackerListing = () => {
     return relevantDateStr >= tracker.startDate;
   }
 
-  // Helper function to check if a tracker is overdue (>15 days since last entry)
+  // Helper function to check if a tracker is overdue
   const isTrackerOverdue = (tracker) => {
     const trackerId = String(tracker.id);
     const answers = trackerAnswers[trackerId] || [];
@@ -1010,7 +1012,9 @@ const TrackerListing = () => {
     const lastDate = moment(lastAnswer.date);
     const daysSince = today.diff(lastDate, 'days');
     
-    return daysSince > 15;
+    // Use tracker's overdueDays if set, otherwise default to 30
+    const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
+    return daysSince > overdueThreshold;
   };
 
   // Filter trackers based on search term, cadence, type, and overdue status
@@ -1329,7 +1333,7 @@ const TrackerListing = () => {
             <div className="flex items-center gap-2">
               <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
               <p className="text-sm font-medium text-red-800">
-                There {overdueCount === 1 ? 'is' : 'are'} <span className="font-bold">{overdueCount}</span> overdue tracker{overdueCount !== 1 ? 's' : ''} (&gt;15 days since last entry)
+                There {overdueCount === 1 ? 'is' : 'are'} <span className="font-bold">{overdueCount}</span> overdue tracker{overdueCount !== 1 ? 's' : ''}
               </p>
             </div>
             <button

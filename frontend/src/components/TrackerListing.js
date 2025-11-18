@@ -787,18 +787,36 @@ const TrackerListing = () => {
             availableIds: Object.keys(rawNotes).slice(0, 5)
           });
           // Fallback: try to create a new note instead
-          response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+          response = await createTrackerAnswerNote(trackerId, answer, dateStr, '', tracker?.title || '');
           console.log('[handleToggleDay] Created new note as fallback', { response });
         } else {
           // Update the Answer line in the existing content
           const lines = existingContent.split('\n');
+          let hasAnswerForLine = false;
           const updatedLines = lines.map(line => {
             if (line.startsWith('Answer:')) {
               return `Answer: ${answer}`;
             }
+            if (line.startsWith('answer for')) {
+              hasAnswerForLine = true;
+              // Update the answer for line if tracker name is available
+              if (tracker?.title) {
+                return `answer for ${tracker.title}`;
+              }
+            }
             return line;
           });
-          const updatedContent = updatedLines.join('\n');
+          
+          // Add answer for line if it doesn't exist and tracker name is available
+          let updatedContent = updatedLines.join('\n');
+          if (!hasAnswerForLine && tracker?.title) {
+            // Find the position after meta::tracker_answer
+            const metaTrackerIndex = updatedLines.findIndex(line => line === 'meta::tracker_answer');
+            if (metaTrackerIndex >= 0) {
+              updatedLines.splice(metaTrackerIndex + 1, 0, `answer for ${tracker.title}`);
+              updatedContent = updatedLines.join('\n');
+            }
+          }
           
           console.log('[handleToggleDay] Updating note with full content', { 
             noteId: existingNoteId,
@@ -822,7 +840,7 @@ const TrackerListing = () => {
       } else {
         // Create new note
         console.log('[handleToggleDay] Creating new note', { trackerId, dateStr, answer });
-        response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+        response = await createTrackerAnswerNote(trackerId, answer, dateStr, '', tracker?.title || '');
         console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
         
         // Add newly created note to rawNotes for future lookups
@@ -1311,7 +1329,7 @@ const TrackerListing = () => {
             <div className="flex items-center gap-2">
               <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
               <p className="text-sm font-medium text-red-800">
-                There {overdueCount === 1 ? 'is' : 'are'} <span className="font-bold">{overdueCount}</span> overdue tracker{overdueCount !== 1 ? 's' : ''} (>15 days since last entry)
+                There {overdueCount === 1 ? 'is' : 'are'} <span className="font-bold">{overdueCount}</span> overdue tracker{overdueCount !== 1 ? 's' : ''} (&gt;15 days since last entry)
               </p>
             </div>
             <button

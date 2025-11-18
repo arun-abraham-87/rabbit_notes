@@ -486,11 +486,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     try {
       if (editingAdhocAnswer && editingAdhocAnswer.id) {
         // Update existing note
-        const updatedContent = `Answer: ${adhocDate}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
+        const updatedContent = `Answer: ${adhocDate}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer\nanswer for ${tracker.title}${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
         await updateNoteById(editingAdhocAnswer.id, updatedContent);
       } else {
         // Create new note
-        await createTrackerAnswerNote(tracker.id, adhocDate, adhocDate, adhocNotes);
+        await createTrackerAnswerNote(tracker.id, adhocDate, adhocDate, adhocNotes, tracker.title);
       }
       // Reload trackers to refresh the list
       if (onRefresh) {
@@ -520,11 +520,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     try {
       if (editingAdhocAnswer && editingAdhocAnswer.id) {
         // Update existing note
-        const updatedContent = `Answer: ${adhocValue.trim()}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
+        const updatedContent = `Answer: ${adhocValue.trim()}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer\nanswer for ${tracker.title}${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
         await updateNoteById(editingAdhocAnswer.id, updatedContent);
       } else {
         // Create new note
-        await createTrackerAnswerNote(tracker.id, adhocValue.trim(), adhocDate, adhocNotes);
+        await createTrackerAnswerNote(tracker.id, adhocValue.trim(), adhocDate, adhocNotes, tracker.title);
       }
       // Reload trackers to refresh the list
       if (onRefresh) {
@@ -1252,128 +1252,177 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const currentMonthYear = weekDays[0].format('MMM YYYY');
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 relative">
-      {/* Red overdue indicator */}
-      {isOverdue && (
-        <div className="absolute top-2 left-2 w-3 h-3 bg-red-500 rounded-full z-10" title={`Overdue: ${daysSinceLastEntry} days since last entry`}></div>
-      )}
+    <div className={`bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : ''}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
       
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
-        <h3 className="text-xl font-bold text-gray-900">{tracker.title}</h3>
-        {!isFocusMode && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEdit(tracker)}
-              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
-              title="Edit tracker"
-            >
-              <PencilIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setShowMonthlyModal(true)}
-              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
-              title="Settings"
-            >
-              <Cog6ToothIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
-              className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
-              title="Show stats"
-            >
-              <ChartBarIcon className="h-5 w-5" />
-            </button>
-            {onTrackerDeleted && (
-              <button
-                onClick={async () => {
-                  if (window.confirm('Are you sure you want to delete this tracker?')) {
-                    try {
-                      await deleteNoteById(tracker.id);
-                      if (onTrackerDeleted) {
-                        onTrackerDeleted(tracker.id);
-                      }
-                      if (onRefresh) {
-                        onRefresh();
-                      }
-                    } catch (error) {
-                      console.error('Error deleting tracker:', error);
-                      alert('Failed to delete tracker');
-                    }
-                  }
-                }}
-                className="p-1.5 text-gray-500 hover:text-red-600 transition-colors"
-                title="Delete tracker"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setShowConvertMenu(!showConvertMenu)}
-                className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
-                title="More options"
-              >
-                <EllipsisVerticalIcon className="h-5 w-5" />
-              </button>
-              {showConvertMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowConvertMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
-                        Convert to Adhoc
-                      </div>
-                      <button
-                        onClick={() => handleConvertTrackerType('adhoc_date')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Adhoc Date
-                      </button>
-                      <button
-                        onClick={() => handleConvertTrackerType('adhoc_value')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Adhoc Value
-                      </button>
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-t border-gray-200 mt-1">
-                        Actions
-                      </div>
-                      <button
-                        onClick={() => handleDuplicateTracker()}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Duplicate Tracker
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+      <div className="mb-6">
+        <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xl font-bold text-gray-900">{tracker.title}</h3>
+              <span className="text-sm text-gray-500 capitalize">
+                {tracker.cadence ? `${tracker.cadence} tracker` : 'Tracker'}
+              </span>
             </div>
+            {!isFocusMode && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => onEdit(tracker)}
+                  className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"
+                  title="Edit tracker"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setShowMonthlyModal(true)}
+                  className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"
+                  title="Settings"
+                >
+                  <Cog6ToothIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
+                  className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"
+                  title="Show stats"
+                >
+                  <ChartBarIcon className="h-4 w-4" />
+                </button>
+                {onTrackerDeleted && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to delete this tracker?')) {
+                        try {
+                          await deleteNoteById(tracker.id);
+                          if (onTrackerDeleted) {
+                            onTrackerDeleted(tracker.id);
+                          }
+                          if (onRefresh) {
+                            onRefresh();
+                          }
+                        } catch (error) {
+                          console.error('Error deleting tracker:', error);
+                          alert('Failed to delete tracker');
+                        }
+                      }
+                    }}
+                    className="p-1 text-gray-500 hover:text-red-600 transition-colors bg-white rounded"
+                    title="Delete tracker"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                )}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowConvertMenu(!showConvertMenu)}
+                    className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"
+                    title="More options"
+                  >
+                    <EllipsisVerticalIcon className="h-4 w-4" />
+                  </button>
+                  {showConvertMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowConvertMenu(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div className="py-1">
+                          <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase border-b border-gray-200">
+                            Convert to Adhoc
+                          </div>
+                          <button
+                            onClick={() => handleConvertTrackerType('adhoc_date')}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                          >
+                            Adhoc Date
+                          </button>
+                          <button
+                            onClick={() => handleConvertTrackerType('adhoc_value')}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                          >
+                            Adhoc Value
+                          </button>
+                          <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase border-t border-gray-200 mt-1">
+                            Actions
+                          </div>
+                          <button
+                            onClick={() => handleDuplicateTracker()}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                          >
+                            Duplicate Tracker
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-      {/* For adhoc trackers, show last events as round buttons (7 for adhoc_date, 4 for adhoc_value) */}
+      {/* For adhoc trackers and yes/no trackers, show last events as round buttons (7 for adhoc_date, 4 for adhoc_value, 7 for yes/no) */}
       {(() => {
         const type = tracker.type ? tracker.type.toLowerCase() : '';
         const isAdhocDate = type === 'adhoc_date';
         const isAdhocValue = type === 'adhoc_value';
+        const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
         
-        if (isAdhocDate || isAdhocValue) {
-          // Sort answers by date (most recent first)
-          const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
-          // Take last 7 for adhoc_date, last 4 for adhoc_value
-          const maxAnswers = isAdhocValue ? 4 : 7;
-          const lastAnswers = sortedAnswers.slice(0, maxAnswers);
-          // Reverse to show latest on the rightmost side
-          const displayAnswers = [...lastAnswers].reverse();
+        if (isAdhocDate || isAdhocValue || isYesNoTracker) {
+          // For yes/no trackers, always show last 7 days regardless of answers
+          // For adhoc trackers, show last events with answers
+          let displayDays = [];
           
-          // Calculate days from last logging for both adhoc_date and adhoc_value
+          if (isYesNoTracker) {
+            // Check if tracker has selected days (for weekly cadence)
+            let daysToShow = [];
+            if (tracker.days && tracker.days.length > 0) {
+              // Convert tracker.days to weekday indices (0 = Sunday, 6 = Saturday)
+              const selectedDays = tracker.days.map(d => {
+                if (typeof d === 'string') {
+                  // Try to convert to weekday index
+                  const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+                  return idx >= 0 ? idx : d;
+                }
+                return d;
+              }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
+              
+              // Get last 7 occurrences of selected days
+              daysToShow = getLastSevenSelectedWeekdays(selectedDays);
+            } else {
+              // Generate last 7 consecutive days from today going backwards
+              for (let i = 6; i >= 0; i--) {
+                daysToShow.push(moment().subtract(i, 'days'));
+              }
+            }
+            
+            // Create displayDays array with answers
+            daysToShow.forEach(day => {
+              const dateStr = day.format('YYYY-MM-DD');
+              // Find answer for this date if it exists
+              const answer = answers.find(ans => ans.date === dateStr);
+              displayDays.push({
+                date: dateStr,
+                dateMoment: day,
+                answer: answer || null
+              });
+            });
+          } else {
+            // For adhoc trackers, use existing logic
+            const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const maxAnswers = isAdhocValue ? 4 : 7;
+            const lastAnswers = sortedAnswers.slice(0, maxAnswers);
+            displayDays = lastAnswers.reverse().map(answer => ({
+              date: answer.date,
+              dateMoment: moment(answer.date),
+              answer: answer
+            }));
+          }
+          
+          // Calculate days from last logging for adhoc_date and adhoc_value only
           let daysFromLastLogging = null;
-          if (sortedAnswers.length > 0) {
+          if (!isYesNoTracker && answers.length > 0) {
+            const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
             const lastAnswer = sortedAnswers[0]; // Most recent answer
             const lastDate = moment(lastAnswer.date);
             const today = moment();
@@ -1382,31 +1431,56 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           
           return (
               <div className="flex gap-2 justify-center items-center">
-                {displayAnswers.length === 0 ? (
+                {displayDays.length === 0 ? (
                   <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
                 ) : (
                   <>
-                    {displayAnswers.map((answer) => {
-                      const dateMoment = moment(answer.date);
-                      const dateStr = answer.date;
+                    {displayDays.map((dayData) => {
+                      const dateMoment = dayData.dateMoment;
+                      const dateStr = dayData.date;
+                      const answer = dayData.answer;
                       const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
                       const weekdayLabel = dateMoment.format('ddd');
                       const monthLabel = dateMoment.format('MMM YYYY');
                       const dayNumber = dateMoment.date();
                       
-                      const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
+                      const displayValue = isAdhocValue && answer ? (answer.value || answer.answer || '') : null;
+                      const yesNoValue = isYesNoTracker && answer ? (answer.answer || answer.value || '').toLowerCase() : null;
+                      
+                      // Determine button color for yes/no trackers
+                      let buttonBgColor = '';
+                      let buttonBorderColor = '';
+                      if (isYesNoTracker) {
+                        if (yesNoValue === 'yes') {
+                          buttonBgColor = 'bg-green-300';
+                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-green-400';
+                        } else if (yesNoValue === 'no') {
+                          buttonBgColor = 'bg-red-300';
+                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-red-400';
+                        } else {
+                          // No answer (none state)
+                          buttonBgColor = 'bg-gray-200';
+                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-gray-300';
+                        }
+                      } else {
+                        buttonBgColor = 'bg-green-300';
+                        buttonBorderColor = isToday ? 'border-blue-500' : 'border-gray-300';
+                      }
                       
                       return (
-                        <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
+                        <div key={dateStr} className="flex flex-col items-center w-10">
                           <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
                           <button
                             onClick={() => {
-                              if (isAdhocDate) {
+                              if (isYesNoTracker) {
+                                // Cycle yes -> no -> none
+                                handleDateClick(dateMoment, dateStr);
+                              } else if (isAdhocDate && answer) {
                                 setAdhocDate(answer.date);
                                 setAdhocNotes(answer.notes || '');
                                 setEditingAdhocAnswer(answer);
                                 setShowAdhocDateModal(true);
-                              } else {
+                              } else if (isAdhocValue && answer) {
                                 setAdhocDate(answer.date);
                                 setAdhocValue(answer.value || answer.answer || '');
                                 setAdhocNotes(answer.notes || '');
@@ -1414,11 +1488,8 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                                 setShowAdhocValueModal(true);
                               }
                             }}
-                            className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
-                              ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                              bg-green-300
-                            `}
-                            title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
+                            className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
+                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
                           >
                             {dayNumber}
                           </button>
@@ -1435,7 +1506,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     })}
                   </>
                 )}
-              {/* Days from last logging - for both adhoc_date and adhoc_value */}
+              {/* Days from last logging - for adhoc_date and adhoc_value only */}
               {(isAdhocDate || isAdhocValue) && daysFromLastLogging !== null && (
                 <div className="bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-center">
                   <div className="flex flex-col">
@@ -1449,6 +1520,29 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     )}
                   </div>
                 </div>
+              )}
+              {/* Add button for adhoc trackers only */}
+              {(isAdhocDate || isAdhocValue) && (
+                <button
+                  onClick={() => {
+                    if (isAdhocDate) {
+                      setAdhocDate(moment().format('YYYY-MM-DD'));
+                      setAdhocNotes('');
+                      setEditingAdhocAnswer(null);
+                      setShowAdhocDateModal(true);
+                    } else {
+                      setAdhocDate(moment().format('YYYY-MM-DD'));
+                      setAdhocValue('');
+                      setAdhocNotes('');
+                      setEditingAdhocAnswer(null);
+                      setShowAdhocValueModal(true);
+                    }
+                  }}
+                  className="flex items-center justify-center w-8 h-8 border border-gray-300 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                  title={isAdhocDate ? 'Add Event' : 'Add Value'}
+                >
+                  <PlusIcon className="h-4 w-4 text-gray-600" />
+                </button>
               )}
             </div>
           );
@@ -2419,6 +2513,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         {!isDevMode && (() => {
           const type = tracker.type ? tracker.type.toLowerCase() : '';
           const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+          const isAdhocDate = type === 'adhoc_date';
+          const isAdhocValue = type === 'adhoc_value';
+          
+          // Don't show last recorded/age info for adhoc trackers
+          if (isAdhocDate || isAdhocValue) {
+            return null;
+          }
           
           if (isYesNoTracker) {
             // For yes/no trackers, show last recorded yes and no separately

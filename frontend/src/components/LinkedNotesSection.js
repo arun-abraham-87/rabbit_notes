@@ -28,7 +28,21 @@ export default function LinkedNotesSection({
     const ids = note.content
       .split('\n')
       .filter(line => line.trim().toLowerCase().startsWith('meta::link'))
-      .map(line => line.split('::').pop().trim());
+      .map(line => {
+        const trimmedLine = line.trim();
+        // Handle both formats: meta::link::ID and meta::link:ID
+        // Check if it's the double colon format (meta::link::ID)
+        if (trimmedLine.toLowerCase().startsWith('meta::link::')) {
+          // Double colon format: meta::link::ID
+          return trimmedLine.replace(/^meta::link::/i, '').trim();
+        } else if (trimmedLine.toLowerCase().startsWith('meta::link:')) {
+          // Single colon format: meta::link:ID
+          return trimmedLine.replace(/^meta::link:/i, '').trim();
+        }
+        // Fallback: try to extract ID after the last colon
+        const parts = trimmedLine.split(':');
+        return parts[parts.length - 1].trim();
+      });
     
     
     return ids;
@@ -99,10 +113,20 @@ export default function LinkedNotesSection({
     if (window.confirm(`Are you sure you want to remove the link to "${noteTitle}"?`)) {
       const lines = note.content.split('\n');
       const filteredLines = lines.filter(line => {
-        const trimmedLine = line.trim().toLowerCase();
+        const trimmedLine = line.trim();
         // Remove the specific link line
-        if (trimmedLine.startsWith('meta::link')) {
-          const lineId = line.split('::').pop().trim();
+        if (trimmedLine.toLowerCase().startsWith('meta::link')) {
+          let lineId;
+          // Handle both formats: meta::link::ID and meta::link:ID
+          if (trimmedLine.toLowerCase().startsWith('meta::link::')) {
+            lineId = trimmedLine.replace(/^meta::link::/i, '').trim();
+          } else if (trimmedLine.toLowerCase().startsWith('meta::link:')) {
+            lineId = trimmedLine.replace(/^meta::link:/i, '').trim();
+          } else {
+            // Fallback: try to extract ID after the last colon
+            const parts = trimmedLine.split(':');
+            lineId = parts[parts.length - 1].trim();
+          }
           return lineId !== String(linkId);
         }
         return true;

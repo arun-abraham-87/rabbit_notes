@@ -111,12 +111,17 @@ export const generateTrackerQuestions = (notes) => {
   return questions.sort((a, b) => new Date(a.date) - new Date(b.date));
 };
 
-export const createTrackerAnswerNote = async (trackerId, answer, date, notes = '') => {
+export const createTrackerAnswerNote = async (trackerId, answer, date, notes = '', trackerName = '') => {
   if (!answer && answer !== 0 && answer !== '0') {
     throw new Error('Please enter a value before submitting');
   }
 
   let answerContent = `Answer: ${answer}\nDate: ${date}\nrecorded_on_date: ${date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
+  
+  // Add "answer for <tracker name>" if tracker name is provided
+  if (trackerName && trackerName.trim()) {
+    answerContent += `\nanswer for ${trackerName.trim()}`;
+  }
   
   // Add notes if provided
   if (notes && notes.trim()) {

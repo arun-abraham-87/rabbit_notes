@@ -804,7 +804,7 @@ const TrackerStatsAnalysisPage = () => {
         console.log('[TrackerStatsAnalysis.handleToggleDay] Updated note', { noteId: existingAnswer.id });
       } else {
         // Create new note
-        response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+        response = await createTrackerAnswerNote(trackerId, answer, dateStr, '', tracker?.title || '');
         console.log('[TrackerStatsAnalysis.handleToggleDay] Created note', { response });
       }
 

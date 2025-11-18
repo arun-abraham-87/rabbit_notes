@@ -31,7 +31,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
         return;
       }
 
-      const response = await createTrackerAnswerNote(trackerId, answer, date || tracker.date);
+      const response = await createTrackerAnswerNote(trackerId, answer, date || tracker.date, '', tracker.title || '');
       
       if (response && response.id) {
         setAnswers(prev => ({ ...prev, [trackerId]: { value: answer, date: date || tracker.date } }));
@@ -60,7 +60,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
         return;
       }
 
-      const response = await createTrackerAnswerNote(trackerId, time, date || tracker.date);
+      const response = await createTrackerAnswerNote(trackerId, time, date || tracker.date, '', tracker.title || '');
       
       if (response && response.id) {
         setTimeAnswers(prev => ({ ...prev, [trackerId]: { time, date: date || tracker.date } }));

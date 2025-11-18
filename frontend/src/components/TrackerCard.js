@@ -1287,6 +1287,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 >
                   <ChartBarIcon className="h-4 w-4" />
                 </button>
+                <button
+                  onClick={() => setShowLastValuesModal(true)}
+                  className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"
+                  title="View all values"
+                >
+                  <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                </button>
                 {onTrackerDeleted && (
                   <button
                     onClick={async () => {
@@ -2426,24 +2433,42 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowAdhocDateModal(false);
-                  setAdhocDate(moment().format('YYYY-MM-DD'));
-                  setAdhocNotes('');
-                  setEditingAdhocAnswer(null);
-                }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdhocDateSubmit}
-                className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
-              >
-                {editingAdhocAnswer ? 'Update' : 'Add'} Event
-              </button>
+            <div className="flex justify-between items-center mt-6">
+              {editingAdhocAnswer && editingAdhocAnswer.id && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm('Are you sure you want to delete this event?')) {
+                      await handleDeleteAdhocAnswer(editingAdhocAnswer.id, editingAdhocAnswer.date);
+                      setShowAdhocDateModal(false);
+                      setAdhocDate(moment().format('YYYY-MM-DD'));
+                      setAdhocNotes('');
+                      setEditingAdhocAnswer(null);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+              <div className="flex justify-end gap-4 ml-auto">
+                <button
+                  onClick={() => {
+                    setShowAdhocDateModal(false);
+                    setAdhocDate(moment().format('YYYY-MM-DD'));
+                    setAdhocNotes('');
+                    setEditingAdhocAnswer(null);
+                  }}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdhocDateSubmit}
+                  className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  {editingAdhocAnswer ? 'Update' : 'Add'} Event
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2485,25 +2510,44 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowAdhocValueModal(false);
-                  setAdhocDate(moment().format('YYYY-MM-DD'));
-                  setAdhocValue('');
-                  setAdhocNotes('');
-                  setEditingAdhocAnswer(null);
-                }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdhocValueSubmit}
-                className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
-              >
-                {editingAdhocAnswer ? 'Update' : 'Add'} Event
-              </button>
+            <div className="flex justify-between items-center mt-6">
+              {editingAdhocAnswer && editingAdhocAnswer.id && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm('Are you sure you want to delete this event?')) {
+                      await handleDeleteAdhocAnswer(editingAdhocAnswer.id, editingAdhocAnswer.date);
+                      setShowAdhocValueModal(false);
+                      setAdhocDate(moment().format('YYYY-MM-DD'));
+                      setAdhocValue('');
+                      setAdhocNotes('');
+                      setEditingAdhocAnswer(null);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+              <div className="flex justify-end gap-4 ml-auto">
+                <button
+                  onClick={() => {
+                    setShowAdhocValueModal(false);
+                    setAdhocDate(moment().format('YYYY-MM-DD'));
+                    setAdhocValue('');
+                    setAdhocNotes('');
+                    setEditingAdhocAnswer(null);
+                  }}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdhocValueSubmit}
+                  className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  {editingAdhocAnswer ? 'Update' : 'Add'} Event
+                </button>
+              </div>
             </div>
           </div>
         </div>

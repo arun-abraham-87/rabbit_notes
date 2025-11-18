@@ -1140,6 +1140,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   
   const daysSinceLastEntry = getDaysSinceLastEntry();
   // Get overdue threshold from tracker.overdueDays if present, otherwise default to 30
+  const isUsingDefaultOverdue = !tracker.overdueDays;
   const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
   const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry > overdueThreshold;
   // Calculate days until overdue (if not already overdue)
@@ -1474,6 +1475,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                       // Calculate difference from previous value for adhoc value trackers
                       let valueDifference = null;
                       let daysDifference = null;
+                      // Calculate days difference for adhoc date trackers
+                      let adhocDateDaysDifference = null;
+                      
                       if (isAdhocValue && answer && displayValue) {
                         // Sort all answers by date to find previous one
                         const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1493,6 +1497,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                           const previousDate = moment(previousAnswer.date);
                           const daysDiff = currentDate.diff(previousDate, 'days');
                           daysDifference = daysDiff;
+                        }
+                      } else if (isAdhocDate && answer) {
+                        // For adhoc date trackers, calculate days difference from previous date entry
+                        const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+                        const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || a.date === answer.date);
+                        if (currentIndex > 0) {
+                          const previousAnswer = sortedAllAnswers[currentIndex - 1];
+                          const currentDate = moment(answer.date);
+                          const previousDate = moment(previousAnswer.date);
+                          const daysDiff = currentDate.diff(previousDate, 'days');
+                          adhocDateDaysDifference = daysDiff;
                         }
                       }
                       
@@ -1538,7 +1553,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                               }
                             }}
                             className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
-                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
+                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : isAdhocDate && answer && adhocDateDaysDifference !== null ? ` (${adhocDateDaysDifference} day${adhocDateDaysDifference !== 1 ? 's' : ''} since previous)` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
                           >
                             {dayNumber}
                           </button>
@@ -2610,13 +2625,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {daysUntilOverdue !== null && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Overdue in:</span>
-                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
                   </div>
                 )}
                 {isOverdue && daysSinceLastEntry !== null && (
                   <div className="flex items-center gap-1 text-red-600">
                     <span className="font-medium">Overdue:</span>
-                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
                   </div>
                 )}
               </div>
@@ -2644,13 +2659,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {daysUntilOverdue !== null && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Overdue in:</span>
-                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
                   </div>
                 )}
                 {isOverdue && daysSinceLastEntry !== null && (
                   <div className="flex items-center gap-1 text-red-600">
                     <span className="font-medium">Overdue:</span>
-                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
                   </div>
                 )}
               </div>
@@ -2672,13 +2687,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             {daysUntilOverdue !== null && (
               <div className="flex items-center gap-1">
                 <span className="font-medium">Overdue in:</span>
-                <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}</span>
+                <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
               </div>
             )}
             {isOverdue && daysSinceLastEntry !== null && (
               <div className="flex items-center gap-1 text-red-600">
                 <span className="font-medium">Overdue:</span>
-                <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}</span>
+                <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
               </div>
             )}
           </div>

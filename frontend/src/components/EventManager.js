@@ -1057,7 +1057,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             return (
               <div 
                 key={note.id} 
-                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} relative`}
+                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} relative overflow-hidden`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
@@ -1116,21 +1116,21 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     </button>
                   </div>
                 )}
-                <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">
                   {/* Pin Button - always show in hover controls */}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePinEvent(note.id);
                     }} 
-                    className={`p-1 transition-colors ${pinnedEvents.includes(note.id) ? 'text-yellow-600' : 'text-gray-400 hover:text-yellow-600'}`}
+                    className={`p-1 transition-colors flex-shrink-0 ${pinnedEvents.includes(note.id) ? 'text-yellow-600' : 'text-gray-400 hover:text-yellow-600'}`}
                     title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
                   >
                     <MapPinIcon className="h-4 w-4" />
                   </button>
                   
                   {/* Color Options */}
-                  <div className="flex gap-1 mr-2">
+                  <div className="flex gap-0.5 flex-wrap">
                     {colorOptions.map(color => (
                       <button
                         key={color}
@@ -1138,7 +1138,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                           e.stopPropagation();
                           handleColorChange(note.id, color);
                         }}
-                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${(note.bgColor || '#ffffff') === color ? 'border-gray-700' : 'border-gray-300'}`}
+                        className={`w-4 h-4 rounded-full border-2 transition-all hover:scale-110 flex-shrink-0 ${(note.bgColor || '#ffffff') === color ? 'border-gray-700' : 'border-gray-300'}`}
                         style={{ backgroundColor: color }}
                         title={`Set color to ${color}`}
                       />
@@ -1151,7 +1151,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                         onEditEvent(note);
                       }
                     }} 
-                    className="text-blue-500 hover:text-blue-700 p-1"
+                    className="text-blue-500 hover:text-blue-700 p-1 flex-shrink-0"
                     title="Edit Event"
                   >
                     <PencilIcon className="h-4 w-4" />
@@ -1162,7 +1162,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-purple-500 hover:text-purple-700 p-1 transition-colors"
+                      className="text-purple-500 hover:text-purple-700 p-1 transition-colors flex-shrink-0"
                       title="View photos"
                     >
                       <PhotoIcon className="h-4 w-4" />
@@ -1173,7 +1173,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       e.stopPropagation();
                       handleDeleteNote(note.id);
                     }} 
-                    className="text-red-500 hover:text-red-700 p-1"
+                    className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
                     title="Delete Event"
                   >
                     <TrashIcon className="h-4 w-4" />

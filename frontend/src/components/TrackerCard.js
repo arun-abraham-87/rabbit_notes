@@ -1260,9 +1260,20 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-xl font-bold text-gray-900">{tracker.title}</h3>
-              <span className="text-sm text-gray-500 capitalize">
-                {tracker.cadence ? `${tracker.cadence} tracker` : 'Tracker'}
-              </span>
+              {(() => {
+                const type = tracker.type ? tracker.type.toLowerCase() : '';
+                const isAdhocDate = type === 'adhoc_date';
+                const isAdhocValue = type === 'adhoc_value';
+                // Don't show cadence for adhoc trackers
+                if (isAdhocDate || isAdhocValue) {
+                  return null;
+                }
+                return (
+                  <span className="text-sm text-gray-500 capitalize">
+                    {tracker.cadence ? `${tracker.cadence} tracker` : 'Tracker'}
+                  </span>
+                );
+              })()}
             </div>
             {!isFocusMode && (
               <div className="flex flex-wrap items-center gap-2">

@@ -1454,6 +1454,31 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                       const displayValue = isAdhocValue && answer ? (answer.value || answer.answer || '') : null;
                       const yesNoValue = isYesNoTracker && answer ? (answer.answer || answer.value || '').toLowerCase() : null;
                       
+                      // Calculate difference from previous value for adhoc value trackers
+                      let valueDifference = null;
+                      let daysDifference = null;
+                      if (isAdhocValue && answer && displayValue) {
+                        // Sort all answers by date to find previous one
+                        const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+                        const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || (a.date === answer.date && (a.value || a.answer) === displayValue));
+                        if (currentIndex > 0) {
+                          const previousAnswer = sortedAllAnswers[currentIndex - 1];
+                          const previousValue = previousAnswer.value || previousAnswer.answer || '';
+                          const currentValueNum = parseFloat(displayValue);
+                          const previousValueNum = parseFloat(previousValue);
+                          if (!isNaN(currentValueNum) && !isNaN(previousValueNum)) {
+                            const diff = currentValueNum - previousValueNum;
+                            const roundedDiff = parseFloat(diff.toFixed(2)); // Round to 2 decimal places
+                            valueDifference = roundedDiff > 0 ? `+${roundedDiff}` : `${roundedDiff}`;
+                          }
+                          // Calculate days difference
+                          const currentDate = moment(answer.date);
+                          const previousDate = moment(previousAnswer.date);
+                          const daysDiff = currentDate.diff(previousDate, 'days');
+                          daysDifference = daysDiff;
+                        }
+                      }
+                      
                       // Determine button color for yes/no trackers
                       let buttonBgColor = '';
                       let buttonBorderColor = '';
@@ -1496,7 +1521,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                               }
                             }}
                             className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
-                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
+                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
                           >
                             {dayNumber}
                           </button>
@@ -1504,7 +1529,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                             <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
                           )}
                           {isAdhocValue && displayValue && (
-                            <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
+                            <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={`${displayValue}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}`}>
                               {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
                             </span>
                           )}

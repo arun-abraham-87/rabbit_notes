@@ -1111,11 +1111,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
     
     if (isYesNoTracker) {
-      // For yes/no trackers, prefer "yes" but fall back to any answer
-      const lastYes = getLastRecordedYes();
-      if (lastYes) return lastYes;
-      const lastNo = getLastRecordedNo();
-      if (lastNo) return lastNo;
+      // For yes/no trackers, use the most recent answer regardless of yes/no
+      // This ensures overdue calculation uses the last recorded date even if it's "no"
+      const sortedAnswers = [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+      return sortedAnswers[0].date;
     }
     
     // For non-yes/no trackers, get the most recent answer

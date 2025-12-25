@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AlertsProvider } from './Alerts.js';
+import { AlertsProvider, UpcomingAlertsRow, TodayEventsBar } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
 import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils.js';
@@ -64,7 +64,7 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
             </svg>
           </button>
         </div>
-        
+
         <div className="p-6 space-y-3">
           <button
             onClick={() => {
@@ -149,7 +149,7 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
   );
 };
 
-const Dashboard = ({notes, setNotes, setActivePage}) => {
+const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const { isPinned, togglePinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
   const location = useLocation();
@@ -181,7 +181,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   const [lastLoginTime, setLastLoginTime] = useState(null);
   const [activePopup, setActivePopup] = useState(null); // Track which popup is active: 'stock', 'exchange', 'weather', or null
-  
+
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
   const notesScrollRef = useRef(null);
@@ -213,7 +213,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         console.error('Error parsing last login time:', error);
       }
     }
-    
+
     // Update current login time
     const currentLoginTime = new Date().toISOString();
     localStorage.setItem('dashboardLastLogin', currentLoginTime);
@@ -239,28 +239,28 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const currentDay = now.getDate();
-    
+
     // End of year
     const endOfYear = new Date(currentYear, 11, 31);
     const daysToEndOfYear = Math.ceil((endOfYear - now) / (1000 * 60 * 60 * 24));
     const weeksToEndOfYear = Math.ceil(daysToEndOfYear / 7);
     const monthsToEndOfYear = 12 - currentMonth - 1; // -1 because we're in current month
-    
+
     // End of month
     const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
     const daysToEndOfMonth = endOfMonth.getDate() - currentDay;
-    
+
     // End of week (Sunday)
     const daysToSunday = 7 - now.getDay();
     const daysToEndOfWeek = daysToSunday === 7 ? 0 : daysToSunday;
-    
+
     // Progress through year
     const startOfYear = new Date(currentYear, 0, 1);
     const daysSinceStartOfYear = Math.ceil((now - startOfYear) / (1000 * 60 * 60 * 24));
-    const totalDaysInYear = new Date(currentYear, 11, 31).getDate() + 
-                           new Date(currentYear, 11, 0).getDate() * 11; // Approximate
+    const totalDaysInYear = new Date(currentYear, 11, 31).getDate() +
+      new Date(currentYear, 11, 0).getDate() * 11; // Approximate
     const yearProgress = Math.round((daysSinceStartOfYear / totalDaysInYear) * 100);
-    
+
     return {
       daysToEndOfYear,
       weeksToEndOfYear,
@@ -298,9 +298,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easedProgress = easeOutQuart(progress);
-      
+
       element.scrollLeft = startScrollLeft + (distance * easedProgress);
-      
+
       if (progress < 1) {
         requestAnimationFrame(animateScroll);
       }
@@ -392,10 +392,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     const handleKeyDown = (e) => {
       // Only handle keys when not in an input/textarea and no modifier keys
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
-          e.target.tagName !== 'INPUT' && 
-          e.target.tagName !== 'TEXTAREA' &&
-          e.target.contentEditable !== 'true') {
-        
+        e.target.tagName !== 'INPUT' &&
+        e.target.tagName !== 'TEXTAREA' &&
+        e.target.contentEditable !== 'true') {
+
         if (e.key === 'c') {
           e.preventDefault();
           e.stopPropagation();
@@ -429,12 +429,12 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
 
     // Only add the event listener if we're on the dashboard page
     const isDashboardPage = location.pathname === '/' || location.pathname === '/dashboard';
-    
+
     if (isDashboardPage) {
-      
+
       document.addEventListener('keydown', handleKeyDown);
       return () => {
-        
+
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
@@ -460,7 +460,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
       'Australia/Sydney',
-      'Asia/Kolkata', 
+      'Asia/Kolkata',
       'America/New_York',
       'Europe/London'
     ];
@@ -520,13 +520,13 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       const label = timeZone.split('/').pop().replace('_', ' ');
       const flag = flagMap[timeZone] || '';
       const time = formatTimezoneTime(timeZone);
-      
+
       // Determine if this zone's date is before/after base timezone date
       const zoneYMD = formatYMD(new Date(), timeZone);
       const baseYMD = formatYMD(new Date(), baseTimezone);
       const isPreviousDay = zoneYMD < baseYMD;
       const isNextDay = zoneYMD > baseYMD;
-      
+
       // Calculate relative day text
       let relativeDayText = 'today';
       if (isPreviousDay) {
@@ -534,7 +534,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       } else if (isNextDay) {
         relativeDayText = 'tomorrow';
       }
-      
+
       // Get hour in the timezone for time description
       const timeInZone = new Intl.DateTimeFormat('en-US', {
         timeZone,
@@ -542,14 +542,14 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         hour: 'numeric',
       }).format(new Date());
       const hourNum = parseInt(timeInZone, 10);
-      
+
       // Get time-based description and combine with day
       const timeDescription = getTimeDescription(hourNum);
       const enhancedRelativeDayText = `${relativeDayText} ${timeDescription}`;
-      
+
       // Calculate time difference from base timezone
       const timeDiffHours = getTimeDiffHours(timeZone);
-      
+
       return { label, flag, time, timeZone, timeDiffHours, relativeDayText: enhancedRelativeDayText };
     });
 
@@ -563,7 +563,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         const response = await loadAllNotes();
         if (response && response.notes) {
           setNotes(response.notes);
-          
+
           // Extract events from notes
           const eventNotes = response.notes.filter(note => note && note.content && note.content.includes('meta::event::'));
           setEvents(eventNotes);
@@ -642,9 +642,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
             <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter/L to open link, M to dismiss • Vim: gg/G for first/last, number+j/k to jump (e.g. 4j, 3k)</div>
           </div>
-          <RemindersAlert 
-            allNotes={notes} 
-            expanded={true} 
+          <RemindersAlert
+            allNotes={notes}
+            expanded={true}
             setNotes={setNotes}
             isRemindersOnlyMode={true}
           />
@@ -655,9 +655,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             <h2 className="text-xl font-semibold text-gray-800">Reviews Overdue Only</h2>
             <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to unfollow</div>
           </div>
-          <ReviewOverdueAlert 
-            notes={notes} 
-            expanded={true} 
+          <ReviewOverdueAlert
+            notes={notes}
+            expanded={true}
             setNotes={setNotes}
             isReviewsOverdueOnlyMode={true}
             searchInputRef={reviewOverdueSearchInputRef}
@@ -668,10 +668,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           {/* Bookmarked Links - Topmost Item */}
           {!isPinned && (
             <div className="mb-8">
-              <BookmarkedLinks 
+              <BookmarkedLinks
                 key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note && note.content && note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
-                notes={notes} 
-                setNotes={setNotes} 
+                notes={notes}
+                setNotes={setNotes}
               />
             </div>
           )}
@@ -693,58 +693,58 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   })}
                 </div>
               )}
-              
+
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
                 <div className="relative group">
                   <h1 className="text-3xl font-bold cursor-pointer">{formattedDate}</h1>
-                  
+
                   {/* Time Until Year End Card - appears on hover */}
                   <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-6 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                {(() => {
-                  const facts = getFunFacts();
-                    let yearCountdown = `${facts.daysToEndOfYear} days`;
-                    if (facts.weeksToEndOfYear > 0) {
-                      yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
-                    }
-                    if (facts.monthsToEndOfYear > 0) {
+                    {(() => {
+                      const facts = getFunFacts();
+                      let yearCountdown = `${facts.daysToEndOfYear} days`;
+                      if (facts.weeksToEndOfYear > 0) {
+                        yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
+                      }
+                      if (facts.monthsToEndOfYear > 0) {
                         yearCountdown += ` / ${facts.monthsToEndOfYear} month${facts.monthsToEndOfYear > 1 ? 's' : ''}`;
                       }
-                      
+
                       // Calculate next DST change for Melbourne (Australia/Melbourne)
                       const getNextDSTChange = () => {
                         const now = new Date();
                         const currentYear = now.getFullYear();
                         const nextYear = currentYear + 1;
-                        
+
                         // DST ends: First Sunday in April at 3:00 AM (clocks go back 1 hour)
                         // DST starts: First Sunday in October at 2:00 AM (clocks go forward 1 hour)
-                        
+
                         const getFirstSundayOfMonth = (year, month) => {
                           const firstDay = new Date(year, month, 1);
                           const dayOfWeek = firstDay.getDay();
                           const daysToAdd = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
                           return new Date(year, month, 1 + daysToAdd);
                         };
-                        
+
                         // Get DST end date (April) for current and next year
                         const dstEndCurrent = getFirstSundayOfMonth(currentYear, 3); // April = month 3
                         dstEndCurrent.setHours(3, 0, 0, 0);
-                        
+
                         const dstEndNext = getFirstSundayOfMonth(nextYear, 3);
                         dstEndNext.setHours(3, 0, 0, 0);
-                        
+
                         // Get DST start date (October) for current and next year
                         const dstStartCurrent = getFirstSundayOfMonth(currentYear, 9); // October = month 9
                         dstStartCurrent.setHours(2, 0, 0, 0);
-                        
+
                         const dstStartNext = getFirstSundayOfMonth(nextYear, 9);
                         dstStartNext.setHours(2, 0, 0, 0);
-                        
+
                         // Find the next DST change
                         let nextChange = null;
                         let changeType = '';
-                        
+
                         if (now < dstEndCurrent) {
                           nextChange = dstEndCurrent;
                           changeType = 'ends';
@@ -758,10 +758,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           nextChange = dstStartNext;
                           changeType = 'starts';
                         }
-                        
+
                         return { date: nextChange, type: changeType };
                       };
-                      
+
                       const dstInfo = getNextDSTChange();
                       const formatDate = (date) => {
                         const dateStr = new Intl.DateTimeFormat('en-AU', {
@@ -779,17 +779,17 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                         }).format(date);
                         return `${dateStr} (${timeStr})`;
                       };
-                      
+
                       return (
                         <>
                           {/* Title */}
                           <h2 className="text-lg font-semibold text-gray-800 mb-4">Time Until Year End</h2>
-                          
+
                           {/* Main Countdown */}
                           <div className="text-2xl font-bold text-blue-600 mb-4">
                             {yearCountdown}
                           </div>
-                          
+
                           {/* Remaining Section */}
                           <div className="mb-4">
                             <div className="text-sm text-gray-500 mb-2">Remaining</div>
@@ -802,7 +802,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Progress Bar */}
                           <div className="mt-4 mb-4">
                             <div className="bg-green-500 rounded-lg px-4 py-2">
@@ -811,7 +811,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Daylight Saving Info */}
                           {showTimezones && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
@@ -832,7 +832,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                                         <span className="font-semibold">{formatDate(dstInfo.date)}</span>
                                       </p>
                                       <p className="text-xs mt-1 text-blue-600">
-                                        {dstInfo.type === 'starts' 
+                                        {dstInfo.type === 'starts'
                                           ? 'Clocks will go forward 1 hour (2:00 AM → 3:00 AM)'
                                           : 'Clocks will go back 1 hour (3:00 AM → 2:00 AM)'}
                                       </p>
@@ -844,7 +844,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           )}
                         </>
                       );
-                })()}
+                    })()}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -855,7 +855,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Timezone Cards Display */}
               {showTimezones && (
                 <div className="mb-6 w-full">
@@ -869,7 +869,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
                     <div className="flex gap-1.5 sm:gap-2">
                       {/* Stock Information Button */}
-                      <div 
+                      <div
                         className="relative group flex-1"
                         onMouseEnter={() => setActivePopup('stock')}
                         onMouseLeave={() => {
@@ -889,20 +889,19 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                                   const { price } = JSON.parse(cachedData);
                                   return `$${price?.toFixed(2) || 'Loading...'}`;
                                 }
-                              } catch (e) {}
+                              } catch (e) { }
                               return 'Loading...';
                             })()}
                           </div>
                         </button>
-                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
-                          activePopup === 'stock' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                        }`}>
+                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'stock' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                          }`}>
                           <StockPrice forceExpanded={true} />
                         </div>
                       </div>
 
                       {/* Exchange Rates Button */}
-                      <div 
+                      <div
                         className="relative group flex-1"
                         onMouseEnter={() => setActivePopup('exchange')}
                         onMouseLeave={() => {
@@ -922,20 +921,19 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                                   const { usdToInr, audToInr } = JSON.parse(cachedData);
                                   return `USD: ₹${usdToInr?.toFixed(2) || '0.00'} | AUD: ₹${audToInr?.toFixed(2) || '0.00'}`;
                                 }
-                              } catch (e) {}
+                              } catch (e) { }
                               return 'Loading...';
                             })()}
                           </div>
                         </button>
-                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
-                          activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                        }`}>
+                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                          }`}>
                           <ExchangeRates forceExpanded={true} />
                         </div>
                       </div>
 
                       {/* Weather Button */}
-                      <div 
+                      <div
                         className="relative group flex-1"
                         onMouseEnter={() => setActivePopup('weather')}
                         onMouseLeave={() => {
@@ -955,9 +953,8 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                             })()}
                           </div>
                         </button>
-                        <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${
-                          activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                        }`}>
+                        <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                          }`}>
                           <Weather forceExpanded={true} />
                         </div>
                       </div>
@@ -965,6 +962,11 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   </div>
                 </div>
               )}
+
+              {/* Today Events Bar - Moved from AlertsProvider */}
+              <div className="mb-6 w-full">
+                <TodayEventsBar events={events} />
+              </div>
             </div>
           </div>
 
@@ -978,267 +980,266 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-4">
                 <div className="flex gap-1 items-center">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEventFilter('all')}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          eventFilter === 'all' 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEventFilter('all')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${eventFilter === 'all'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
-                        title="Click to filter by all events"
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('defaultEventFilter', 'all');
-                          alert('Default filter set to "All"');
-                        }}
-                        className={`px-1 py-1 text-xs rounded transition-colors ${
-                          localStorage.getItem('defaultEventFilter') === 'all'
-                            ? 'bg-blue-100 text-blue-600 border border-blue-200'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title="Set 'All' as default filter"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEventFilter('deadline')}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          eventFilter === 'deadline' 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Click to filter by deadlines"
-                      >
-                        Deadline
-                      </button>
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('defaultEventFilter', 'deadline');
-                          alert('Default filter set to "Deadline"');
-                        }}
-                        className={`px-1 py-1 text-xs rounded transition-colors ${
-                          localStorage.getItem('defaultEventFilter') === 'deadline'
-                            ? 'bg-red-100 text-red-600 border border-red-200'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title="Set 'Deadline' as default filter"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEventFilter('holiday')}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          eventFilter === 'holiday' 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Click to filter by holidays"
-                      >
-                        Holiday
-                      </button>
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('defaultEventFilter', 'holiday');
-                          alert('Default filter set to "Holiday"');
-                        }}
-                        className={`px-1 py-1 text-xs rounded transition-colors ${
-                          localStorage.getItem('defaultEventFilter') === 'holiday'
-                            ? 'bg-green-100 text-green-600 border border-green-200'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title="Set 'Holiday' as default filter"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    {/* Text Filter Input with Clear Button */}
-                    <div className="relative">
-                      <input
-                        ref={eventSearchInputRef} // <-- Attach ref
-                        type="text"
-                        placeholder="Filter events..."
-                        value={eventTextFilter}
-                        onChange={(e) => {
-                          const newValue = e.target.value;
-                          setEventTextFilter(newValue);
-                          // Automatically switch to 'all' filter when text is entered
-                          if (newValue.trim() !== '' && eventFilter !== 'all') {
-                            setEventFilter('all');
-                          }
-                        }}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pr-6"
-                        style={{ width: '120px' }}
-                      />
-                      {eventTextFilter && (
-                        <button
-                          onClick={() => setEventTextFilter('')}
-                          className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                          title="Clear filter"
-                        >
-                          <XMarkIcon className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {/* Reset Button */}
+                      title="Click to filter by all events"
+                    >
+                      All
+                    </button>
                     <button
                       onClick={() => {
-                        setEventFilter('deadline');
-                        setEventTextFilter('');
+                        localStorage.setItem('defaultEventFilter', 'all');
+                        alert('Default filter set to "All"');
                       }}
-                      className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Reset to deadline filter"
+                      className={`px-1 py-1 text-xs rounded transition-colors ${localStorage.getItem('defaultEventFilter') === 'all'
+                        ? 'bg-blue-100 text-blue-600 border border-blue-200'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                      title="Set 'All' as default filter"
                     >
-                      <ArrowPathIcon className="h-3 w-3" />
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
                     </button>
                   </div>
-              </div>
-              
-              <div className="flex gap-2">
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEventFilter('deadline')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${eventFilter === 'deadline'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      title="Click to filter by deadlines"
+                    >
+                      Deadline
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('defaultEventFilter', 'deadline');
+                        alert('Default filter set to "Deadline"');
+                      }}
+                      className={`px-1 py-1 text-xs rounded transition-colors ${localStorage.getItem('defaultEventFilter') === 'deadline'
+                        ? 'bg-red-100 text-red-600 border border-red-200'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                      title="Set 'Deadline' as default filter"
+                    >
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEventFilter('holiday')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${eventFilter === 'holiday'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      title="Click to filter by holidays"
+                    >
+                      Holiday
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('defaultEventFilter', 'holiday');
+                        alert('Default filter set to "Holiday"');
+                      }}
+                      className={`px-1 py-1 text-xs rounded transition-colors ${localStorage.getItem('defaultEventFilter') === 'holiday'
+                        ? 'bg-green-100 text-green-600 border border-green-200'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                      title="Set 'Holiday' as default filter"
+                    >
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Text Filter Input with Clear Button */}
+                  <div className="relative">
+                    <input
+                      ref={eventSearchInputRef} // <-- Attach ref
+                      type="text"
+                      placeholder="Filter events..."
+                      value={eventTextFilter}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setEventTextFilter(newValue);
+                        // Automatically switch to 'all' filter when text is entered
+                        if (newValue.trim() !== '' && eventFilter !== 'all') {
+                          setEventFilter('all');
+                        }
+                      }}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pr-6"
+                      style={{ width: '120px' }}
+                    />
+                    {eventTextFilter && (
+                      <button
+                        onClick={() => setEventTextFilter('')}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Clear filter"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Reset Button */}
                   <button
                     onClick={() => {
-                      // This will trigger the add event functionality
-                      // We need to pass this through to EventManager
-                      const event = new CustomEvent('addEvent');
-                      document.dispatchEvent(event);
+                      setEventFilter('deadline');
+                      setEventTextFilter('');
                     }}
-                    className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                    className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Reset to deadline filter"
                   >
-                    <PlusIcon className="h-4 w-4" />
-                    Add Note
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingEvent(null); // Set to null for new event
-                      setShowEditEventModal(true);
-                    }}
-                    className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    Add Event
+                    <ArrowPathIcon className="h-3 w-3" />
                   </button>
                 </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    // This will trigger the add event functionality
+                    // We need to pass this through to EventManager
+                    const event = new CustomEvent('addEvent');
+                    document.dispatchEvent(event);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Note
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingEvent(null); // Set to null for new event
+                    setShowEditEventModal(true);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Event
+                </button>
+              </div>
             </div>
             {/* Event Notes Row */}
-                <div className="flex items-center gap-2 mb-6">
-                  {/* Left Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventNotesHasOverflow && (
-                      <button
-                        onClick={scrollEventNotesLeft}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronLeftIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Event Notes Container */}
-                  <div 
-                    ref={eventNotesScrollRef}
-                    className="flex-1 overflow-x-auto"
-                    style={{ 
-                      scrollbarWidth: 'none',
-                      msOverflowStyle: 'none'
-                    }}
-                    onScroll={(e) => {
-                      // Prevent manual scrolling, only allow programmatic scrolling
-                      e.preventDefault();
-                    }}
+            <div className="flex items-center gap-2 mb-6">
+              {/* Left Arrow */}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {eventNotesHasOverflow && (
+                  <button
+                    onClick={scrollEventNotesLeft}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                   >
-                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                      <EventManager 
-                        type="eventNotes" 
-                        notes={notes} 
-                        setActivePage={setActivePage}
-                        eventFilter={eventFilter}
-                        eventTextFilter={eventTextFilter}
-                        onEditEvent={(note) => {
-                          setEditingEvent(note);
-                          setShowEditEventModal(true);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Right Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventNotesHasOverflow && (
-                      <button
-                        onClick={scrollEventNotesRight}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronRightIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
 
-                {/* Notes Row */}
-                <div className="flex items-center gap-2 mb-6">
-                  {/* Left Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {notesHasOverflow && (
-                      <button
-                        onClick={scrollNotesLeft}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronLeftIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Notes Container */}
-                  <div 
-                    ref={notesScrollRef}
-                    className="flex-1 overflow-x-auto"
-                    style={{ 
-                      scrollbarWidth: 'none',
-                      msOverflowStyle: 'none'
+              {/* Event Notes Container */}
+              <div
+                ref={eventNotesScrollRef}
+                className="flex-1 overflow-x-auto"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                onScroll={(e) => {
+                  // Prevent manual scrolling, only allow programmatic scrolling
+                  e.preventDefault();
+                }}
+              >
+                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                  <EventManager
+                    type="eventNotes"
+                    notes={notes}
+                    setActivePage={setActivePage}
+                    eventFilter={eventFilter}
+                    eventTextFilter={eventTextFilter}
+                    onEditEvent={(note) => {
+                      setEditingEvent(note);
+                      setShowEditEventModal(true);
                     }}
-                  >
-                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                      <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
-                    </div>
-                  </div>
-                  
-                  {/* Right Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {notesHasOverflow && (
-                      <button
-                        onClick={scrollNotesRight}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronRightIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
+                  />
                 </div>
+              </div>
+
+              {/* Right Arrow */}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {eventNotesHasOverflow && (
+                  <button
+                    onClick={scrollEventNotesRight}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Upcoming Alerts Row - Moved from bottom to below timelines */}
+            <div className="mb-8">
+              <UpcomingAlertsRow notes={notes} setNotes={setNotes} />
+            </div>
+
+            {/* Notes Row */}
+            <div className="flex items-center gap-2 mb-6">
+              {/* Left Arrow */}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {notesHasOverflow && (
+                  <button
+                    onClick={scrollNotesLeft}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Notes Container */}
+              <div
+                ref={notesScrollRef}
+                className="flex-1 overflow-x-auto"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
+                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                  <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
+                </div>
+              </div>
+
+              {/* Right Arrow */}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {notesHasOverflow && (
+                  <button
+                    onClick={scrollNotesRight}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
 
 
           {/* Alerts Section */}
           <div className="mb-8">
-            <AlertsProvider 
-              notes={notes} 
+            <AlertsProvider
+              notes={notes}
               events={events}
               setNotes={setNotes}
             >
@@ -1249,7 +1250,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       )}
 
       {/* Timezone Popup */}
-      <TimezonePopup 
+      <TimezonePopup
         isOpen={showTimezonePopup}
         onClose={() => setShowTimezonePopup(false)}
       />
@@ -1276,11 +1277,11 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 try {
                   // Update the note in the backend
                   const response = await updateNoteById(editingEvent.id, content);
-                  
+
                   // Update the note in the local state
-                  const updatedNote = { 
-                    ...note, 
-                    content: response && response.content ? response.content : content 
+                  const updatedNote = {
+                    ...note,
+                    content: response && response.content ? response.content : content
                   };
                   setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
                 } catch (error) {

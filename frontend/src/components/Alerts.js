@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { 
-  XMarkIcon, 
-  CheckCircleIcon, 
-  ExclamationCircleIcon, 
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
   InformationCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -26,7 +26,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, exportAllNotes } from '../utils/ApiUtils';
-import { getAgeInStringFmt,  getDiffInDays } from '../utils/DateUtils';
+import { getAgeInStringFmt, getDiffInDays } from '../utils/DateUtils';
 import { checkNeedsReview } from '../utils/watchlistUtils';
 import MeetingManager from './MeetingManager.js';
 import EditEventModal from './EditEventModal';
@@ -274,14 +274,14 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       if (note) {
         // Preserve the original meta tags
         const originalLines = note.content.split('\n');
-        const metaTags = originalLines.filter(line => 
-          line.startsWith('meta::') && 
+        const metaTags = originalLines.filter(line =>
+          line.startsWith('meta::') &&
           !line.startsWith('meta::event::')
         );
-        
+
         // Combine new content with preserved meta tags
         const updatedContent = content + '\n' + metaTags.join('\n');
-        
+
         // Update the note
         const updatedNote = { ...note, content: updatedContent };
         setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
@@ -299,7 +299,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       // Get the current events from localStorage
       const stored = localStorage.getItem('tempEvents');
       const currentEvents = stored && stored !== '[]' ? JSON.parse(stored) : [];
-      
+
       // Create a new event object
       const newEvent = {
         id: Date.now(),
@@ -308,13 +308,13 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         type: 'event',
         bgColor: '#ffffff'
       };
-      
+
       // Add the new event to the existing events
       const updatedEvents = [...currentEvents, newEvent];
-      
+
       // Save back to localStorage
       localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
-      
+
       // Show success message
       Alerts.success('Event pinned to EventManager');
     } catch (error) {
@@ -322,7 +322,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       Alerts.error('Failed to pin event');
     }
   }
-  
+
   useEffect(() => {
     const eventNotes = notes.filter(note => note && note.content && note.content.includes('meta::event_deadline'));
     const upcoming = [];
@@ -334,13 +334,13 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
 
     eventNotes.forEach(note => {
       if (!note || !note.content) return;
-      
+
       const lines = note.content.split('\n');
       const description = lines[0]?.trim() || '';
       const eventDateLine = lines.find(line => line.startsWith('event_date:'));
       const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
       const isHidden = note.content.includes('meta::event_hidden');
-      
+
       if (eventDate) {
         const deadlineDate = new Date(eventDate);
         deadlineDate.setHours(0, 0, 0, 0);
@@ -410,7 +410,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 </h3>
                 {deadlineIndicators && (
                   <div className="mt-1">
-                    {deadlineIndicators.includes('Today') || deadlineIndicators.includes('Tomorrow') 
+                    {deadlineIndicators.includes('Today') || deadlineIndicators.includes('Tomorrow')
                       ? renderAnimatedText(deadlineIndicators)
                       : <span className="text-blue-600">{deadlineIndicators}</span>
                     }
@@ -449,7 +449,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 {deadlines.map((deadline) => {
                   const daysUntil = getDaysUntilDeadline(deadline.date);
                   return (
-                    <div 
+                    <div
                       key={deadline.id}
                       className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150 flex"
                     >
@@ -531,17 +531,17 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 if (note) {
                   // Preserve the original meta tags
                   const originalLines = note.content.split('\n');
-                  const metaTags = originalLines.filter(line => 
-                    line.startsWith('meta::') && 
+                  const metaTags = originalLines.filter(line =>
+                    line.startsWith('meta::') &&
                     !line.startsWith('meta::event::')
                   );
-                  
+
                   // Combine new content with preserved meta tags
                   const updatedContent = content + '\n' + metaTags.join('\n');
-                  
+
                   // Update the note in the backend
                   await updateNoteById(editingDeadline.id, updatedContent);
-                  
+
                   // Update the note in the local state
                   const updatedNote = { ...note, content: updatedContent };
                   setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
@@ -634,7 +634,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   const getUnacknowledgedOccurrences = () => {
     return events.flatMap(event => {
       if (!event || !event.dateTime) return [];
-      
+
       const { dateTime, recurrence } = event;
       const eventDate = new Date(dateTime);
       const now = new Date();
@@ -670,16 +670,16 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
       const now = new Date();
       const year = occurrence.date.getFullYear();
       const metaTag = `meta::acknowledged::${year}`;
-      
-      return occurrence.date >= april2025 && 
-             occurrence.date <= now && 
-             !occurrence.event.content.includes(metaTag);
+
+      return occurrence.date >= april2025 &&
+        occurrence.date <= now &&
+        !occurrence.event.content.includes(metaTag);
     });
   };
 
   const unacknowledgedEvents = getUnacknowledgedOccurrences();
-  const unacknowledgedMeetings = notes.filter(note => 
-    note.content.includes('meta::meeting::') && 
+  const unacknowledgedMeetings = notes.filter(note =>
+    note.content.includes('meta::meeting::') &&
     !note.content.includes('meta::acknowledged::') &&
     !note.content.includes('meta::meeting_acknowledge::')
   );
@@ -687,11 +687,11 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   const handleDismissUnacknowledgedMeeting = async (noteId) => {
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
-    
+
     // Add the acknowledged tag with timestamp
     const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
     const updatedContent = `${note.content}\n${ackLine}`;
-    
+
     try {
       await updateNoteById(noteId, updatedContent);
       // Update the notes state to reflect the change
@@ -701,9 +701,9 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
     }
   };
 
-  const totalAlerts = unacknowledgedEvents.length + 
-                     unacknowledgedMeetings.length +
-                     overdueNotes.length;
+  const totalAlerts = unacknowledgedEvents.length +
+    unacknowledgedMeetings.length +
+    overdueNotes.length;
 
   const handleTitleClick = () => {
     setIsExpanded(!isExpanded);
@@ -821,11 +821,11 @@ const TodayEventsBar = ({ events }) => {
     try {
       const lastAcknowledged = localStorage.getItem('todayEventsLastAcknowledged');
       if (!lastAcknowledged) return false;
-      
+
       const lastAckTime = new Date(lastAcknowledged);
       const now = new Date();
       const hoursSinceLastAck = (now - lastAckTime) / (1000 * 60 * 60);
-      
+
       // If it's been more than 4 hours since last acknowledgment, show the bar again
       return hoursSinceLastAck < 4;
     } catch (error) {
@@ -845,25 +845,25 @@ const TodayEventsBar = ({ events }) => {
 
   const getTodayEvents = () => {
     if (!events || !Array.isArray(events)) return [];
-    
+
     const today = new Date();
     const todayMonth = today.getMonth();
     const todayDate = today.getDate();
 
     return events.filter(event => {
       if (!event || !event.content) return false;
-      
+
       try {
         const lines = event.content.split('\n');
         const eventDateLine = lines.find(line => line.startsWith('event_date:'));
         if (!eventDateLine) return false;
-        
+
         const eventDateStr = eventDateLine.replace('event_date:', '').trim();
         if (!eventDateStr) return false;
-        
+
         const eventDate = new Date(eventDateStr);
         if (isNaN(eventDate.getTime())) return false;
-        
+
         // Check if month and date match today, regardless of year
         return eventDate.getMonth() === todayMonth && eventDate.getDate() === todayDate;
       } catch (error) {
@@ -910,6 +910,35 @@ const TodayEventsBar = ({ events }) => {
   );
 };
 
+const UpcomingAlertsRow = ({ notes, setNotes }) => {
+  return (
+    <div className="flex gap-4">
+      <div className="w-1/3">
+        <UpcomingDeadlinesAlert
+          notes={notes}
+          expanded={true}
+          addNote={addNewNoteCommon}
+          setNotes={setNotes}
+        />
+      </div>
+      <div className="w-1/3">
+        <UpcomingEventsAlert
+          notes={notes}
+          expanded={false}
+          setNotes={setNotes}
+        />
+      </div>
+      <div className="w-1/3">
+        <UpcomingHolidaysAlert
+          notes={notes}
+          expanded={false}
+          setNotes={setNotes}
+        />
+      </div>
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const [EventAlertsComponent, setEventAlertsComponent] = useState(null);
 
@@ -922,11 +951,11 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
   const handleDismissUnacknowledgedMeeting = async (noteId) => {
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
-    
+
     // Add the acknowledged tag with timestamp
     const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
     const updatedContent = `${note.content}\n${ackLine}`;
-    
+
     try {
       await updateNoteById(noteId, updatedContent);
       // Update the notes state to reflect the change
@@ -951,64 +980,39 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-4 w-full">
-        <TodayEventsBar events={events} />
         <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />
-        <div className="flex gap-4">
-          <div className="w-1/3">
-            <UpcomingDeadlinesAlert 
-              notes={notes} 
-              expanded={true} 
-              addNote={addNewNoteCommon}
-              setNotes={setNotes}
-            />
-          </div>
-          <div className="w-1/3">
-            <UpcomingEventsAlert 
-              notes={notes} 
-              expanded={false} 
-              setNotes={setNotes}
-            />
-          </div>
-          <div className="w-1/3">
-            <UpcomingHolidaysAlert 
-              notes={notes} 
-              expanded={false} 
-              setNotes={setNotes}
-            />
-          </div>
-        </div>
-        <MeetingManager 
+        <MeetingManager
           allNotes={notes}
           setNotes={setNotes}
           searchQuery=''
           currentDate=''
         />
-        <AlertsContainer 
+        <AlertsContainer
           expanded={true}
-          notes={notes} 
+          notes={notes}
           events={events}
           setNotes={setNotes}
         >
           {EventAlertsComponent && (
-            <EventAlertsComponent 
+            <EventAlertsComponent
               events={events}
               expanded={true}
               onAcknowledgeEvent={async (eventId, year) => {
                 try {
                   const event = events.find(e => e.id === eventId);
                   if (!event) return;
-                  
+
                   const metaTag = `meta::acknowledged::${year}`;
                   if (event.content.includes(metaTag)) {
                     return; // Already acknowledged
                   }
-                  
+
                   const updatedContent = event.content.trim() + `\n${metaTag}`;
                   await updateNoteById(eventId, updatedContent);
-                  
+
                   // Update the events state to reflect the change
-                  const updatedEvents = events.map(e => 
+                  const updatedEvents = events.map(e =>
                     e.id === eventId ? { ...e, content: updatedContent } : e
                   );
                   // Note: We can't update events directly here, but the acknowledgment will be reflected
@@ -1022,8 +1026,8 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
           <div className="w-full" data-section="review-overdue">
             <ReviewOverdueAlert notes={notes} expanded={true} setNotes={setNotes} />
           </div>
-          <UnacknowledgedMeetingsAlert 
-            notes={notes} 
+          <UnacknowledgedMeetingsAlert
+            notes={notes}
             expanded={true}
             onDismiss={handleDismissUnacknowledgedMeeting}
           />
@@ -1034,4 +1038,4 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
   );
 };
 
-export { Alerts, AlertsProvider }; 
+export { Alerts, AlertsProvider, UpcomingAlertsRow, TodayEventsBar };

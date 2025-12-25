@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
@@ -281,7 +281,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       title: '',
       firstDate: null,
       isClosed: false,
-      totalDollarAmount: 0
+      totalDollarAmount: 0,
+      linkedEventIds: []
     };
 
     // Check if timeline is closed
@@ -339,6 +340,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         }
       }
     }
+
+    // Extract linked event IDs
+    timelineData.linkedEventIds = lines
+      .filter(line => line.trim().startsWith('meta::linked_from_events::'))
+      .map(line => line.replace('meta::linked_from_events::', '').trim());
 
     timelineData.totalDollarAmount = totalAmount;
     return timelineData;
@@ -402,9 +408,37 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           id: note.id,
           title: timelineData.title,
           firstDate: timelineData.firstDate,
+          linkedEventIds: timelineData.linkedEventIds,
           isClosed: timelineData.isClosed,
           totalDollarAmount: timelineData.totalDollarAmount,
           content: note.content
+        };
+      })
+      .map(timeline => {
+        // Find earliest date from linked events
+        let earliestDate = timeline.firstDate;
+
+        if (timeline.linkedEventIds && timeline.linkedEventIds.length > 0) {
+          timeline.linkedEventIds.forEach(linkedId => {
+            const linkedNote = notes.find(n => n.id.toString() === linkedId.toString());
+            if (linkedNote && linkedNote.content) {
+              const eventDateMatch = linkedNote.content.match(/event_date:(.+)/);
+              if (eventDateMatch) {
+                const linkedDateStr = eventDateMatch[1].trim();
+                const linkedDate = new Date(linkedDateStr);
+                if (!isNaN(linkedDate.getTime())) {
+                  if (!earliestDate || linkedDate < earliestDate) {
+                    earliestDate = linkedDate;
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        return {
+          ...timeline,
+          firstDate: earliestDate
         };
       })
       .filter(note => {
@@ -1213,7 +1247,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   >
                     <DocumentTextIcon className="h-3 w-3" />
                   </button>
-                  <div className="text-xs font-medium text-gray-700 truncate pr-6">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/timelines?filter=${encodeURIComponent(timeline.title)}`);
+                    }}
+                    className="absolute top-1 right-7 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                    title="View in Timelines"
+                  >
+                    <MagnifyingGlassIcon className="h-3 w-3" />
+                  </button>
+                  <div className="text-xs font-medium text-gray-700 truncate pr-14">
                     {timeline.title}
                   </div>
                   <div className="text-xs font-semibold text-gray-900 mt-1">
@@ -1226,11 +1270,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   <div className="text-xs text-gray-600 mt-1" title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}>
                     {displayText} since start
                   </div>
-                  {timeline.totalDollarAmount > 0 && (
-                    <div className="text-xs text-green-600 font-semibold mt-1">
-                      ${timeline.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  )}
+                  {
+                    timeline.totalDollarAmount > 0 && (
+                      <div className="text-xs text-green-600 font-semibold mt-1">
+                        ${timeline.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    )
+                  }
                 </div>
               );
             })}
@@ -1239,136 +1285,140 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       })()}
 
       {/* Event Modal */}
-      {isModalOpen && (
-        <div ref={modalRef} className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Note'}</h2>
-            <form onSubmit={handleEventSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    type="button"
-                    className={`px-3 py-1 rounded-md border ${eventForm.type === 'event' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
-                    onClick={() => setEventForm(prev => ({ ...prev, type: 'event' }))}
-                  >
-                    Event
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-3 py-1 rounded-md border ${eventForm.type === 'note' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
-                    onClick={() => setEventForm(prev => ({ ...prev, type: 'note' }))}
-                  >
-                    Note Card
-                  </button>
-                </div>
-              </div>
-              {eventForm.type === 'note' ? (
+      {
+        isModalOpen && (
+          <div ref={modalRef} className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+              <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Note'}</h2>
+              <form onSubmit={handleEventSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Note Content</label>
-                  <textarea
-                    name="name"
-                    value={eventForm.name}
-                    onChange={handleEventInput}
-                    className="mt-1 block w-full border border-gray-300 rounded-md p-2 min-h-[80px]"
-                    placeholder="Enter note content..."
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-md border ${eventForm.type === 'event' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                      onClick={() => setEventForm(prev => ({ ...prev, type: 'event' }))}
+                    >
+                      Event
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1 rounded-md border ${eventForm.type === 'note' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                      onClick={() => setEventForm(prev => ({ ...prev, type: 'note' }))}
+                    >
+                      Note Card
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <>
+                {eventForm.type === 'note' ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Event Name</label>
-                    <input
-                      type="text"
+                    <label className="block text-sm font-medium text-gray-700">Note Content</label>
+                    <textarea
                       name="name"
                       value={eventForm.name}
                       onChange={handleEventInput}
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                      required
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2 min-h-[80px]"
+                      placeholder="Enter note content..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Event Date</label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={eventForm.date}
-                      onChange={handleEventInput}
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                      required
-                    />
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Event Name</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={eventForm.name}
+                        onChange={handleEventInput}
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Event Date</label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={eventForm.date}
+                        onChange={handleEventInput}
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={eventForm.endDate}
+                        onChange={handleEventInput}
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                      />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Background Color</label>
+                  <div className="flex gap-2 mb-2">
+                    {colorOptions.map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`w-7 h-7 rounded-full border-2 ${eventForm.bgColor === color ? 'border-gray-700' : 'border-gray-200'}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setEventForm(prev => ({ ...prev, bgColor: color }))}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={eventForm.endDate}
-                      onChange={handleEventInput}
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Background Color</label>
-                <div className="flex gap-2 mb-2">
-                  {colorOptions.map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-7 h-7 rounded-full border-2 ${eventForm.bgColor === color ? 'border-gray-700' : 'border-gray-200'}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setEventForm(prev => ({ ...prev, bgColor: color }))}
-                    />
-                  ))}
                 </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 bg-gray-200 rounded-md text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                  >
+                    {isEditMode ? 'Save Changes' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Delete Confirmation Modal */}
+      {
+        (pendingDeleteId || pendingDeleteNoteId) && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-xs shadow-lg flex flex-col items-center">
+              <div className="text-lg font-semibold mb-4 text-center">
+                Are you sure you want to delete this {pendingDeleteNoteId ? 'note' : 'item'}?
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex gap-4 mt-2">
                 <button
-                  type="button"
-                  onClick={handleCloseModal}
+                  onClick={cancelDelete}
                   className="px-4 py-2 bg-gray-200 rounded-md text-gray-700"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
-                  {isEditMode ? 'Save Changes' : 'Save'}
+                  Delete
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {(pendingDeleteId || pendingDeleteNoteId) && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-xs shadow-lg flex flex-col items-center">
-            <div className="text-lg font-semibold mb-4 text-center">
-              Are you sure you want to delete this {pendingDeleteNoteId ? 'note' : 'item'}?
-            </div>
-            <div className="flex gap-4 mt-2">
-              <button
-                onClick={cancelDelete}
-                className="px-4 py-2 bg-gray-200 rounded-md text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

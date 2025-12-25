@@ -11,33 +11,33 @@ import { DocumentTextIcon } from '@heroicons/react/24/solid';
 // Helper function to parse and make links clickable
 const parseLinks = (text) => {
   if (!text) return text;
-  
+
   // Regex patterns for different link formats
   const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   const plainUrlRegex = /(https?:\/\/[^\s]+)/g;
-  
+
   // First, replace markdown links
   let processedText = text.replace(markdownLinkRegex, (match, label, url) => {
     return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${label}</a>`;
   });
-  
+
   // Then, replace plain URLs
   processedText = processedText.replace(plainUrlRegex, (match) => {
     // Skip if this URL is already part of a markdown link
     if (processedText.includes(`href="${match}"`)) {
       return match;
     }
-    
+
     const hostname = match.replace(/^https?:\/\//, '').split('/')[0];
     return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${hostname}</a>`;
   });
-  
+
   return processedText;
 };
 
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
   const navigate = useNavigate();
-  
+
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -66,7 +66,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState(null);
   const modalRef = useRef(null);
-  
+
   // State for pinned events
   const [pinnedEvents, setPinnedEvents] = useState(() => {
     try {
@@ -77,7 +77,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       return [];
     }
   });
-  
+
   // Format date to YYYY-MM-DD without timezone conversion
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -86,9 +86,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     return `${year}-${month}-${day}`;
   };
 
-  const [eventForm, setEventForm] = useState({ 
-    name: '', 
-    date: selectedDate ? formatDate(selectedDate) : '', 
+  const [eventForm, setEventForm] = useState({
+    name: '',
+    date: selectedDate ? formatDate(selectedDate) : '',
     endDate: '',
     type: 'event', // Add type field with default value 'event'
     bgColor: '#ffffff' // Default background color
@@ -97,23 +97,23 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   // Helper function to extract event details from note content
   const getEventDetails = (content) => {
     const lines = content.split('\n');
-    
+
     // Find the description
     const descriptionLine = lines.find(line => line.startsWith('event_description:'));
     const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
-    
+
     // Find the event date
     const eventDateLine = lines.find(line => line.startsWith('event_date:'));
     const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
-    
+
     // Find tags
     const tagsLine = lines.find(line => line.startsWith('event_tags:'));
     const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
-    
+
     // Check if it's a deadline
-    const isDeadline = tags.some(tag => tag.toLowerCase() === 'deadline') || 
-                      content.includes('meta::event_deadline') ||
-                      content.includes('meta::deadline');
+    const isDeadline = tags.some(tag => tag.toLowerCase() === 'deadline') ||
+      content.includes('meta::event_deadline') ||
+      content.includes('meta::deadline');
 
     return {
       description,
@@ -126,35 +126,35 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   // Helper function to calculate next occurrence for recurring events
   const calculateNextOccurrence = (originalDate, isDeadline = false) => {
     if (!originalDate) return null;
-    
+
     // For deadline events, don't calculate next occurrence - just return the original date
     if (isDeadline) {
       return new Date(originalDate);
     }
-    
+
     const eventDate = new Date(originalDate);
     const now = new Date();
     const currentYear = now.getFullYear();
-    
+
     // Create a new date with current year
     const nextOccurrence = new Date(eventDate);
     nextOccurrence.setFullYear(currentYear);
-    
+
     // If the date has already passed this year, use next year
     if (nextOccurrence < now) {
       nextOccurrence.setFullYear(currentYear + 1);
     }
-    
+
     return nextOccurrence;
   };
 
   // Get top 10 event notes
   const getEventNotes = () => {
     if (!notes) return [];
-    
+
     const now = new Date();
     now.setHours(0, 0, 0, 0); // Zero out time for accurate comparison
-    
+
     // Load stored background colors for event notes
     let storedColors = {};
     try {
@@ -165,18 +165,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     } catch (error) {
       console.error('Error loading event note colors:', error);
     }
-    
+
     return notes
       .filter(note => {
         if (!note?.content) return false;
-        
+
         // Only include notes with meta::event
         if (!note.content.includes('meta::event')) return false;
-        
+
         // Exclude notes with "purchase" tag
         const content = note.content.toLowerCase();
         if (content.includes('purchase')) return false;
-        
+
         // Exclude notes with "life_info", "recurring_payment", or "non_recurring" tags
         const lines = note.content.split('\n');
         const tagsLine = lines.find(line => line.startsWith('event_tags:'));
@@ -187,7 +187,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             return lowerTag === 'life_info' || lowerTag === 'recurring_payment' || lowerTag === 'non_recurring';
           })) return false;
         }
-        
+
         // Apply filter based on eventFilter
         if (eventFilter === 'all') {
           return true;
@@ -210,7 +210,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           }
           return false;
         }
-        
+
         return true;
       })
       .filter(note => {
@@ -221,7 +221,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           const lines = note.content.split('\n');
           const descriptionLine = lines.find(line => line.startsWith('event_description:'));
           const eventDescription = descriptionLine ? descriptionLine.replace('event_description:', '').trim().toLowerCase() : '';
-          
+
           // Search in the full content and event description
           return description.includes(searchTerm) || eventDescription.includes(searchTerm);
         }
@@ -229,13 +229,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       })
       .map(note => {
         const details = getEventDetails(note.content);
-        
+
         // Set default background color based on whether it's a deadline
         let defaultColor = '#ffffff'; // white
         if (details.isDeadline) {
           defaultColor = '#f3e8ff'; // purple for deadlines
         }
-        
+
         return {
           ...note,
           ...details,
@@ -244,15 +244,15 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       })
       .filter(event => {
         if (!event.dateTime) return false; // Only include events with valid dates
-        
+
         // Calculate next occurrence for recurring events
         const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
         if (!nextOccurrence) return false;
-        
+
         // Calculate days until event using the next occurrence
         nextOccurrence.setHours(0, 0, 0, 0);
         const daysUntilEvent = Math.ceil((nextOccurrence - now) / (1000 * 60 * 60 * 24));
-        
+
         // Only show events with 0 or positive days until event
         return daysUntilEvent >= 0;
       })
@@ -267,7 +267,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .sort((a, b) => {
         const daysA = Math.ceil((a.nextOccurrence - now) / (1000 * 60 * 60 * 24));
         const daysB = Math.ceil((b.nextOccurrence - now) / (1000 * 60 * 60 * 24));
-        
+
         // Sort by days until event (ascending) - no special treatment for pinned events
         return daysA - daysB;
       })
@@ -283,24 +283,24 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       isClosed: false,
       totalDollarAmount: 0
     };
-    
+
     // Check if timeline is closed
     timelineData.isClosed = lines.some(line => line.trim() === 'Closed');
-    
+
     // Get content lines (non-meta lines, excluding 'Closed')
-    const contentLines = lines.filter(line => 
+    const contentLines = lines.filter(line =>
       !line.trim().startsWith('meta::') && line.trim() !== '' && line.trim() !== 'Closed'
     );
-    
+
     // First line is the title
     if (contentLines.length > 0) {
       timelineData.title = contentLines[0].trim();
     }
-    
+
     // Calculate total dollar amount from all events
     let totalAmount = 0;
     let firstDateSet = false;
-    
+
     // Parse events from remaining content lines (skip first line which is title)
     for (let i = 1; i < contentLines.length; i++) {
       const line = contentLines[i].trim();
@@ -308,7 +308,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       const eventMatch = line.match(/^(.+?)\s*:\s*(.+)$/);
       if (eventMatch) {
         const eventText = eventMatch[1].trim();
-        
+
         // Extract dollar values from event text
         const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
         const matches = eventText.match(dollarRegex);
@@ -320,7 +320,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             }
           });
         }
-        
+
         // Get first date (keep the break behavior but only set firstDate once)
         if (!firstDateSet) {
           const dateStr = eventMatch[2].trim();
@@ -339,7 +339,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         }
       }
     }
-    
+
     timelineData.totalDollarAmount = totalAmount;
     return timelineData;
   };
@@ -347,7 +347,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   // Helper function to calculate timeline display text
   const calculateTimelineDisplayText = (daysSince) => {
     let timeUnit, displayText;
-    
+
     switch (displayMode) {
       case 'weeks':
         const weeks = Math.floor(daysSince / 7);
@@ -376,17 +376,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         timeUnit = 'days';
         displayText = `${daysSince} day${daysSince !== 1 ? 's' : ''}`;
     }
-    
+
     return { timeUnit, displayText };
   };
 
   // Helper function to get timeline notes
   const getTimelineNotes = () => {
     if (!notes) return [];
-    
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    
+
     return notes
       .filter(note => {
         if (!note?.content) return false;
@@ -425,10 +425,10 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   // Helper function to get pinned events only (doesn't limit to top 10)
   const getPinnedEventNotes = () => {
     if (!notes) return [];
-    
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    
+
     // Load stored background colors for event notes
     let storedColors = {};
     try {
@@ -439,7 +439,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     } catch (error) {
       console.error('Error loading event note colors:', error);
     }
-    
+
     return notes
       .filter(note => {
         if (!note?.content) return false;
@@ -449,7 +449,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .filter(note => {
         const content = note.content.toLowerCase();
         if (content.includes('purchase')) return false;
-        
+
         // Apply filter based on eventFilter
         if (eventFilter === 'all') {
           return true;
@@ -479,7 +479,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           const lines = note.content.split('\n');
           const descriptionLine = lines.find(line => line.startsWith('event_description:'));
           const eventDescription = descriptionLine ? descriptionLine.replace('event_description:', '').trim().toLowerCase() : '';
-          
+
           return description.includes(searchTerm) || eventDescription.includes(searchTerm);
         }
         return true;
@@ -561,7 +561,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
   // Debug modal state changes
   useEffect(() => {
-    
+
   }, [isModalOpen, isEditMode]);
 
   const handleEventInput = (e) => {
@@ -571,20 +571,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
   const handleEventSubmit = (e) => {
     e.preventDefault();
-    
-    
-    
+
+
+
     // Validation logic - allow empty content for notes
     if (eventForm.type === 'event') {
       if (!eventForm.name || !eventForm.date) {
-        
+
         return;
       }
     }
     // For notes, allow empty content - just proceed with submission
-    
-    
-    
+
+
+
     if (isEditMode && eventForm.id) {
       // Update existing event/note
       setEvents(prev => prev.map(ev => ev.id === eventForm.id ? { ...eventForm } : ev));
@@ -596,31 +596,31 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       };
       setEvents(prev => [...prev, newEvent]);
     }
-    
+
     // Save to localStorage
     try {
-      const updatedEvents = isEditMode 
+      const updatedEvents = isEditMode
         ? events.map(ev => ev.id === eventForm.id ? { ...eventForm } : ev)
         : [...events, { id: Date.now(), ...eventForm }];
       localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
     } catch (error) {
       console.error('Error saving events to localStorage:', error);
     }
-    
-    
-    
+
+
+
     // Reset form and close modal - use a more direct approach
     setEventForm({ name: '', date: '', endDate: '', type: 'note', bgColor: '#ffffff' });
     setIsEditMode(false);
-    
+
     // Force immediate close
     setIsModalOpen(false);
-    
+
     // Double-check after a brief delay
     setTimeout(() => {
-      
+
       if (isModalOpen) {
-        
+
         setIsModalOpen(false);
       }
     }, 50);
@@ -654,7 +654,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       });
       setPendingDeleteId(null);
     }
-    
+
     // Handle deleting notes
     if (pendingDeleteNoteId && onDeleteNote) {
       onDeleteNote(pendingDeleteNoteId);
@@ -691,10 +691,10 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
   const handleColorChange = (eventId, newColor) => {
     // Handle color changes for local events
-    setEvents(prev => prev.map(ev => 
+    setEvents(prev => prev.map(ev =>
       ev.id === eventId ? { ...ev, bgColor: newColor } : ev
     ));
-    
+
     // Handle color changes for event notes (from notes array)
     // Store the color preference in localStorage
     try {
@@ -711,16 +711,16 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const handlePinEvent = (eventId) => {
     setPinnedEvents(prev => {
       const isPinned = prev.includes(eventId);
-      const newPinnedEvents = isPinned 
+      const newPinnedEvents = isPinned
         ? prev.filter(id => id !== eventId)
         : [...prev, eventId];
-      
+
       try {
         localStorage.setItem('pinnedEvents', JSON.stringify(newPinnedEvents));
       } catch (error) {
         console.error('Error saving pinned events:', error);
       }
-      
+
       return newPinnedEvents;
     });
   };
@@ -740,7 +740,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const calculateAccurateMonths = (startDate, endDate) => {
     let months = 0;
     let tempDate = new Date(startDate);
-    
+
     // Count full months
     while (tempDate < endDate) {
       tempDate.setMonth(tempDate.getMonth() + 1);
@@ -748,12 +748,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         months++;
       }
     }
-    
+
     // Calculate remaining days
     const lastMonthDate = new Date(startDate);
     lastMonthDate.setMonth(lastMonthDate.getMonth() + months);
     const remainingDays = Math.ceil((endDate - lastMonthDate) / (1000 * 60 * 60 * 24));
-    
+
     return { months, remainingDays };
   };
 
@@ -770,7 +770,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   // Helper function to calculate display text based on mode
   const calculateDisplayText = (totalDays, displayMode, startDate, endDate) => {
     let timeLeft, timeUnit, displayText;
-    
+
     switch (displayMode) {
       case 'weeks':
         const weeks = Math.floor(totalDays / 7);
@@ -802,17 +802,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         timeUnit = 'days';
         displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
     }
-    
+
     return { timeLeft, timeUnit, displayText };
   };
 
-    return (
+  return (
     <div className="flex flex-col gap-4">
       {/* Pinned Events - Small Tiles */}
       {(type === 'all' || type === 'eventNotes') && (() => {
         const pinnedEventNotes = getPinnedEventNotes();
         if (pinnedEventNotes.length === 0) return null;
-        
+
         return (
           <div className="flex flex-row gap-2 flex-wrap">
             {pinnedEventNotes.map(note => {
@@ -821,15 +821,15 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
               now.setHours(0, 0, 0, 0);
               eventDate.setHours(0, 0, 0, 0);
               const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-              
+
               // Format the event date
-              const formattedDate = eventDate.toLocaleDateString(undefined, { 
-                weekday: 'short', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
+              const formattedDate = eventDate.toLocaleDateString(undefined, {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
               });
-              
+
               return (
                 <div
                   key={`pinned-${note.id}`}
@@ -849,21 +849,21 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           </div>
         );
       })()}
-      
-      <div className="flex flex-row gap-3 items-stretch">
-      {/* Events */}
-      {(type === 'all' || type === 'events') && (() => {
-        const eventItems = events.filter(ev => ev.type === 'event');
-        const sortedEvents = eventItems.sort((a, b) => {
-          const dateA = new Date(a.date + 'T00:00');
-          const dateB = new Date(b.date + 'T00:00');
-          const now = new Date();
-          const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
-          const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
-          return Math.abs(daysA) - Math.abs(daysB);
-        });
 
-        return sortedEvents.map(ev => {
+      <div className="flex flex-row gap-3 items-stretch">
+        {/* Events */}
+        {(type === 'all' || type === 'events') && (() => {
+          const eventItems = events.filter(ev => ev.type === 'event');
+          const sortedEvents = eventItems.sort((a, b) => {
+            const dateA = new Date(a.date + 'T00:00');
+            const dateB = new Date(b.date + 'T00:00');
+            const now = new Date();
+            const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
+            const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
+            return Math.abs(daysA) - Math.abs(daysB);
+          });
+
+          return sortedEvents.map(ev => {
             const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
             const now = new Date();
             // Zero out time for accurate day diff
@@ -871,7 +871,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             eventDate.setHours(0, 0, 0, 0);
             const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
             const age = getAgeInStringFmt(eventDate);
-            
+
             let timeLeft, timeUnit, displayText;
             switch (displayMode) {
               case 'weeks':
@@ -905,19 +905,19 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 timeUnit = 'days';
                 displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
             }
-            
+
             return (
-              <div 
-                key={ev.id} 
-                className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow" 
+              <div
+                key={ev.id}
+                className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow"
                 style={{ backgroundColor: ev.bgColor || '#ffffff' }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
               >
                 <div className="text-2xl font-bold text-gray-600">{displayText}</div>
                 <div className="text-sm text-gray-500">until</div>
-                <div 
-                  className="font-medium text-gray-900 w-full break-words leading-relaxed" 
+                <div
+                  className="font-medium text-gray-900 w-full break-words leading-relaxed"
                   style={{ wordBreak: 'break-word', lineHeight: '1.6' }}
                   dangerouslySetInnerHTML={{ __html: parseLinks(ev.name) }}
                 />
@@ -941,21 +941,21 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       />
                     ))}
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditEvent(ev);
-                    }} 
+                    }}
                     className="text-blue-500 hover:text-blue-700 p-1"
                     title="Edit"
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteEvent(ev.id);
-                    }} 
+                    }}
                     className="text-red-500 hover:text-red-700 p-1"
                     title="Delete"
                   >
@@ -970,19 +970,19 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         {/* Note Cards */}
         {(type === 'all' || type === 'notes') && (() => {
           const noteItems = events.filter(ev => ev.type === 'note');
-          
+
           return noteItems.map(ev => {
             const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
               <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
-                <div 
-                  className="font-bold text-gray-900 w-full break-words" 
+                <div
+                  className="font-bold text-gray-900 w-full break-words"
                   style={{ wordBreak: 'break-word' }}
                   dangerouslySetInnerHTML={{ __html: parseLinks(header) }}
                 />
                 {bodyLines.length > 0 && (
-                  <div 
-                    className="text-sm text-gray-700 w-full break-words whitespace-pre-line mt-1" 
+                  <div
+                    className="text-sm text-gray-700 w-full break-words whitespace-pre-line mt-1"
                     style={{ wordBreak: 'break-word' }}
                     dangerouslySetInnerHTML={{ __html: parseLinks(bodyLines.join('\n')) }}
                   />
@@ -1003,7 +1003,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       />
                     ))}
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditEvent(ev);
@@ -1013,7 +1013,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteEvent(ev.id);
@@ -1032,7 +1032,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         {/* Event Notes */}
         {(type === 'all' || type === 'eventNotes') && (() => {
           const eventNotes = getEventNotes();
-          
+
           return eventNotes.map(note => {
             // Use the calculated next occurrence instead of the original date
             const eventDate = note.nextOccurrence ? new Date(note.nextOccurrence) : new Date(note.dateTime);
@@ -1041,22 +1041,22 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             now.setHours(0, 0, 0, 0);
             eventDate.setHours(0, 0, 0, 0);
             const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-            
+
             const { timeLeft, timeUnit, displayText } = calculateDisplayText(totalDays, displayMode, now, eventDate);
-            
+
             // Check if this is a recurring event (original date year is different from current year)
             const originalDate = new Date(note.dateTime);
             const isRecurring = originalDate.getFullYear() !== new Date().getFullYear();
-            
+
             // Check if event is today
             const isToday = totalDays === 0;
-            
+
             // Don't show anniversary for deadline events
             const shouldShowAnniversary = isRecurring && !note.isDeadline;
-            
+
             return (
-              <div 
-                key={note.id} 
+              <div
+                key={note.id}
                 className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} relative overflow-hidden`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
@@ -1076,13 +1076,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 <div className={`text-sm ${isToday ? 'text-green-700' : (note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500')}`}>
                   {isToday ? '' : (shouldShowAnniversary ? 'anniversary' : 'until')}
                 </div>
-                <div 
-                  className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} 
+                <div
+                  className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`}
                   title={note.description}
                   dangerouslySetInnerHTML={{ __html: parseLinks(note.description) }}
                 />
                 {note.notes && (
-                  <div 
+                  <div
                     className={`text-xs mt-1 w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-700' : 'text-gray-600'}`}
                     title={note.notes}
                     dangerouslySetInnerHTML={{ __html: parseLinks(note.notes) }}
@@ -1100,15 +1100,15 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     `on ${eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`
                   )}
                 </div>
-                
+
                 {/* Pin indicator - always visible when pinned */}
                 {pinnedEvents.includes(note.id) && (
                   <div className="absolute top-2 right-2">
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePinEvent(note.id);
-                      }} 
+                      }}
                       className="text-yellow-600 hover:text-yellow-700 transition-colors"
                       title="Unpin Event"
                     >
@@ -1118,17 +1118,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 )}
                 <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">
                   {/* Pin Button - always show in hover controls */}
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePinEvent(note.id);
-                    }} 
+                    }}
                     className={`p-1 transition-colors flex-shrink-0 ${pinnedEvents.includes(note.id) ? 'text-yellow-600' : 'text-gray-400 hover:text-yellow-600'}`}
                     title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
                   >
                     <MapPinIcon className="h-4 w-4" />
                   </button>
-                  
+
                   {/* Color Options */}
                   <div className="flex gap-0.5 flex-wrap">
                     {colorOptions.map(color => (
@@ -1144,13 +1144,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       />
                     ))}
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onEditEvent) {
                         onEditEvent(note);
                       }
-                    }} 
+                    }}
                     className="text-blue-500 hover:text-blue-700 p-1 flex-shrink-0"
                     title="Edit Event"
                   >
@@ -1168,11 +1168,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                       <PhotoIcon className="h-4 w-4" />
                     </a>
                   )}
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteNote(note.id);
-                    }} 
+                    }}
                     className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
                     title="Delete Event"
                   >
@@ -1189,12 +1189,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       {(type === 'all' || type === 'eventNotes') && (() => {
         const timelineNotes = getTimelineNotes();
         if (timelineNotes.length === 0) return null;
-        
+
         return (
           <div className="flex flex-row gap-2 flex-wrap mt-4">
             {timelineNotes.map(timeline => {
               const { timeUnit, displayText } = calculateTimelineDisplayText(timeline.daysSince);
-              
+
               return (
                 <div
                   key={`timeline-${timeline.id}`}
@@ -1217,16 +1217,16 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     {timeline.title}
                   </div>
                   <div className="text-xs font-semibold text-gray-900 mt-1">
-                    {timeline.firstDate.toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric' 
+                    {timeline.firstDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
                     })}
                   </div>
                   <div className="text-xs text-gray-600 mt-1" title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}>
                     {displayText} since start
                   </div>
-                  {timeline.totalDollarAmount && timeline.totalDollarAmount > 0 && (
+                  {timeline.totalDollarAmount > 0 && (
                     <div className="text-xs text-green-600 font-semibold mt-1">
                       ${timeline.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
@@ -1278,34 +1278,34 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Event Name</label>
-                    <input 
-                      type="text" 
-                      name="name" 
-                      value={eventForm.name} 
-                      onChange={handleEventInput} 
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
-                      required 
+                    <input
+                      type="text"
+                      name="name"
+                      value={eventForm.name}
+                      onChange={handleEventInput}
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Event Date</label>
-                    <input 
-                      type="date" 
-                      name="date" 
-                      value={eventForm.date} 
-                      onChange={handleEventInput} 
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
-                      required 
+                    <input
+                      type="date"
+                      name="date"
+                      value={eventForm.date}
+                      onChange={handleEventInput}
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
-                    <input 
-                      type="date" 
-                      name="endDate" 
-                      value={eventForm.endDate} 
-                      onChange={handleEventInput} 
-                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={eventForm.endDate}
+                      onChange={handleEventInput}
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                     />
                   </div>
                 </>
@@ -1325,15 +1325,15 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
                   className="px-4 py-2 bg-gray-200 rounded-md text-gray-700"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
                 >
                   {isEditMode ? 'Save Changes' : 'Save'}

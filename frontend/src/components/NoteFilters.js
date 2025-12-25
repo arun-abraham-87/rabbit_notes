@@ -22,10 +22,6 @@ const NoteFilters = ({
   onExcludeTrackersChange,
   resetFilters = false
 }) => {
-  const [showTodoButtons, setShowTodoButtons] = useState(false);
-  const [showEventButtons, setShowEventButtons] = useState(false);
-  const [showMeetingButtons, setShowMeetingButtons] = useState(false);
-  const [activePriorityFilter, setActivePriorityFilter] = useState('');
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
   const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
@@ -35,7 +31,6 @@ const NoteFilters = ({
   const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
   const [excludeSensitive, setExcludeSensitive] = useState(true); // Default to true to exclude sensitive notes
   const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
-  const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
   useEffect(() => {
@@ -57,11 +52,6 @@ const NoteFilters = ({
   }, [excludeMeetings, onExcludeMeetingsChange]);
 
   // Notify parent component when deadline passed filter changes
-  useEffect(() => {
-    if (onDeadlinePassedChange) {
-      onDeadlinePassedChange(showDeadlinePassedFilter);
-    }
-  }, [showDeadlinePassedFilter, onDeadlinePassedChange]);
 
   useEffect(() => {
     if (onExcludeEventNotesChange) {
@@ -116,12 +106,6 @@ const NoteFilters = ({
       setExcludeBookmarks(false);
       setExcludeExpenses(false);
       setExcludeSensitive(false);
-      setShowDeadlinePassedFilter(false);
-      setShowTodoButtons(false);
-      setShowEventButtons(false);
-      setShowMeetingButtons(false);
-      setActivePriorityFilter('');
-      setActivePriority('');
     }
   }, [resetFilters]);
 
@@ -152,54 +136,10 @@ const NoteFilters = ({
     }
   };
 
-  const handleTodoClick = () => {
-    const filterAdded = toggleFilter('meta::todo');
-    
-    if (filterAdded) {
-      setShowTodoButtons(true);
-      setShowTodoSubButtons(true);
-    } else {
-      setShowTodoButtons(false);
-      setShowTodoSubButtons(false);
-      setActivePriority('');
-      setActivePriorityFilter('');
-      // Remove any priority tags when todo is removed
-      if (setSearchQuery) {
-        setSearchQuery(prev => {
-          const words = prev.split(' ');
-          return words
-            .filter(word => 
-              !word.includes('meta::high') && 
-              !word.includes('meta::medium') && 
-              !word.includes('meta::low')
-            )
-            .join(' ')
-            .trim();
-        });
-      }
-    }
-
-    setLines((prev) => {
-      if (filterAdded) {
-        const exists = prev.some(line => line.text.includes('meta::todo'));
-        if (exists) return prev;
-        return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo', isTitle: false }];
-      } else {
-        // Remove todo and priority lines
-        return prev.filter(line => 
-          !line.text.includes('meta::todo') && 
-          !line.text.includes('meta::high') && 
-          !line.text.includes('meta::medium') && 
-          !line.text.includes('meta::low')
-        );
-      }
-    });
-  };
 
   const handleEventClick = () => {
     const filterAdded = toggleFilter('meta::event::');
-    setShowEventButtons(filterAdded);
-    
+
     // If filter is added, uncheck exclude events
     if (filterAdded) {
       setExcludeEvents(false);
@@ -207,7 +147,7 @@ const NoteFilters = ({
       // When filter is removed, restore default state from settings
       setExcludeEvents(settings.excludeEventsByDefault || false);
     }
-    
+
     setLines((prev) => {
       if (filterAdded) {
         const exists = prev.some(line => line.text.includes('meta::event::'));
@@ -219,65 +159,7 @@ const NoteFilters = ({
     });
   };
 
-  const handleMeetingClick = () => {
-    const filterAdded = toggleFilter('meta::meeting::');
-    setShowMeetingButtons(filterAdded);
-    
-    // If filter is added, uncheck exclude meetings
-    if (filterAdded) {
-      setExcludeMeetings(false);
-    } else {
-      // When filter is removed, restore default state from settings
-      setExcludeMeetings(settings.excludeMeetingsByDefault || false);
-    }
-    
-    setLines((prev) => {
-      if (filterAdded) {
-        const exists = prev.some(line => line.text.includes('meta::meeting::'));
-        if (exists) return prev;
-        return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::meeting::', isTitle: false }];
-      } else {
-        return prev.filter(line => !line.text.includes('meta::meeting::'));
-      }
-    });
-  };
 
-  const handlePriorityClick = (priority, metaTag) => {
-    if (activePriorityFilter === priority) {
-      // Remove the priority
-      setActivePriorityFilter('');
-      setActivePriority('');
-      removeFilterFromQuery(metaTag);
-      setLines((prev) => prev.filter(line => !line.text.includes(metaTag)));
-    } else {
-      // Set new priority
-      setLines((prev) => {
-        const withoutPriorities = prev.filter(line => 
-          !line.text.includes('meta::high') && 
-          !line.text.includes('meta::medium') && 
-          !line.text.includes('meta::low')
-        );
-        return [...withoutPriorities, { id: `line-${Date.now()}`, text: metaTag, isTitle: false }];
-      });
-
-      if (setSearchQuery) {
-        setSearchQuery(prev => {
-          const withoutPriorities = prev
-            .split(' ')
-            .filter(word => 
-              !word.includes('meta::high') && 
-              !word.includes('meta::medium') && 
-              !word.includes('meta::low')
-            )
-            .join(' ');
-          return `${withoutPriorities} ${metaTag}`.trim();
-        });
-      }
-
-      setActivePriorityFilter(priority);
-      setActivePriority(priority);
-    }
-  };
 
   const handleFilterClick = (filterText) => {
     const filterAdded = toggleFilter(filterText);
@@ -372,7 +254,7 @@ const NoteFilters = ({
   // Helper function to filter notes based on search query
   const getNotesMatchingSearch = () => {
     if (!searchQuery) return allNotes;
-    
+
     return allNotes.filter(note => {
       // Check if note matches search criteria
       return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
@@ -383,70 +265,57 @@ const NoteFilters = ({
   const notesMatchingSearch = getNotesMatchingSearch();
 
   // Calculate sensitive notes count (only from notes matching search)
-  const sensitiveNotesCount = notesMatchingSearch.filter(note => 
+  const sensitiveNotesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::sensitive::')
   ).length;
 
   // Calculate tracker notes count (only from notes matching search)
-  const trackerNotesCount = notesMatchingSearch.filter(note => 
+  const trackerNotesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::tracker')
   ).length;
 
   // Calculate event notes count (only from notes matching search)
-  const eventNotesCount = notesMatchingSearch.filter(note => 
+  const eventNotesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::event::')
   ).length;
 
   // Calculate backup notes count (only from notes matching search)
-  const backupNotesCount = notesMatchingSearch.filter(note => 
+  const backupNotesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::notes_backup_date')
   ).length;
 
   // Calculate watch events count (only from notes matching search)
-  const watchEventsCount = notesMatchingSearch.filter(note => 
+  const watchEventsCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::watch')
   ).length;
 
   // Calculate bookmarks count (only from notes matching search)
-  const bookmarksCount = notesMatchingSearch.filter(note => 
+  const bookmarksCount = notesMatchingSearch.filter(note =>
     note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))
   ).length;
 
   // Calculate expenses count (only from notes matching search)
-  const expensesCount = notesMatchingSearch.filter(note => 
+  const expensesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::expense')
   ).length;
 
   const handleClear = () => {
-    setShowTodoButtons(false);
-    setShowEventButtons(false);
-    setShowMeetingButtons(false);
-    setActivePriorityFilter('');
-    setShowTodoSubButtons(false);
-    setActivePriority('');
     setExcludeEvents(false);
     setExcludeMeetings(false);
     setExcludeEventNotes(false); // Clear all checkboxes
     setExcludeBackupNotes(false); // Clear all checkboxes
-          setExcludeWatchEvents(false); // Clear watch events checkbox
-      setExcludeBookmarks(false); // Clear bookmarks checkbox
-      setExcludeExpenses(false); // Clear expenses checkbox
-      setExcludeSensitive(false); // Clear sensitive checkbox
-      setExcludeTrackers(false); // Clear tracker checkbox
+    setExcludeWatchEvents(false); // Clear watch events checkbox
+    setExcludeBookmarks(false); // Clear bookmarks checkbox
+    setExcludeExpenses(false); // Clear expenses checkbox
+    setExcludeSensitive(false); // Clear sensitive checkbox
+    setExcludeTrackers(false); // Clear tracker checkbox
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
 
   const handleReset = () => {
     // Reset to initial state (on load state)
-    setShowTodoButtons(false);
-    setShowEventButtons(false);
-    setShowMeetingButtons(false);
-    setActivePriorityFilter('');
-    setShowTodoSubButtons(false);
-    setActivePriority('');
-    setShowDeadlinePassedFilter(false);
-    
+
     // Reset exclude checkboxes to their initial values
     setExcludeEvents(settings.excludeEventsByDefault || false);
     setExcludeMeetings(settings.excludeMeetingsByDefault || false);
@@ -457,7 +326,7 @@ const NoteFilters = ({
     setExcludeExpenses(true); // Default to true to exclude expenses
     setExcludeSensitive(true); // Default to true to exclude sensitive notes
     setExcludeTrackers(true); // Default to true to exclude tracker notes
-    
+
     // Clear search query and lines
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
@@ -468,164 +337,62 @@ const NoteFilters = ({
       {/* Main filter buttons */}
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={handleTodoClick}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            showTodoButtons
-              ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          Todos
-        </button>
-
-        <button
           onClick={handleEventClick}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            showEventButtons
-              ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::event::')
+            ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
+            : 'opacity-30 hover:opacity-60 border'
+            }`}
         >
           Events
         </button>
 
         <button
-          onClick={handleMeetingClick}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            showMeetingButtons
-              ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          Meetings
-        </button>
-
-        {showTodoButtons && (
-          <div className="flex gap-1">
-            <button
-              onClick={() => handlePriorityClick('high', 'meta::high')}
-              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-                ${activePriorityFilter === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
-            >
-              High
-            </button>
-            <button
-              onClick={() => handlePriorityClick('medium', 'meta::medium')}
-              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-                ${activePriorityFilter === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
-            >
-              Medium
-            </button>
-            <button
-              onClick={() => handlePriorityClick('low', 'meta::low')}
-              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-                ${activePriorityFilter === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
-            >
-              Low
-            </button>
-          </div>
-        )}
-
-        <button
           onClick={() => handleFilterClick('meta::watch')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('#watch')
-              ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#watch')
+            ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
+            : 'opacity-30 hover:opacity-60 border'
+            }`}
         >
           Watch List
         </button>
 
         <button
-          onClick={() => handleFilterClick('meta::today::')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::today::')
-              ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          Today
-        </button>
-
-        <button
-          onClick={() => {
-            const filterAdded = toggleFilter('meta::end_date::');
-            setShowDeadlinePassedFilter(filterAdded);
-          }}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::end_date::')
-              ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          End Date
-        </button>
-
-        {showDeadlinePassedFilter && (
-          <button
-            onClick={() => setShowDeadlinePassedFilter(prev => !prev)}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${
-              showDeadlinePassedFilter
-                ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
-                : 'opacity-30 hover:opacity-60 border'
+          onClick={() => handleFilterClick('meta::event_deadline:')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::event_deadline:')
+            ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
+            : 'opacity-30 hover:opacity-60 border'
             }`}
-          >
-            Deadline Passed
-          </button>
-        )}
+        >
+          Deadline
+        </button>
 
         <button
           onClick={() => handleFilterClick('meta::Abbreviation::')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::Abbreviation::')
-              ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::Abbreviation::')
+            ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
+            : 'opacity-30 hover:opacity-60 border'
+            }`}
         >
           Abbreviation
         </button>
 
         <button
           onClick={handleWorkstreamClick}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::workstream')
-              ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::workstream')
+            ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
+            : 'opacity-30 hover:opacity-60 border'
+            }`}
         >
           Workstream
         </button>
 
-        <button
-          onClick={() => handleFilterClick('meta::review_pending')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::review_pending')
-              ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          Review Pending
-        </button>
-
-        <button
-          onClick={() => handleFilterClick('meta::people')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::people')
-              ? 'opacity-100 scale-105 bg-pink-300 border border-pink-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
-        >
-          People
-        </button>
 
         <button
           onClick={() => handleFilterClick('meta::notes_pinned')}
-          className={`px-3 py-1 text-xs rounded transition-all transform ${
-            searchQuery?.includes('meta::notes_pinned')
-              ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
-              : 'opacity-30 hover:opacity-60 border'
-          }`}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::notes_pinned')
+            ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
+            : 'opacity-30 hover:opacity-60 border'
+            }`}
         >
           Pinned Notes
         </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Alerts } from './Alerts';
 
 
@@ -20,12 +20,12 @@ import {
 import NoteEditor from './NoteEditor';
 import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { 
-  ChevronRightIcon, 
-  ChevronLeftIcon, 
-  CalendarIcon, 
-  EyeIcon, 
-  EyeSlashIcon, 
+import {
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  CalendarIcon,
+  EyeIcon,
+  EyeSlashIcon,
   PencilIcon,
   DocumentTextIcon,
   FlagIcon,
@@ -65,12 +65,12 @@ const NotesList = ({
   activePage = 'notes',
   focusMode = false,
   bulkDeleteMode = false,
-  setBulkDeleteMode = () => {},
-  refreshTags = () => {},
-  onReturnToSearch = () => {},
+  setBulkDeleteMode = () => { },
+  refreshTags = () => { },
+  onReturnToSearch = () => { },
 }) => {
   // Debug logging for developer mode
-  
+
   const location = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -100,7 +100,7 @@ const NotesList = ({
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
   const [addingLineNoteId, setAddingLineNoteId] = useState(null);
-  
+
   // Image handling state for NoteEditor
   const [pastedImageForEditor, setPastedImageForEditor] = useState(null);
   const [imagePreviewForEditor, setImagePreviewForEditor] = useState(null);
@@ -111,15 +111,15 @@ const NotesList = ({
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
-      
+
       img.onload = () => {
         // Keep original dimensions
         canvas.width = img.width;
         canvas.height = img.height;
-        
+
         // Draw image on canvas
         ctx.drawImage(img, 0, 0);
-        
+
         // Convert to blob with compression
         canvas.toBlob(
           (blob) => resolve(blob),
@@ -127,7 +127,7 @@ const NotesList = ({
           quality
         );
       };
-      
+
       img.src = URL.createObjectURL(file);
     });
   };
@@ -135,7 +135,7 @@ const NotesList = ({
   // Upload image to server
   const uploadImage = async (file) => {
     const formData = new FormData();
-    
+
     // Compress image first (except for GIFs to preserve animation)
     let fileToProcess = file;
     if (file.type !== 'image/gif') {
@@ -143,17 +143,17 @@ const NotesList = ({
       fileToProcess = await compressImage(file, 0.8);
       console.log(`📊 Compressed size: ${(fileToProcess.size / 1024 / 1024).toFixed(2)} MB`);
     }
-    
+
     // Ensure the file has a proper extension based on its MIME type
     let filename = file.name;
     if (!filename || !filename.includes('.')) {
       const mimeType = fileToProcess.type;
       let extension = '.jpg'; // Default to JPG for compressed images
-      
+
       if (file.type === 'image/gif') extension = '.gif'; // Keep GIF as GIF
       else if (file.type === 'image/png' && file.type === fileToProcess.type) extension = '.png';
       else extension = '.jpg'; // Compressed images become JPG
-      
+
       filename = `clipboard-image${extension}`;
     } else {
       // Update extension if we compressed to JPEG
@@ -161,10 +161,10 @@ const NotesList = ({
         filename = filename.replace(/\.[^/.]+$/, '.jpg');
       }
     }
-    
+
     // Create a new File object with proper filename
     const finalFile = new File([fileToProcess], filename, { type: fileToProcess.type });
-    
+
     formData.append('image', finalFile);
 
     try {
@@ -206,53 +206,74 @@ const NotesList = ({
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
   const [rawNote, setRawNote] = useState(null);
-  
+
   // Link popup state
   const [showLinkPopup, setShowLinkPopup] = useState(false);
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [linkPopupSourceNoteId, setLinkPopupSourceNoteId] = useState(null);
   const showLinkPopupRef = useRef(false);
-  
+
   // Add state for link edit popup
   const [showLinkEditPopup, setShowLinkEditPopup] = useState(false);
   const [editingLink, setEditingLink] = useState(null); // {noteId, linkIndex, text, url}
   const [editLinkText, setEditLinkText] = useState('');
   const [editLinkUrl, setEditLinkUrl] = useState('');
-  
+
   // Note navigation state
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
   const safeNotesRef = useRef(safeNotes);
-  
+
   // Bulk delete state
   const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
-  
+
   // Multi-move state
   const [multiMoveNoteId, setMultiMoveNoteId] = useState(null);
-  
+
   // Add state for note action popup
   const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
-  
+  const navigate = useNavigate();
+
+  // Update URL search parameters when focusedNoteIndex changes
+  useEffect(() => {
+    // Only update URL if we are on the notes page
+    if (location.pathname !== '/notes') return;
+
+    const currentParams = new URLSearchParams(location.search);
+    const focusedNote = safeNotes[focusedNoteIndex];
+
+    if (focusedNote) {
+      if (currentParams.get('note') !== focusedNote.id) {
+        currentParams.set('note', focusedNote.id);
+        navigate({ search: currentParams.toString() }, { replace: true });
+      }
+    } else if (focusedNoteIndex === -1 && currentParams.has('note')) {
+      // Clear the note parameter if no note is focused (e.g., focus back to search)
+      currentParams.delete('note');
+      navigate({ search: currentParams.toString() }, { replace: true });
+    }
+  }, [focusedNoteIndex, safeNotes, location.pathname, location.search, navigate]);
+
   // Callback to set focused note index
   const handleSetFocusedNoteIndex = (index) => {
-    
+
     setFocusedNoteIndex(index);
   };
-  
+
   // Debug focused note changes
   useEffect(() => {
-    
+
     if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
-      
+
     }
   }, [focusedNoteIndex, safeNotes]);
-  
+
   // Keep refs in sync with state
   useEffect(() => {
     focusedNoteIndexRef.current = focusedNoteIndex;
   }, [focusedNoteIndex]);
-  
+
   useEffect(() => {
     safeNotesRef.current = safeNotes;
   }, [safeNotes]);
@@ -260,27 +281,27 @@ const NotesList = ({
   // Handle bulk delete mode toggle from keyboard
   useEffect(() => {
     const handleToggleBulkDeleteMode = () => {
-      
-      
-      
-      
+
+
+
+
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        
-        
+
+
         if (bulkDeleteMode && bulkDeleteNoteId === focusedNote.id) {
           // Exit bulk delete mode for this note
-          
+
           setBulkDeleteMode(false);
           setBulkDeleteNoteId(null);
         } else {
           // Enter bulk delete mode for this note
-          
+
           setBulkDeleteMode(true);
           setBulkDeleteNoteId(focusedNote.id);
         }
       } else {
-        
+
       }
     };
 
@@ -293,25 +314,25 @@ const NotesList = ({
   // Handle multi-move mode toggle from keyboard
   useEffect(() => {
     const handleToggleMultiMoveMode = () => {
-      
-      
-      
-      
+
+
+
+
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        
-        
+
+
         if (multiMoveNoteId === focusedNote.id) {
           // Exit multi-move mode for this note
-          
+
           setMultiMoveNoteId(null);
         } else {
           // Enter multi-move mode for this note
-          
+
           setMultiMoveNoteId(focusedNote.id);
         }
       } else {
-        
+
       }
     };
 
@@ -338,32 +359,32 @@ const NotesList = ({
 
   // Handle 't' key to open note editor in text mode
   useEffect(() => {
-    
+
     const handleOpenNoteEditorTextMode = () => {
-      
-      
-      
-      
+
+
+
+
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        
-        
+
+
         // Open the note editor with the focused note and set text mode flag
         setPopupNoteText(focusedNote.id);
         // Set a flag to indicate this should open in text mode
         localStorage.setItem('openInTextMode', 'true');
       } else {
-        
+
       }
     };
 
     document.addEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
     return () => {
-      
+
       document.removeEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
     };
   }, [focusedNoteIndex, allNotes]);
-  
+
   useEffect(() => {
     showLinkPopupRef.current = showLinkPopup;
   }, [showLinkPopup]);
@@ -387,7 +408,7 @@ const NotesList = ({
         setSearchQuery(firstLine);
       }
     }
-    
+
     // Then scroll to the note
     document
       .querySelector(`#note-${id}`)
@@ -440,7 +461,7 @@ const NotesList = ({
     );
     updateTotals(allNotes.length);
     setDeletingNoteId(0);
-    
+
   };
 
   const handleTextSelection = (e) => {
@@ -597,7 +618,7 @@ const NotesList = ({
           e.stopPropagation();
           return;
         }
-        
+
         setRightClickText(null);
         setRightClickIndex(null);
         setRightClickNoteId(null);
@@ -621,17 +642,17 @@ const NotesList = ({
       )) {
         return; // Don't block - let the input handle it
       }
-      
+
       // Only block arrow keys if we're in a modal but NOT in a note editor
       const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
       const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
       const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
-      
+
       // Check if we're in a note editor
       const noteEditorContainer = document.querySelector('.note-editor-container');
       const isInNoteEditor = noteEditorContainer?.contains(document.activeElement);
-      
+
       // Only block if we're in a modal but NOT in a note editor
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
         e.preventDefault();
@@ -639,7 +660,7 @@ const NotesList = ({
         return;
       }
     };
-    
+
     document.addEventListener('keydown', handleGlobalArrowKeys, true); // Use capture phase
     return () => {
       document.removeEventListener('keydown', handleGlobalArrowKeys, true);
@@ -659,18 +680,18 @@ const NotesList = ({
       )) {
         return; // Don't block - let the input handle it
       }
-      
+
       // Check if any modal or popup is open and block arrow keys completely
       const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
       const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
       const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
-      
+
       // Check if we're in a note editor specifically
       const noteEditorContainer = document.querySelector('.note-editor-container');
-      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) || 
-                            document.activeElement?.closest('.note-editor-container');
-      
+      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) ||
+        document.activeElement?.closest('.note-editor-container');
+
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor) {
         // Block arrow keys when any modal is open BUT NOT when in note editor
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k') {
@@ -679,83 +700,83 @@ const NotesList = ({
           return;
         }
       }
-      
+
       // If link popup is open, completely skip all keyboard handling
       if (showLinkPopupRef.current) {
-        
+
         e.preventDefault();
         e.stopPropagation();
         return;
       }
-      
+
       // Additional check: if the event target is within the link popup, skip processing
       const linkPopupElement = document.querySelector('[data-link-popup]');
       if (linkPopupElement && linkPopupElement.contains(e.target)) {
-        
+
         return;
       }
-      
+
       // Check if any popup is open - if so, don't handle general keyboard shortcuts
       const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
-      
+
       // Also check if note editor modal is open
       const noteEditorModal = document.querySelector('.note-editor-container[data-modal="true"]');
       const isNoteEditorOpen = noteEditorModal !== null;
       if (isAnyPopupOpen || isNoteEditorOpen) {
-        
+
         // Allow number keys (1, 2, 0) to pass through to note editor for header formatting
         if (e.key === '1' || e.key === '2' || e.key === '0') {
-          
+
           return; // Don't block, let it pass through
         }
-        
+
         return;
       }
-      
+
       // Skip all keyboard handling if the target is a textarea or input
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
-        
+
         return;
       }
-      
+
       // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G and Shift+~)
-      if (!e.metaKey && !e.ctrlKey && !e.altKey && 
-          e.target.tagName !== 'INPUT' && 
-          e.target.tagName !== 'TEXTAREA' &&
-          e.target.contentEditable !== 'true' &&
-          !(e.shiftKey && e.key !== 'G' && e.key !== '~') &&
-          !e.target.closest('textarea')) {
-        
+      if (!e.metaKey && !e.ctrlKey && !e.altKey &&
+        e.target.tagName !== 'INPUT' &&
+        e.target.tagName !== 'TEXTAREA' &&
+        e.target.contentEditable !== 'true' &&
+        !(e.shiftKey && e.key !== 'G' && e.key !== '~') &&
+        !e.target.closest('textarea')) {
+
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
-        
+
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // Only handle note navigation if no note is in super edit mode
           if (!isAnyNoteInSuperEditMode) {
             e.preventDefault();
             e.stopPropagation();
-            
-            
-            
+
+
+
             if (safeNotesRef.current.length === 0) return;
-            
+
             // If no note is currently focused, start with the first note
             let currentIndex = focusedNoteIndexRef.current;
             if (currentIndex === -1) {
               currentIndex = 0;
             }
-            
+
             let newIndex;
             if (e.key === 'ArrowUp') {
-              
+
               // If we're on the first note, move focus back to search bar
               if (currentIndex === 0) {
-                
+
                 // Call the callback to return focus to search bar
                 onReturnToSearch();
                 return;
               } else {
-                
+
                 // Move to previous note (don't cycle to last)
                 newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
               }
@@ -763,10 +784,10 @@ const NotesList = ({
               // Move to next note (don't cycle back to first)
               newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : currentIndex;
             }
-            
-            
+
+
             setFocusedNoteIndex(newIndex);
-            
+
             // Scroll to the focused note
             const focusedNote = safeNotesRef.current[newIndex];
             if (focusedNote) {
@@ -776,14 +797,14 @@ const NotesList = ({
               }
             }
           } else {
-            
+
           }
         } else if (e.key === 'G') {
-          
-                } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
+
+        } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
-                             e.target.tagName === 'TEXTAREA';
+            e.target.tagName === 'TEXTAREA';
           if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
@@ -792,9 +813,9 @@ const NotesList = ({
               // Regex to match both markdown-style links [text](url) and plain URLs
               const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
               const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
-              
+
               const links = [];
-              
+
               // Extract markdown-style links first
               let match;
               while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
@@ -803,7 +824,7 @@ const NotesList = ({
                   text: match[1]
                 });
               }
-              
+
               // Extract plain URLs (excluding those already found in markdown links)
               const markdownUrls = links.map(link => link.url);
               while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
@@ -814,7 +835,7 @@ const NotesList = ({
                   });
                 }
               }
-              
+
               // Always show popup, even if there are no links
               setLinkPopupLinks(links);
               setSelectedLinkIndex(0);
@@ -822,19 +843,19 @@ const NotesList = ({
               setShowLinkPopup(true);
             }
           } else {
-            
+
           }
         } else if (e.key === 'G' && e.shiftKey && safeNotesRef.current.length > 0) {
           e.preventDefault();
           e.stopPropagation();
-          
-          
-          
+
+
+
           // Move to the last note
           const lastNoteIndex = safeNotesRef.current.length - 1;
-          
+
           setFocusedNoteIndex(lastNoteIndex);
-          
+
           // Scroll to the last note
           const lastNote = safeNotesRef.current[lastNoteIndex];
           if (lastNote) {
@@ -848,7 +869,7 @@ const NotesList = ({
           if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
             return;
           }
-          
+
           // Open the LinkNotesModal for the focused note
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
@@ -862,7 +883,7 @@ const NotesList = ({
           // Add a new line to the end of the focused note in inline edit mode
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
-                             e.target.tagName === 'TEXTAREA';
+            e.target.tagName === 'TEXTAREA';
           if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
@@ -907,12 +928,12 @@ const NotesList = ({
 
     // Only add the event listener if we're on the notes page
     const isNotesPage = location.pathname === '/notes';
-    
+
     if (isNotesPage) {
-      
+
       document.addEventListener('keydown', handleKeyDown, true);
       return () => {
-        
+
         document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
@@ -920,13 +941,21 @@ const NotesList = ({
 
   // Reset focused note when notes change
   useEffect(() => {
-    setFocusedNoteIndex(-1);
+    // If there's only one note and it's the one in the URL, focus it
+    const urlParams = new URLSearchParams(location.search);
+    const noteIdFromUrl = urlParams.get('note');
+
+    if (safeNotes.length === 1 && noteIdFromUrl === safeNotes[0].id) {
+      setFocusedNoteIndex(0);
+    } else {
+      setFocusedNoteIndex(-1);
+    }
   }, [safeNotes]);
 
   // Focus link popup when it opens
   useEffect(() => {
     if (showLinkPopup) {
-      
+
       // Focus the popup container to ensure keyboard events are captured
       const popupElement = document.querySelector('[data-link-popup]');
       if (popupElement) {
@@ -940,13 +969,13 @@ const NotesList = ({
     const handleLinkPopupKeyDown = (e) => {
       // Only handle events when popup is actually open
       if (!showLinkPopupRef.current) return;
-      
-      
-      
+
+
+
       // Always prevent default and stop propagation for all events when popup is open
       e.preventDefault();
       e.stopPropagation();
-      
+
       const totalOptions = linkPopupLinks.length + (linkPopupLinks.length > 0 ? 2 : 1); // +2 if links exist, +1 if no links (just 'Open Popup')
       if (e.key === 'ArrowUp') {
         setSelectedLinkIndex(prev => prev === 0 ? totalOptions - 1 : prev - 1);
@@ -1003,7 +1032,7 @@ const NotesList = ({
 
     // Always add the event listener, but only handle events when popup is open
     document.addEventListener('keydown', handleLinkPopupKeyDown, true);
-    
+
     return () => {
       document.removeEventListener('keydown', handleLinkPopupKeyDown, true);
     };
@@ -1023,21 +1052,21 @@ const NotesList = ({
           }
         }
         // Add a visual indicator that note navigation is active
-        
+
       }
     };
 
     const handleClearFocusedNote = () => {
-      
+
       setFocusedNoteIndex(-1);
-      
+
     };
 
-    
+
     document.addEventListener('focusFirstNote', handleFocusFirstNote);
     document.addEventListener('clearFocusedNote', handleClearFocusedNote);
     return () => {
-      
+
       document.removeEventListener('focusFirstNote', handleFocusFirstNote);
       document.removeEventListener('clearFocusedNote', handleClearFocusedNote);
     };
@@ -1061,7 +1090,7 @@ const NotesList = ({
       if (showLinkPopupRef.current) {
         return;
       }
-      
+
       if (showPastePopup && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         handlePasteSubmit();
@@ -1251,7 +1280,7 @@ const NotesList = ({
         return;
       }
     }
-    
+
     // Ignore if in input/textarea/contentEditable
     const target = e.target;
     const isInputContext = (
@@ -1375,14 +1404,14 @@ const NotesList = ({
   }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, vimGPressed, vimNumberBuffer, safeNotes]);
 
   useEffect(() => {
-  if (location.pathname !== '/notes') return;
-  // Disable Vim keydown when NoteActionPopup is open
-  if (showNoteActionPopup.visible) return;
-  document.addEventListener('keydown', handleVimKeyDown, true);
-  return () => {
-    document.removeEventListener('keydown', handleVimKeyDown, true);
-  };
-}, [location.pathname, handleVimKeyDown, showNoteActionPopup.visible]);
+    if (location.pathname !== '/notes') return;
+    // Disable Vim keydown when NoteActionPopup is open
+    if (showNoteActionPopup.visible) return;
+    document.addEventListener('keydown', handleVimKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleVimKeyDown, true);
+    };
+  }, [location.pathname, handleVimKeyDown, showNoteActionPopup.visible]);
 
   // Add Vim navigation state
   const [tagPopup, setTagPopup] = useState({ visible: false, noteId: null, tags: [], selected: 0 });
@@ -1752,29 +1781,29 @@ const NotesList = ({
               onSave={async (updatedNote) => {
                 try {
                   let finalNoteContent = updatedNote;
-                  
+
                   // Handle image upload if image is pasted
                   if (pastedImageForEditor) {
                     console.log('📤 [NotesList] Uploading image on save...');
                     const response = await uploadImage(pastedImageForEditor);
                     const { imageId } = response;
-                    
+
                     // Add only the meta tag (no markdown line)
                     const imageMetaTag = `meta::image::${imageId}`;
-                    finalNoteContent = updatedNote + 
-                      (updatedNote ? '\n' : '') + 
+                    finalNoteContent = updatedNote +
+                      (updatedNote ? '\n' : '') +
                       imageMetaTag;
-                    
+
                     console.log('✅ [NotesList] Image uploaded and added to note');
                   }
-                  
+
                   updateNoteCallback(popupNoteText, finalNoteContent);
                   setPopupNoteText(null);
-                  
+
                   // Clear image state
                   setPastedImageForEditor(null);
                   setImagePreviewForEditor(null);
-                  
+
                   // Clear the text mode flag
                   localStorage.removeItem('openInTextMode');
                   // Return focus to the original note after saving
@@ -1792,29 +1821,29 @@ const NotesList = ({
               addNote={async (content) => {
                 try {
                   let finalNoteContent = content;
-                  
+
                   // Handle image upload if image is pasted
                   if (pastedImageForEditor) {
                     console.log('📤 [NotesList] Uploading image on add note...');
                     const response = await uploadImage(pastedImageForEditor);
                     const { imageId } = response;
-                    
+
                     // Add only the meta tag (no markdown line)
                     const imageMetaTag = `meta::image::${imageId}`;
-                    finalNoteContent = content + 
-                      (content ? '\n' : '') + 
+                    finalNoteContent = content +
+                      (content ? '\n' : '') +
                       imageMetaTag;
-                    
+
                     console.log('✅ [NotesList] Image uploaded and added to new note');
                   }
-                  
+
                   addNotes(finalNoteContent);
                   setPopupNoteText(null);
-                  
+
                   // Clear image state
                   setPastedImageForEditor(null);
                   setImagePreviewForEditor(null);
-                  
+
                   // Clear the text mode flag
                   localStorage.removeItem('openInTextMode');
                   // Return focus to the original note after adding
@@ -1831,11 +1860,11 @@ const NotesList = ({
               }}
               onCancel={() => {
                 setPopupNoteText(null);
-                
+
                 // Clear image state
                 setPastedImageForEditor(null);
                 setImagePreviewForEditor(null);
-                
+
                 // Clear the text mode flag
                 localStorage.removeItem('openInTextMode');
                 // Return focus to the original note after canceling
@@ -1849,21 +1878,21 @@ const NotesList = ({
               objList={objList}
               onImagePaste={(blob) => {
                 console.log('🎯 [NotesList] Image pasted in NoteEditor - showing preview');
-                
+
                 // Create a proper File object with extension from MIME type
                 let extension = '.png'; // Default
                 if (blob.type === 'image/jpeg') extension = '.jpg';
                 else if (blob.type === 'image/png') extension = '.png';
                 else if (blob.type === 'image/gif') extension = '.gif';
                 else if (blob.type === 'image/webp') extension = '.webp';
-                
+
                 const file = new File([blob], `clipboard-image${extension}`, { type: blob.type });
-                
+
                 setPastedImageForEditor(file);
                 setImagePreviewForEditor(URL.createObjectURL(file));
               }}
             />
-            
+
             {/* Image Preview Section */}
             {imagePreviewForEditor && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -1903,64 +1932,64 @@ const NotesList = ({
 
       <RawNoteModal isOpen={!!rawNote} rawNote={rawNote} setRawNote={setRawNote} />
 
-      <LinkSelectionPopup 
-        showLinkPopup={showLinkPopup} 
-        setShowLinkPopup={setShowLinkPopup} 
-        linkPopupLinks={linkPopupLinks} 
-        setLinkPopupLinks={setLinkPopupLinks} 
-        selectedLinkIndex={selectedLinkIndex} 
+      <LinkSelectionPopup
+        showLinkPopup={showLinkPopup}
+        setShowLinkPopup={setShowLinkPopup}
+        linkPopupLinks={linkPopupLinks}
+        setLinkPopupLinks={setLinkPopupLinks}
+        selectedLinkIndex={selectedLinkIndex}
         setSelectedLinkIndex={setSelectedLinkIndex}
         sourceNoteId={linkPopupSourceNoteId}
         setPopupNoteText={setPopupNoteText}
       />
 
-        <LinkNotesModal
-          visible={linkPopupVisible}
-          notes={fullNotesList}
-          linkingNoteId={linkingNoteId}
-          searchTerm={linkSearchTerm}
-          onSearchTermChange={setLinkSearchTerm}
-          addNote={addNotes}
-          onLink={async (fromId, toId) => {
-            let source = fullNotesList.find(n => n.id === fromId);
-            let target = fullNotesList.find(n => n.id === toId);
-            
-            // Fallback to allNotes if not found in fullNotesList
-            if (!source) {
-              source = allNotes.find(n => n.id === fromId);
-            }
-            if (!target) {
-              target = allNotes.find(n => n.id === toId);
-            }
-            
-            if (!source || !target) {
-              console.error('Could not find source or target note for linking');
-              return;
-            }
-            
-            const addTag = (content, id) => {
-              const lines = content.split('\n').map(l => l.trimEnd());
-              const tag = `meta::link::${id}`;
-              if (!lines.includes(tag)) lines.push(tag);
-              return lines.join('\n');
-            };
-            
-            try {
-              await updateNoteCallback(fromId, addTag(source.content, toId));
-              await updateNoteCallback(toId, addTag(target.content, fromId));
-              setLinkPopupVisible(false);
-              setLinkingNoteId(null);
-              setLinkSearchTerm('');
-            } catch (error) {
-              console.error('Error updating notes:', error);
-            }
-          }}
-          onCancel={() => {
+      <LinkNotesModal
+        visible={linkPopupVisible}
+        notes={fullNotesList}
+        linkingNoteId={linkingNoteId}
+        searchTerm={linkSearchTerm}
+        onSearchTermChange={setLinkSearchTerm}
+        addNote={addNotes}
+        onLink={async (fromId, toId) => {
+          let source = fullNotesList.find(n => n.id === fromId);
+          let target = fullNotesList.find(n => n.id === toId);
+
+          // Fallback to allNotes if not found in fullNotesList
+          if (!source) {
+            source = allNotes.find(n => n.id === fromId);
+          }
+          if (!target) {
+            target = allNotes.find(n => n.id === toId);
+          }
+
+          if (!source || !target) {
+            console.error('Could not find source or target note for linking');
+            return;
+          }
+
+          const addTag = (content, id) => {
+            const lines = content.split('\n').map(l => l.trimEnd());
+            const tag = `meta::link::${id}`;
+            if (!lines.includes(tag)) lines.push(tag);
+            return lines.join('\n');
+          };
+
+          try {
+            await updateNoteCallback(fromId, addTag(source.content, toId));
+            await updateNoteCallback(toId, addTag(target.content, fromId));
             setLinkPopupVisible(false);
             setLinkingNoteId(null);
             setLinkSearchTerm('');
-          }}
-        />
+          } catch (error) {
+            console.error('Error updating notes:', error);
+          }
+        }}
+        onCancel={() => {
+          setLinkPopupVisible(false);
+          setLinkingNoteId(null);
+          setLinkSearchTerm('');
+        }}
+      />
 
       {showEndDatePickerForNoteId && (
         <EndDatePickerModal

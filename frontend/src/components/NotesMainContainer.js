@@ -23,10 +23,10 @@ const NotesMainContainer = ({
     setSearchQuery,
     addTag,
     settings = defaultSettings,
-    refreshTags = () => {},
+    refreshTags = () => { },
 }) => {
     // Debug logging for developer mode
-    
+
     const location = useLocation();
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
@@ -59,6 +59,7 @@ const NotesMainContainer = ({
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
     const searchInputRef = useRef(null);
+    const hasParsedInitialUrl = useRef(false);
 
     // Add suggestion state
     const [showPopup, setShowPopup] = useState(false);
@@ -78,15 +79,15 @@ const NotesMainContainer = ({
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
-            
+
             img.onload = () => {
                 // Keep original dimensions
                 canvas.width = img.width;
                 canvas.height = img.height;
-                
+
                 // Draw image on canvas
                 ctx.drawImage(img, 0, 0);
-                
+
                 // Convert to blob with compression
                 canvas.toBlob(
                     (blob) => resolve(blob),
@@ -94,7 +95,7 @@ const NotesMainContainer = ({
                     quality
                 );
             };
-            
+
             img.src = URL.createObjectURL(file);
         });
     };
@@ -102,7 +103,7 @@ const NotesMainContainer = ({
     // Upload image to server
     const uploadImage = async (file) => {
         const formData = new FormData();
-        
+
         // Compress image first (except for GIFs to preserve animation)
         let fileToProcess = file;
         if (file.type !== 'image/gif') {
@@ -110,17 +111,17 @@ const NotesMainContainer = ({
             fileToProcess = await compressImage(file, 0.8);
             console.log(`📊 Compressed size: ${(fileToProcess.size / 1024 / 1024).toFixed(2)} MB`);
         }
-        
+
         // Ensure the file has a proper extension based on its MIME type
         let filename = file.name;
         if (!filename || !filename.includes('.')) {
             const mimeType = fileToProcess.type;
             let extension = '.jpg'; // Default to JPG for compressed images
-            
+
             if (file.type === 'image/gif') extension = '.gif'; // Keep GIF as GIF
             else if (file.type === 'image/png' && file.type === fileToProcess.type) extension = '.png';
             else extension = '.jpg'; // Compressed images become JPG
-            
+
             filename = `clipboard-image${extension}`;
         } else {
             // Update extension if we compressed to JPEG
@@ -128,10 +129,10 @@ const NotesMainContainer = ({
                 filename = filename.replace(/\.[^/.]+$/, '.jpg');
             }
         }
-        
+
         // Create a new File object with proper filename
         const finalFile = new File([fileToProcess], filename, { type: fileToProcess.type });
-        
+
         formData.append('image', finalFile);
 
         try {
@@ -181,9 +182,9 @@ const NotesMainContainer = ({
                         else if (item.type === 'image/png') extension = '.png';
                         else if (item.type === 'image/gif') extension = '.gif';
                         else if (item.type === 'image/webp') extension = '.webp';
-                        
+
                         const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
-                        
+
                         setPastedImage(file);
                         setImagePreview(URL.createObjectURL(file));
                         console.log('📸 [NotesMainContainer] Image pasted and preview set');
@@ -199,32 +200,32 @@ const NotesMainContainer = ({
         try {
             setIsUploadingImage(true);
             let noteContent = localSearchQuery.trim();
-            
+
             // Handle image upload if image is pasted
             if (pastedImage) {
                 const response = await uploadImage(pastedImage);
                 const { imageId } = response;
-                
+
                 // Add only the meta tag (no markdown line)
                 const imageMetaTag = `meta::image::${imageId}`;
-                noteContent = noteContent + 
-                    (noteContent ? '\n' : '') + 
+                noteContent = noteContent +
+                    (noteContent ? '\n' : '') +
                     imageMetaTag;
-                
+
                 console.log('✅ [NotesMainContainer] Image uploaded and added to note');
             }
-            
+
             // Create note if there's content or an image
             if (noteContent || pastedImage) {
                 addNote(noteContent || 'Image');
                 setLocalSearchQuery('');
                 setSearchQuery('');
-                
+
                 // Clear image state after successful save
                 setPastedImage(null);
                 setImagePreview(null);
             }
-            
+
             setIsUploadingImage(false);
         } catch (error) {
             console.error('❌ [NotesMainContainer] Error creating note with image:', error);
@@ -266,6 +267,8 @@ const NotesMainContainer = ({
 
     // Handle URL query parameters for note filtering
     useEffect(() => {
+        if (hasParsedInitialUrl.current) return;
+
         // Parse query parameters from both location.search and the hash portion
         let urlParams;
         if (location.search) {
@@ -280,14 +283,14 @@ const NotesMainContainer = ({
                 urlParams = new URLSearchParams(queryString);
             }
         }
-        
+
         const noteId = urlParams?.get('note');
-        
+
         if (noteId) {
             // Use the existing ID-based search functionality with 'id:' prefix
             const idSearchQuery = `id:${noteId}`;
             setSearchQuery(idSearchQuery);
-            
+
             // Find the note to display a user-friendly search query
             const targetNote = allNotes.find(note => note.id === noteId);
             if (targetNote) {
@@ -297,7 +300,7 @@ const NotesMainContainer = ({
             } else {
                 setLocalSearchQuery(idSearchQuery);
             }
-            
+
             // Clear all filters when showing a specific note
             setExcludeEvents(false);
             setExcludeMeetings(false);
@@ -311,6 +314,7 @@ const NotesMainContainer = ({
             setShowDeadlinePassedFilter(false);
             // Trigger UI filter reset
             setResetFilters(true);
+            hasParsedInitialUrl.current = true;
         }
     }, [location.pathname, location.search, allNotes, setSearchQuery]);
 
@@ -350,12 +354,12 @@ const NotesMainContainer = ({
         const handleGlobalKeyDown = (e) => {
             // Only handle keys when not in an input/textarea and no modifier keys
             if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
-                e.target.tagName !== 'INPUT' && 
+                e.target.tagName !== 'INPUT' &&
                 e.target.tagName !== 'TEXTAREA' &&
                 e.target.contentEditable !== 'true') {
-                
-                
-                
+
+
+
                 if (e.key === "f") {
                     e.preventDefault();
                     setFocusMode(!focusMode);
@@ -374,7 +378,7 @@ const NotesMainContainer = ({
                 }
                 if (e.key === "t") {
                     e.preventDefault();
-                    
+
                     // Dispatch a custom event to open note editor in text mode
                     const openNoteEditorEvent = new CustomEvent('openNoteEditorTextMode');
                     document.dispatchEvent(openNoteEditorEvent);
@@ -386,12 +390,12 @@ const NotesMainContainer = ({
                     document.dispatchEvent(exitBulkDeleteEvent);
                 }
             }
-            
+
 
         };
 
         document.addEventListener('keydown', handleGlobalKeyDown);
-        
+
         return () => {
             document.removeEventListener('keydown', handleGlobalKeyDown);
         };
@@ -399,10 +403,10 @@ const NotesMainContainer = ({
 
     // Listen for return to search event from notes navigation
     useEffect(() => {
-        
-        
+
+
         const handleReturnToSearch = () => {
-            
+
             // Focus the search input
             if (searchInputRef.current) {
                 searchInputRef.current.focus();
@@ -413,37 +417,37 @@ const NotesMainContainer = ({
             // Clear the focused note by dispatching a custom event
             const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
             document.dispatchEvent(clearFocusedNoteEvent);
-            
+
         };
 
         document.addEventListener('returnToSearch', handleReturnToSearch);
         return () => {
-            
+
             document.removeEventListener('returnToSearch', handleReturnToSearch);
         };
     }, []);
 
     // Listen for toggle focus mode event from notes navigation
     useEffect(() => {
-        
-        
+
+
         const handleToggleFocusMode = () => {
-            
+
             setFocusMode(false); // Exit focus mode
         };
 
         document.addEventListener('toggleFocusMode', handleToggleFocusMode);
         return () => {
-            
+
             document.removeEventListener('toggleFocusMode', handleToggleFocusMode);
         };
     }, []);
 
     // Debug: Log objList
     useEffect(() => {
-        
-        
-        
+
+
+
     }, [objList]);
 
     // Save focus mode state to localStorage whenever it changes
@@ -468,12 +472,12 @@ const NotesMainContainer = ({
     const getCursorCoordinates = (event) => {
         const textarea = event.target;
         const rect = textarea.getBoundingClientRect();
-        
+
         // Get cursor position within the textarea
         const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
         const lines = textBeforeCursor.split('\n');
         const currentLine = lines[lines.length - 1];
-        
+
         // Create a temporary element to measure text width
         const temp = document.createElement('span');
         temp.style.font = window.getComputedStyle(textarea).font;
@@ -482,13 +486,13 @@ const NotesMainContainer = ({
         temp.style.visibility = 'hidden';
         temp.textContent = currentLine;
         document.body.appendChild(temp);
-        
+
         const charWidth = temp.offsetWidth / currentLine.length;
         const cursorX = rect.left + (currentLine.length * charWidth) + 10; // Add some padding
         const cursorY = rect.bottom + 5; // Position below the textarea
-        
+
         document.body.removeChild(temp);
-        
+
         return { x: cursorX, y: cursorY };
     };
 
@@ -503,7 +507,7 @@ const NotesMainContainer = ({
         if (match) {
             const filterText = match[1].toLowerCase();
             let filtered = [];
-            
+
             // Throttle logic
             if (filterText !== "") {
                 clearTimeout(throttleRef.current); // Clear the existing timeout
@@ -514,33 +518,33 @@ const NotesMainContainer = ({
                         return tag.text.toLowerCase().includes(filterText);
                     });
 
-                    
-                    
-                    
-                    
-                    
-                    
+
+
+
+
+
+
                     // Debug: Check if any tags contain the filter text
                     const debugMatches = mergedObjList.filter(tag => {
                         if (!tag || !tag.text) return false;
                         const contains = tag.text.toLowerCase().includes(filterText);
                         if (contains) {
-                            
+
                         }
                         return contains;
                     });
-                    
+
 
                     setFilteredTags(filtered);
-                    
+
                     if (filtered.length > 0) {
                         const { x, y } = getCursorCoordinates(e);
-                        
-                        
+
+
                         setCursorPosition({ x, y });
                         setShowPopup(true);
                     } else {
-                        
+
                         setShowPopup(false);
                     }
                 }, 300); // 300ms delay for throttling
@@ -560,7 +564,7 @@ const NotesMainContainer = ({
         setSearchQuery(updatedText);
         setShowPopup(false);
         setSelectedTagIndex(-1);
-        
+
         // Focus back to textarea
         if (searchInputRef.current) {
             searchInputRef.current.focus();
@@ -611,7 +615,7 @@ const NotesMainContainer = ({
                 searchInputRef.current?.blur();
                 return;
             }
-            
+
             // Handle down arrow to move to first note when search bar is focused
             if (e.key === "ArrowDown" && filteredNotes.length > 0) {
                 e.preventDefault();
@@ -622,7 +626,7 @@ const NotesMainContainer = ({
                 document.dispatchEvent(focusFirstNoteEvent);
                 return;
             }
-            
+
             // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
@@ -676,7 +680,7 @@ const NotesMainContainer = ({
         if (popularMode && !searchQuery) {
             try {
                 const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
-                
+
                 // In popular mode, consider all notes from allNotes, not just filtered ones
                 let allNotesForPopular = allNotes.filter(note => {
                     // Apply the same exclusion filters
@@ -703,12 +707,12 @@ const NotesMainContainer = ({
                     }
                     return true;
                 });
-                
+
                 // Get today's notes (regardless of click count)
-                const todaysNotes = allNotesForPopular.filter(note => 
+                const todaysNotes = allNotesForPopular.filter(note =>
                     isSameAsTodaysDate(note.created_datetime)
                 );
-                
+
                 // Get popular notes (click count > 0, sorted by click count)
                 const popularNotes = allNotesForPopular
                     .map(note => ({
@@ -723,7 +727,7 @@ const NotesMainContainer = ({
                         const { clickCount, ...noteWithoutClickCount } = note;
                         return noteWithoutClickCount;
                     });
-                
+
                 // Combine popular notes first, then today's notes, removing duplicates
                 const combinedNotes = [...popularNotes];
                 todaysNotes.forEach(todayNote => {
@@ -731,7 +735,7 @@ const NotesMainContainer = ({
                         combinedNotes.push(todayNote);
                     }
                 });
-                
+
                 filtered = combinedNotes;
             } catch (error) {
                 console.error('Error applying popular mode filter:', error);
@@ -748,16 +752,16 @@ const NotesMainContainer = ({
     };
 
     const handleNoteUpdate = async (noteId, updatedContent) => {
-        
+
         try {
             const response = await updateNoteById(noteId, updatedContent);
-            
+
             setAllNotes(prevNotes => {
                 const updatedNotes = prevNotes.map(note => note.id === noteId ? response : note);
                 setTotals(updatedNotes.length);
                 return updatedNotes;
             });
-            
+
         } catch (error) {
             console.error('Error updating note:', error);
         }
@@ -773,7 +777,7 @@ const NotesMainContainer = ({
             }
             setAllNotes(allNotes.filter(note => note.id !== noteId));
             setTotals(allNotes.length);
-        } catch (error) {   
+        } catch (error) {
             console.error('Error deleting note:', error);
         }
     };
@@ -786,239 +790,236 @@ const NotesMainContainer = ({
 
     // Debug: Log mergedObjList
     useEffect(() => {
-        
-        
-        
+
+
+
     }, [mergedObjList]);
 
     return (
         <div className="flex flex-col h-full">
             <div className="container mx-auto px-6 py-6 max-w-7xl">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                <div className="mt-4">
-                    <div className="relative">
-                        <textarea
-                            ref={searchInputRef}
-                            className="w-full p-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[40px] max-h-[120px] overflow-y-auto"
-                            value={localSearchQuery}
-                            onChange={handleSearchChange}
-                            onKeyDown={handleKeyDown}
-                            onPaste={handlePaste}
-                            placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate, Shift+G to last note)"
-                            rows={1}
-                            style={{
-                                resize: 'none',
-                                overflow: 'hidden'
-                            }}
-                            onInput={(e) => {
-                                // Auto-resize the textarea
-                                e.target.style.height = 'auto';
-                                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                            }}
-                        />
-                        {localSearchQuery && (
-                            <button
-                                onClick={() => {
-                                    setLocalSearchQuery('');
-                                    setSearchQuery('');
-                                    setShowPopup(false);
-                                    
-                                    // Clear image state too
-                                    setPastedImage(null);
-                                    setImagePreview(null);
-                                    setIsUploadingImage(false);
-                                    
-                                    searchInputRef.current?.focus();
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                    <div className="mt-4">
+                        <div className="relative">
+                            <textarea
+                                ref={searchInputRef}
+                                className="w-full p-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[40px] max-h-[120px] overflow-y-auto"
+                                value={localSearchQuery}
+                                onChange={handleSearchChange}
+                                onKeyDown={handleKeyDown}
+                                onPaste={handlePaste}
+                                placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate, Shift+G to last note)"
+                                rows={1}
+                                style={{
+                                    resize: 'none',
+                                    overflow: 'hidden'
                                 }}
-                                className="absolute right-2 top-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
-                                aria-label="Clear search"
-                            >
-                                <XMarkIcon className="h-5 w-5" />
-                            </button>
-                        )}
-                    </div>
+                                onInput={(e) => {
+                                    // Auto-resize the textarea
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                                }}
+                            />
+                            {localSearchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setLocalSearchQuery('');
+                                        setSearchQuery('');
+                                        setShowPopup(false);
 
-                    {/* Image Preview Section */}
-                    {imagePreview && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0">
-                                    <img
-                                        src={imagePreview}
-                                        alt="Preview"
-                                        className="w-16 h-16 object-cover rounded border border-gray-300"
-                                    />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-sm font-medium text-gray-700">Image Ready</h4>
-                                            <p className="text-xs text-gray-500">
-                                                {isUploadingImage ? 'Uploading...' : 'Press Cmd+Enter to create note with image'}
-                                            </p>
+                                        // Clear image state too
+                                        setPastedImage(null);
+                                        setImagePreview(null);
+                                        setIsUploadingImage(false);
+
+                                        searchInputRef.current?.focus();
+                                    }}
+                                    className="absolute right-2 top-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                    aria-label="Clear search"
+                                >
+                                    <XMarkIcon className="h-5 w-5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Image Preview Section */}
+                        {imagePreview && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-shrink-0">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Preview"
+                                            className="w-16 h-16 object-cover rounded border border-gray-300"
+                                        />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Image Ready</h4>
+                                                <p className="text-xs text-gray-500">
+                                                    {isUploadingImage ? 'Uploading...' : 'Press Cmd+Enter to create note with image'}
+                                                </p>
+                                            </div>
+                                            {!isUploadingImage && (
+                                                <button
+                                                    onClick={() => {
+                                                        setPastedImage(null);
+                                                        setImagePreview(null);
+                                                    }}
+                                                    className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+                                                    title="Remove image"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
-                                        {!isUploadingImage && (
-                                            <button
-                                                onClick={() => {
-                                                    setPastedImage(null);
-                                                    setImagePreview(null);
-                                                }}
-                                                className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
-                                                title="Remove image"
-                                            >
-                                                <TrashIcon className="w-4 h-4" />
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Suggestion popup */}
-                    {showPopup && (
-                        <div
-                            className="absolute bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
-                            style={{
-                                left: cursorPosition.x,
-                                top: cursorPosition.y,
-                                minHeight: '40px'
-                            }}
-                        >
-                            {console.log('Rendering popup with', filteredTags.length, 'tags:', filteredTags)}
-                            {filteredTags.length === 0 ? (
-                                <div className="p-2 text-gray-500">No matching tags</div>
-                            ) : (
-                                filteredTags.map((tag, index) => {
-                                    // Determine type indicator
-                                    let typeIndicator = '';
-                                    if (tag.type === 'person') {
-                                        typeIndicator = ' (P)';
-                                    } else if (tag.type === 'workstream') {
-                                        typeIndicator = ' (W)';
-                                    } else {
-                                        typeIndicator = ' (T)'; // Default to tag
-                                    }
-                                    
-                                    return (
-                                        <div
-                                            key={tag.id || tag.text}
-                                            onClick={() => handleSelectTag(tag)}
-                                            className={`p-2 cursor-pointer hover:bg-purple-100 ${
-                                                selectedTagIndex === index ? "bg-purple-200" : ""
-                                            }`}
-                                        >
-                                            {tag.text}{typeIndicator}
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    )}
+                        {/* Suggestion popup */}
+                        {showPopup && (
+                            <div
+                                className="absolute bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+                                style={{
+                                    left: cursorPosition.x,
+                                    top: cursorPosition.y,
+                                    minHeight: '40px'
+                                }}
+                            >
+                                {console.log('Rendering popup with', filteredTags.length, 'tags:', filteredTags)}
+                                {filteredTags.length === 0 ? (
+                                    <div className="p-2 text-gray-500">No matching tags</div>
+                                ) : (
+                                    filteredTags.map((tag, index) => {
+                                        // Determine type indicator
+                                        let typeIndicator = '';
+                                        if (tag.type === 'person') {
+                                            typeIndicator = ' (P)';
+                                        } else if (tag.type === 'workstream') {
+                                            typeIndicator = ' (W)';
+                                        } else {
+                                            typeIndicator = ' (T)'; // Default to tag
+                                        }
 
-                    {/* <InfoPanel
+                                        return (
+                                            <div
+                                                key={tag.id || tag.text}
+                                                onClick={() => handleSelectTag(tag)}
+                                                className={`p-2 cursor-pointer hover:bg-purple-100 ${selectedTagIndex === index ? "bg-purple-200" : ""
+                                                    }`}
+                                            >
+                                                {tag.text}{typeIndicator}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+
+                        {/* <InfoPanel
                         totals={totals}
                     /> */}
-                    <div className="flex items-center justify-between mt-4 mb-2">
-                        <NoteFilters
-                            setLines={() => {}}
-                            setShowTodoSubButtons={() => {}}
-                            setActivePriority={() => {}}
-                            setSearchQuery={setSearchQuery}
-                            searchQuery={searchQuery}
-                            settings={settings}
-                            allNotes={allNotes}
-                            onExcludeEventsChange={setExcludeEvents}
-                            onExcludeMeetingsChange={setExcludeMeetings}
-                            onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                            onExcludeEventNotesChange={setExcludeEventNotes}
-                            onExcludeBackupNotesChange={setExcludeBackupNotes}
-                            onExcludeWatchEventsChange={setExcludeWatchEvents}
-                            onExcludeBookmarksChange={setExcludeBookmarks}
-                            onExcludeExpensesChange={setExcludeExpenses}
-                            onExcludeSensitiveChange={setExcludeSensitive}
-                            onExcludeTrackersChange={setExcludeTrackers}
-                            resetFilters={resetFilters}
-                        />
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setFocusMode(!focusMode)}
-                                className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-                                    focusMode 
-                                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                                title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
-                            >
-                                {focusMode ? (
-                                    <>
-                                        <EyeSlashIcon className="h-4 w-4" />
-                                        Focus Mode
-                                    </>
-                                ) : (
-                                    <>
-                                        <EyeIcon className="h-4 w-4" />
-                                        Focus Mode
-                                    </>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setPopularMode(!popularMode)}
-                                className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-                                    popularMode 
-                                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                                title={popularMode ? 'Exit popular mode' : 'Enter popular mode'}
-                            >
-                                {popularMode ? (
-                                    <>
-                                        <FireIcon className="h-4 w-4" />
-                                        Popular Mode
-                                    </>
-                                ) : (
-                                    <>
-                                        <FireIcon className="h-4 w-4" />
-                                        Popular Mode
-                                    </>
-                                )}
-                            </button>
+                        <div className="flex items-center justify-between mt-4 mb-2">
+                            <NoteFilters
+                                setLines={() => { }}
+                                setShowTodoSubButtons={() => { }}
+                                setActivePriority={() => { }}
+                                setSearchQuery={setSearchQuery}
+                                searchQuery={searchQuery}
+                                settings={settings}
+                                allNotes={allNotes}
+                                onExcludeEventsChange={setExcludeEvents}
+                                onExcludeMeetingsChange={setExcludeMeetings}
+                                onDeadlinePassedChange={setShowDeadlinePassedFilter}
+                                onExcludeEventNotesChange={setExcludeEventNotes}
+                                onExcludeBackupNotesChange={setExcludeBackupNotes}
+                                onExcludeWatchEventsChange={setExcludeWatchEvents}
+                                onExcludeBookmarksChange={setExcludeBookmarks}
+                                onExcludeExpensesChange={setExcludeExpenses}
+                                onExcludeSensitiveChange={setExcludeSensitive}
+                                onExcludeTrackersChange={setExcludeTrackers}
+                                resetFilters={resetFilters}
+                            />
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setFocusMode(!focusMode)}
+                                    className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${focusMode
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
+                                >
+                                    {focusMode ? (
+                                        <>
+                                            <EyeSlashIcon className="h-4 w-4" />
+                                            Focus Mode
+                                        </>
+                                    ) : (
+                                        <>
+                                            <EyeIcon className="h-4 w-4" />
+                                            Focus Mode
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setPopularMode(!popularMode)}
+                                    className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${popularMode
+                                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    title={popularMode ? 'Exit popular mode' : 'Enter popular mode'}
+                                >
+                                    {popularMode ? (
+                                        <>
+                                            <FireIcon className="h-4 w-4" />
+                                            Popular Mode
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FireIcon className="h-4 w-4" />
+                                            Popular Mode
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
+                        <NotesList
+                            objList={mergedObjList}
+                            allNotes={filteredNotes}
+                            fullNotesList={allNotes}
+                            addNotes={addNote}
+                            updateNoteCallback={handleNoteUpdate}
+                            handleDelete={handleDelete}
+                            updateTotals={setTotals}
+                            objects={objects}
+                            addObjects={addTag}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            onWordClick={handleTagClick}
+                            settings={settings}
+                            focusMode={focusMode}
+                            bulkDeleteMode={bulkDeleteMode}
+                            setBulkDeleteMode={setBulkDeleteMode}
+                            refreshTags={refreshTags}
+                            onReturnToSearch={() => {
+
+                                // Focus the search input
+                                if (searchInputRef.current) {
+                                    searchInputRef.current.focus();
+                                    // Move cursor to end of text
+                                    const length = searchInputRef.current.value.length;
+                                    searchInputRef.current.setSelectionRange(length, length);
+                                }
+                                // Clear the focused note by dispatching a custom event
+                                const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
+                                document.dispatchEvent(clearFocusedNoteEvent);
+
+                            }}
+                        />
                     </div>
-                    <NotesList
-                        objList={mergedObjList}
-                        allNotes={filteredNotes}
-                        fullNotesList={allNotes}
-                        addNotes={addNote}
-                        updateNoteCallback={handleNoteUpdate}
-                        handleDelete={handleDelete}
-                        updateTotals={setTotals}
-                        objects={objects}
-                        addObjects={addTag}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        onWordClick={handleTagClick}
-                        settings={settings}
-                        focusMode={focusMode}
-                        bulkDeleteMode={bulkDeleteMode}
-                        setBulkDeleteMode={setBulkDeleteMode}
-                        refreshTags={refreshTags}
-                        onReturnToSearch={() => {
-                            
-                            // Focus the search input
-                            if (searchInputRef.current) {
-                                searchInputRef.current.focus();
-                                // Move cursor to end of text
-                                const length = searchInputRef.current.value.length;
-                                searchInputRef.current.setSelectionRange(length, length);
-                            }
-                            // Clear the focused note by dispatching a custom event
-                            const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
-                            document.dispatchEvent(clearFocusedNoteEvent);
-                            
-                        }}
-                    />
-                 </div>
                 </div>
             </div>
         </div>

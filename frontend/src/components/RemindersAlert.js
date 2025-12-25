@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
+import { updateNoteById } from '../utils/ApiUtils';
 import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject, parseReviewCadenceMeta } from '../utils/CadenceHelpUtils';
 
 // Color options for reminders
@@ -57,6 +58,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const saved = localStorage.getItem('remindersGroupByMode');
     return saved ? saved : 'color'; // 'color', 'title', or 'cadence'
   });
+  const [noteToRemove, setNoteToRemove] = useState(null);
 
   // Function to get color for a specific reminder
   const getReminderColor = (noteId) => {
@@ -86,7 +88,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const newYellowMode = !yellowMode;
     setYellowMode(newYellowMode);
     localStorage.setItem('remindersYellowMode', JSON.stringify(newYellowMode));
-    
+
     // If enabling yellow mode, switch away from color grouping
     if (newYellowMode && groupByMode === 'color') {
       handleGroupByModeChange('title');
@@ -103,16 +105,16 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const getCadenceType = (note) => {
     const currentCadence = getCurrentCadence(note);
     if (!currentCadence) return 'No Cadence';
-    
+
     // Handle new format
     if (typeof currentCadence === 'object') {
       const meta = currentCadence;
-      
+
       if (meta.type === 'every-x-hours') {
         const hours = meta.hours || 0;
         const minutes = meta.minutes || 0;
         const totalHours = hours + (minutes / 60);
-        
+
         if (totalHours < 24) return 'Hourly';
         if (totalHours === 24) return 'Daily';
         const days = Math.round(totalHours / 24);
@@ -128,15 +130,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         return 'Monthly';
       }
     }
-    
+
     // Handle old format
     if (typeof currentCadence === 'string') {
       const match = currentCadence.match(/(\d+)([hd])/);
       if (!match) return 'Unknown';
-      
+
       const [, amount, unit] = match;
       const num = parseInt(amount);
-      
+
       if (unit === 'h') {
         if (num < 24) return 'Hourly';
         if (num === 24) return 'Daily';
@@ -153,7 +155,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         return 'Yearly';
       }
     }
-    
+
     return 'Unknown';
   };
 
@@ -259,23 +261,23 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   // Function to perform fuzzy search
   const fuzzySearch = (reminders, query) => {
     if (!query.trim()) return reminders;
-    
+
     const searchTerm = query.toLowerCase();
     return reminders.filter(reminder => {
       const note = reminder.note;
       const content = note.content.toLowerCase();
       const group = getReminderGroup(note.id).toLowerCase();
-      
+
       // Search in content
       if (content.includes(searchTerm)) return true;
-      
+
       // Search in group name
       if (group.includes(searchTerm)) return true;
-      
+
       // Search in individual lines
       const lines = note.content.split('\n');
-      return lines.some(line => 
-        line.toLowerCase().includes(searchTerm) && 
+      return lines.some(line =>
+        line.toLowerCase().includes(searchTerm) &&
         !line.startsWith('meta::')
       );
     });
@@ -284,12 +286,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   // Function to apply all filters (search + color + group + cadence)
   const applyAllFilters = (reminders) => {
     let filtered = reminders;
-    
+
     // Apply search filter first
     if (searchQuery.trim()) {
       filtered = fuzzySearch(filtered, searchQuery);
     }
-    
+
     // Apply color, group, and cadence filters
     if (selectedColorFilter) {
       filtered = filterRemindersByColor(filtered, selectedColorFilter);
@@ -300,7 +302,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     if (selectedCadenceFilter) {
       filtered = filterRemindersByCadence(filtered, selectedCadenceFilter);
     }
-    
+
     return filtered;
   };
 
@@ -372,24 +374,24 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       .filter(note => {
         const lastReview = getLastReviewObject(note);
         if (!lastReview) return false;
-        
+
         const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
         if (!cadenceMatch) return false;
-        
+
         const cadence = cadenceMatch[1];
         const nextReview = new Date(lastReview.date);
-        
+
         // Parse cadence and add to nextReview
         const match = cadence.match(/(\d+)([hd])/);
         if (!match) return false;
-        
+
         const [, amount, unit] = match;
         if (unit === 'h') {
           nextReview.setHours(nextReview.getHours() + parseInt(amount));
         } else if (unit === 'd') {
           nextReview.setDate(nextReview.getDate() + parseInt(amount));
         }
-        
+
         return nextReview > new Date();
       })
       .map(note => ({
@@ -399,7 +401,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
           const cadence = cadenceMatch[1];
           const nextReview = new Date(lastReview.date);
-          
+
           const match = cadence.match(/(\d+)([hd])/);
           const [, amount, unit] = match;
           if (unit === 'h') {
@@ -407,7 +409,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           } else if (unit === 'd') {
             nextReview.setDate(nextReview.getDate() + parseInt(amount));
           }
-          
+
           return nextReview;
         })()
       }))
@@ -433,7 +435,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         e.stopPropagation();
         numberBufferRef.current += e.key;
         setIsWaitingForJump(true);
-        
+
         // Set a timeout to clear the buffer if no 'j' is pressed
         setTimeout(() => {
           if (isWaitingForJump) {
@@ -476,7 +478,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       if (e.key === 'g') {
         e.preventDefault();
         e.stopPropagation();
-        
+
         if (isWaitingForDoubleG) {
           // Double 'g' pressed - go to first item
           setFocusedReminderIndex(0);
@@ -502,13 +504,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         e.stopPropagation();
-        setFocusedReminderIndex(prev => 
+        setFocusedReminderIndex(prev =>
           prev > 0 ? prev - 1 : totalReminders - 1
         );
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
-        setFocusedReminderIndex(prev => 
+        setFocusedReminderIndex(prev =>
           prev < totalReminders - 1 ? prev + 1 : 0
         );
       } else if (e.key === 's' && focusedReminderIndex >= 0) {
@@ -548,13 +550,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         if (focusedReminder) {
           // Extract URLs from the reminder content
           const content = focusedReminder.note.content;
-          
+
           // Regex to match both markdown-style links [text](url) and plain URLs
           const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
           const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
-          
+
           const links = [];
-          
+
           // Extract markdown-style links first
           let match;
           while ((match = markdownLinkRegex.exec(content)) !== null) {
@@ -563,7 +565,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               text: match[1]
             });
           }
-          
+
           // Extract plain URLs (excluding those already found in markdown links)
           const markdownUrls = links.map(link => link.url);
           while ((match = plainUrlRegex.exec(content)) !== null) {
@@ -574,17 +576,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               });
             }
           }
-          
+
           if (links.length === 1) {
             // Open the single link
             window.open(links[0].url, '_blank');
           } else if (links.length > 1) {
             // Show popup with multiple links (similar to NotesList functionality)
-            
+
             // For now, just open the first link
             window.open(links[0].url, '_blank');
           } else {
-            
+
           }
         }
       } else if (e.key === 'l' && focusedReminderIndex >= 0) {
@@ -596,13 +598,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         if (focusedReminder) {
           // Extract URLs from the reminder content
           const content = focusedReminder.note.content;
-          
+
           // Regex to match both markdown-style links [text](url) and plain URLs
           const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
           const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
-          
+
           const links = [];
-          
+
           // Extract markdown-style links first
           let match;
           while ((match = markdownLinkRegex.exec(content)) !== null) {
@@ -611,7 +613,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               text: match[1]
             });
           }
-          
+
           // Extract plain URLs (excluding those already found in markdown links)
           const markdownUrls = links.map(link => link.url);
           while ((match = plainUrlRegex.exec(content)) !== null) {
@@ -622,17 +624,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               });
             }
           }
-          
+
           if (links.length === 1) {
             // Open the single link
             window.open(links[0].url, '_blank');
           } else if (links.length > 1) {
             // Show popup with multiple links (similar to NotesList functionality)
-            
+
             // For now, just open the first link
             window.open(links[0].url, '_blank');
           } else {
-            
+
           }
         }
       }
@@ -713,14 +715,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       // Get current reminders before dismissing
       const allReminders = [...reminderObjs, ...upcomingReminders];
       const currentIndex = focusedReminderIndex;
-      
+
       // Dismiss the reminder
       await handleDismiss(note);
-      
+
       // After dismissing, get the updated reminders
       const updatedReminders = [...reminderObjs, ...upcomingReminders];
       const totalReminders = updatedReminders.length;
-      
+
       if (totalReminders === 0) {
         // No reminders left, clear focus
         setFocusedReminderIndex(-1);
@@ -734,6 +736,35 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     } catch (error) {
       console.error('Error dismissing reminder and moving focus:', error);
       Alerts.error('Failed to dismiss reminder');
+    }
+  };
+
+  const handleRemoveFromReminders = async (note) => {
+    try {
+      const lines = note.content.split('\n');
+      const filteredLines = lines.filter(line => {
+        const trimmed = line.trim();
+        return !(
+          trimmed.startsWith('meta::reminder') ||
+          trimmed.startsWith('meta::watch') ||
+          trimmed.startsWith('meta::review_cadence') ||
+          trimmed.startsWith('meta::cadence')
+        );
+      });
+
+      const newContent = filteredLines.join('\n');
+      await updateNoteById(note.id, newContent);
+
+      // Update local state by removing the note from allNotes
+      if (typeof setNotes === 'function') {
+        setNotes(prevNotes => prevNotes.filter(n => n.id !== note.id));
+      }
+
+      setNoteToRemove(null);
+      Alerts.success('Removed from reminders');
+    } catch (error) {
+      console.error('Error removing from reminders:', error);
+      Alerts.error('Failed to remove from reminders');
     }
   };
 
@@ -864,7 +895,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const diff = date - now;
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
       return `in ${days} day${days > 1 ? 's' : ''}`;
     } else if (hours > 0) {
@@ -892,53 +923,53 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const getTimeSinceActive = (note) => {
     const lastReview = getLastReviewObject(note);
     if (!lastReview) {
-      
+
       return 'no review history';
     }
-    
+
     // Get the cadence from the note
     const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
     if (!cadenceMatch) {
-      
+
       return 'no cadence set';
     }
-    
+
     const cadence = cadenceMatch[1];
     const lastReviewDate = new Date(lastReview.date);
-    
+
     // Validate the date
     if (isNaN(lastReviewDate.getTime())) {
-      
+
       return 'invalid date';
     }
-    
+
     // Calculate when the next review should have been (last review + cadence)
     const nextReviewDate = new Date(lastReviewDate);
     const match = cadence.match(/(\d+)([hd])/);
     if (!match) {
-      
+
       return 'invalid cadence';
     }
-    
+
     const [, amount, unit] = match;
     if (unit === 'h') {
       nextReviewDate.setHours(nextReviewDate.getHours() + parseInt(amount));
     } else if (unit === 'd') {
       nextReviewDate.setDate(nextReviewDate.getDate() + parseInt(amount));
     }
-    
+
     // Calculate how long it's been overdue (current time - when it should have been reviewed)
     const now = new Date();
     const overdueMs = now - nextReviewDate;
-    
+
     if (overdueMs <= 0) {
       return 'not due yet';
     }
-    
+
     const days = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((overdueMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((overdueMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (days > 0) {
       return `${days}d ${hours}h overdue`;
     } else if (hours > 0) {
@@ -957,7 +988,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     if (meta) {
       return meta;
     }
-    
+
     // Fallback to old format
     const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
     if (!cadenceMatch) return null;
@@ -970,16 +1001,16 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const getHumanReadableCadence = (note) => {
     const currentCadence = getCurrentCadence(note);
     if (!currentCadence) return null;
-    
+
     // Handle new format
     if (typeof currentCadence === 'object') {
       const meta = currentCadence;
-      
+
       if (meta.type === 'every-x-hours') {
         const hours = meta.hours || 0;
         const minutes = meta.minutes || 0;
         const totalHours = hours + (minutes / 60);
-        
+
         if (totalHours === 1) return 'Every hour';
         if (totalHours < 24) return `Every ${Math.round(totalHours)} hours`;
         if (totalHours === 24) return 'Daily';
@@ -1009,15 +1040,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         return `Monthly on day ${meta.day || 1} at ${hour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
       }
     }
-    
+
     // Handle old format
     if (typeof currentCadence === 'string') {
       const match = currentCadence.match(/(\d+)([hd])/);
       if (!match) return currentCadence;
-      
+
       const [, amount, unit] = match;
       const num = parseInt(amount);
-      
+
       if (unit === 'h') {
         if (num === 1) return 'Every hour';
         return `Every ${num} hours`;
@@ -1025,10 +1056,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         if (num === 1) return 'Daily';
         return `Every ${num} days`;
       }
-      
+
       return currentCadence;
     }
-    
+
     return null;
   };
 
@@ -1037,10 +1068,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     if (!showGroupDropdown) return null;
 
     const dropdownContent = (
-      <div 
-        className="fixed z-50 w-32 bg-white border border-gray-300 rounded-md shadow-lg max-h-32 overflow-y-auto" 
-        data-group-dropdown 
-        style={{ 
+      <div
+        className="fixed z-50 w-32 bg-white border border-gray-300 rounded-md shadow-lg max-h-32 overflow-y-auto"
+        data-group-dropdown
+        style={{
           top: dropdownPosition.top,
           left: dropdownPosition.left
         }}
@@ -1100,20 +1131,18 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <span className="text-sm font-medium text-gray-700">Numbers:</span>
               <button
                 onClick={toggleRelativeNumbers}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
               >
                 <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>
           </div>
         )}
-        
+
         {/* Active Reminders Section */}
         {reminderObjs.length > 0 && (
           <div className="space-y-4">
@@ -1148,14 +1177,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleYellowModeToggle}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${
-                    yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      yellowMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${yellowMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -1168,11 +1195,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     <button
                       key={colorName}
                       onClick={() => handleColorFilterSelect(colorName)}
-                      className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors duration-150 text-xs ${
-                        selectedColorFilter === colorName
-                          ? `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} ring-1 ring-blue-300`
-                          : `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} hover:${colorConfig.hover}`
-                      }`}
+                      className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors duration-150 text-xs ${selectedColorFilter === colorName
+                        ? `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} ring-1 ring-blue-300`
+                        : `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} hover:${colorConfig.hover}`
+                        }`}
                     >
                       <div className={`w-2 h-2 rounded-full ${colorConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${colorConfig.border}`}></div>
                       <span className="font-medium capitalize">
@@ -1185,11 +1211,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <button
                     key={groupName}
                     onClick={() => handleGroupFilterSelect(groupName)}
-                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                      selectedGroupFilter === groupName
-                        ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${selectedGroupFilter === groupName
+                      ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
                   >
                     {groupName} ({filterRemindersByGroup(reminderObjs, groupName).length})
                   </button>
@@ -1198,21 +1223,19 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <button
                     key={cadenceType}
                     onClick={() => handleCadenceFilterSelect(cadenceType)}
-                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                      selectedCadenceFilter === cadenceType
-                        ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${selectedCadenceFilter === cadenceType
+                      ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
+                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
                   >
                     <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        cadenceType === 'Hourly' ? 'bg-blue-500' :
+                      <div className={`w-2 h-2 rounded-full ${cadenceType === 'Hourly' ? 'bg-blue-500' :
                         cadenceType === 'Daily' ? 'bg-green-500' :
-                        cadenceType === 'Weekly' ? 'bg-yellow-500' :
-                        cadenceType === 'Monthly' ? 'bg-orange-500' :
-                        cadenceType === 'Yearly' ? 'bg-red-500' :
-                        'bg-gray-500'
-                      } border border-gray-300`}></div>
+                          cadenceType === 'Weekly' ? 'bg-yellow-500' :
+                            cadenceType === 'Monthly' ? 'bg-orange-500' :
+                              cadenceType === 'Yearly' ? 'bg-red-500' :
+                                'bg-gray-500'
+                        } border border-gray-300`}></div>
                       <span>{cadenceType} ({cadenceReminders.length})</span>
                     </div>
                   </button>
@@ -1233,44 +1256,41 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 </button>
               )}
             </div>
-            
+
             {/* Group By Buttons */}
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xs font-medium text-gray-700">Group by:</span>
               {!yellowMode && (
                 <button
                   onClick={() => handleGroupByModeChange('color')}
-                  className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                    groupByMode === 'color'
-                      ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${groupByMode === 'color'
+                    ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
                 >
                   Color
                 </button>
               )}
               <button
                 onClick={() => handleGroupByModeChange('title')}
-                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                  groupByMode === 'title'
-                    ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${groupByMode === 'title'
+                  ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                  : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                  }`}
               >
                 Title
               </button>
               <button
                 onClick={() => handleGroupByModeChange('cadence')}
-                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                  groupByMode === 'cadence'
-                    ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${groupByMode === 'cadence'
+                  ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                  : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                  }`}
               >
                 Cadence
               </button>
             </div>
-            
+
             {/* Render Grouped Reminders */}
             {Object.entries(getGroupedReminders(applyAllFilters(reminderObjs))).map(([groupName, groupReminders]) => (
               <div key={groupName} className="space-y-3">
@@ -1285,21 +1305,20 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
                   ) : groupByMode === 'cadence' ? (
                     <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${
-                        groupName === 'Hourly' ? 'bg-blue-500' :
+                      <div className={`w-3 h-3 rounded-full ${groupName === 'Hourly' ? 'bg-blue-500' :
                         groupName === 'Daily' ? 'bg-green-500' :
-                        groupName === 'Weekly' ? 'bg-yellow-500' :
-                        groupName === 'Monthly' ? 'bg-orange-500' :
-                        groupName === 'Yearly' ? 'bg-red-500' :
-                        'bg-gray-500'
-                      } border border-gray-300`}></div>
+                          groupName === 'Weekly' ? 'bg-yellow-500' :
+                            groupName === 'Monthly' ? 'bg-orange-500' :
+                              groupName === 'Yearly' ? 'bg-red-500' :
+                                'bg-gray-500'
+                        } border border-gray-300`}></div>
                       <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
                     </div>
                   ) : (
                     <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
                   )}
                 </div>
-                
+
                 {/* Group Reminders */}
                 <div className="space-y-3 ml-4">
                   {groupReminders.map((reminderObj, index) => {
@@ -1312,7 +1331,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       .map(line => line.trim())
                       .filter(line => line.length > 0 && !line.startsWith('meta::'));
                     const hasMoreContent = contentLines.length > 2;
-                    
+
                     // Get color for this reminder
                     const reminderColor = getReminderColor(note.id);
                     const colorConfig = REMINDER_COLORS.find(c => c.name === reminderColor) || REMINDER_COLORS[0];
@@ -1321,11 +1340,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       <div
                         key={note.id}
                         data-reminder-id={note.id}
-                        className={`${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
-                          isFocused 
-                            ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl` 
-                            : colorConfig.border
-                        }`}
+                        className={`${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${isFocused
+                          ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl`
+                          : colorConfig.border
+                          }`}
                         onMouseEnter={() => setHoveredNote(note.id)}
                         onMouseLeave={() => setHoveredNote(null)}
                         onClick={() => {
@@ -1443,6 +1461,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                     <CheckIcon className="h-5 w-5" />
                                   </button>
                                   <button
+                                    onClick={() => setNoteToRemove(note)}
+                                    className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                                    title="Remove from Reminders"
+                                  >
+                                    <XMarkIcon className="h-5 w-5" />
+                                  </button>
+                                  <button
                                     onClick={() => handleEditNote(note.id)}
                                     className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                                     title="Goto Note"
@@ -1460,7 +1485,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                               )}
                             </div>
                           </div>
-                          
+
                           {/* More Options Section */}
                           {expandedOptions[note.id] && !showCadenceSelector && (
                             <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
@@ -1474,18 +1499,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                         <button
                                           key={color.name}
                                           onClick={() => handleColorSelect(note.id, color.name)}
-                                          className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
-                                            getReminderColor(note.id) === color.name 
-                                              ? 'border-gray-600 scale-110' 
-                                              : 'border-gray-300 hover:border-gray-400'
-                                          } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
+                                          className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${getReminderColor(note.id) === color.name
+                                            ? 'border-gray-600 scale-110'
+                                            : 'border-gray-300 hover:border-gray-400'
+                                            } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
                                           title={color.name}
                                         />
                                       ))}
                                     </div>
                                   </div>
                                 )}
-                                
+
                                 {/* Other options */}
                                 <div className="flex gap-3">
                                   <button
@@ -1509,6 +1533,36 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           </div>
         )}
 
+        {/* Custom Confirmation Popup */}
+        {noteToRemove && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center gap-3 text-red-600 mb-4">
+                <XMarkIcon className="h-8 w-8" />
+                <h3 className="text-xl font-bold">Remove Reminder?</h3>
+              </div>
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                Are you sure you want to stop tracking this reminder?
+                This will remove the review cadence and stop all future notifications for this note.
+              </p>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setNoteToRemove(null)}
+                  className="px-6 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleRemoveFromReminders(noteToRemove)}
+                  className="px-6 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-md hover:shadow-lg transition-all"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Upcoming Reminders Section */}
         {upcomingReminders.length > 0 && (
           <div className="mt-6">
@@ -1516,7 +1570,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <ClockIcon className="h-4 w-4" />
               Upcoming Reminders
             </h3>
-            
+
             {/* Search Bar for Upcoming Reminders */}
             <div className="flex items-center gap-4 mb-4">
               <div className="relative w-1/10">
@@ -1548,14 +1602,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleYellowModeToggle}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${
-                    yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      yellowMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${yellowMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -1566,11 +1618,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <button
                     key={groupName}
                     onClick={() => handleGroupFilterSelect(groupName)}
-                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                      selectedGroupFilter === groupName
-                        ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${selectedGroupFilter === groupName
+                      ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
                   >
                     {groupName} ({filterRemindersByGroup(upcomingReminders.map(r => r.note), groupName).length})
                   </button>
@@ -1579,21 +1630,19 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <button
                     key={cadenceType}
                     onClick={() => handleCadenceFilterSelect(cadenceType)}
-                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                      selectedCadenceFilter === cadenceType
-                        ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${selectedCadenceFilter === cadenceType
+                      ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
+                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
                   >
                     <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        cadenceType === 'Hourly' ? 'bg-blue-500' :
+                      <div className={`w-2 h-2 rounded-full ${cadenceType === 'Hourly' ? 'bg-blue-500' :
                         cadenceType === 'Daily' ? 'bg-green-500' :
-                        cadenceType === 'Weekly' ? 'bg-yellow-500' :
-                        cadenceType === 'Monthly' ? 'bg-orange-500' :
-                        cadenceType === 'Yearly' ? 'bg-red-500' :
-                        'bg-gray-500'
-                      } border border-gray-300`}></div>
+                          cadenceType === 'Weekly' ? 'bg-yellow-500' :
+                            cadenceType === 'Monthly' ? 'bg-orange-500' :
+                              cadenceType === 'Yearly' ? 'bg-red-500' :
+                                'bg-gray-500'
+                        } border border-gray-300`}></div>
                       <span>{cadenceType} ({cadenceReminders.length})</span>
                     </div>
                   </button>
@@ -1627,7 +1676,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   .map(line => line.trim())
                   .filter(line => line.length > 0 && !line.startsWith('meta::'));
                 const hasMoreContent = contentLines.length > 2;
-                
+
                 // Get color for this reminder
                 const reminderColor = getReminderColor(note.id);
                 const colorConfig = REMINDER_COLORS.find(c => c.name === reminderColor) || REMINDER_COLORS[0];
@@ -1636,11 +1685,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <div
                     key={note.id}
                     data-reminder-id={note.id}
-                    className={`${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
-                      isFocused 
-                        ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl` 
-                        : colorConfig.border
-                    }`}
+                    className={`${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${isFocused
+                      ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl`
+                      : colorConfig.border
+                      }`}
                     onClick={() => {
                       if (isRemindersOnlyMode) {
                         setFocusedReminderIndex(reminderIndex);
@@ -1766,18 +1814,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                     <button
                                       key={color.name}
                                       onClick={() => handleColorSelect(note.id, color.name)}
-                                      className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
-                                        getReminderColor(note.id) === color.name 
-                                          ? 'border-gray-600 scale-110' 
-                                          : 'border-gray-300 hover:border-gray-400'
-                                      } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
+                                      className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${getReminderColor(note.id) === color.name
+                                        ? 'border-gray-600 scale-110'
+                                        : 'border-gray-300 hover:border-gray-400'
+                                        } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
                                       title={color.name}
                                     />
                                   ))}
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Other options */}
                             <div className="flex gap-3">
                               <button

@@ -22,14 +22,14 @@ const TextPastePopup = ({
   allNotes = [], // Add allNotes prop for people and workstreams
 }) => {
   const textareaRef = useRef(null);
-  
+
   // Add state for tag suggestions
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredTags, setFilteredTags] = useState([]);
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [throttleRef] = useState({ current: null });
-  
+
   // Image handling state
   const [pastedImage, setPastedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -48,25 +48,25 @@ const TextPastePopup = ({
       setNewNoteText('');
       setPastedImage(null);
       setImagePreview(null);
-      
+
       // Check for image in clipboard when popup opens
-              const checkClipboardForImage = async () => {
+      const checkClipboardForImage = async () => {
         try {
           const clipboardItems = await navigator.clipboard.read();
           for (const item of clipboardItems) {
             for (const type of item.types) {
               if (type.startsWith('image/')) {
                 const blob = await item.getType(type);
-                
+
                 // Create a proper File object with extension from MIME type
                 let extension = '.png'; // Default
                 if (type === 'image/jpeg') extension = '.jpg';
                 else if (type === 'image/png') extension = '.png';
                 else if (type === 'image/gif') extension = '.gif';
                 else if (type === 'image/webp') extension = '.webp';
-                
+
                 const file = new File([blob], `clipboard-image${extension}`, { type });
-                
+
                 setPastedImage(file);
                 setImagePreview(URL.createObjectURL(file));
                 console.log('📸 Auto-loaded image from clipboard');
@@ -78,7 +78,7 @@ const TextPastePopup = ({
           console.log('Could not read clipboard for images:', error);
         }
       };
-      
+
       // Check for clipboard image after a brief delay
       setTimeout(() => {
         checkClipboardForImage();
@@ -113,21 +113,21 @@ const TextPastePopup = ({
           if (textarea) {
             // Get the textarea's position
             const rect = textarea.getBoundingClientRect();
-            
+
             // Calculate cursor position using textarea properties
             const textBeforeCursor = value.substring(0, textarea.selectionStart);
             const lines = textBeforeCursor.split('\n');
             const currentLineIndex = lines.length - 1;
             const currentLine = lines[currentLineIndex];
-            
+
             // Estimate character width (approximate)
             const charWidth = 8; // Approximate character width
             const cursorX = rect.left + (currentLine.length * charWidth) + 20; // Add padding
-            
+
             // Calculate vertical position
             const lineHeight = 20; // Approximate line height
             const cursorY = rect.top + (currentLineIndex * lineHeight) + lineHeight + 10;
-            
+
             setCursorPosition({ x: cursorX, y: cursorY });
             setFilteredTags(filtered.map(tag => tag.text));
             setShowSuggestions(true);
@@ -150,7 +150,7 @@ const TextPastePopup = ({
     setNewNoteText(updatedText);
     setShowSuggestions(false);
     setSelectedTagIndex(-1);
-    
+
     // Focus back to textarea
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -173,9 +173,9 @@ const TextPastePopup = ({
             else if (item.type === 'image/png') extension = '.png';
             else if (item.type === 'image/gif') extension = '.gif';
             else if (item.type === 'image/webp') extension = '.webp';
-            
+
             const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
-            
+
             setPastedImage(file);
             setImagePreview(URL.createObjectURL(file));
           }
@@ -200,15 +200,15 @@ const TextPastePopup = ({
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
-      
+
       img.onload = () => {
         // Keep original dimensions
         canvas.width = img.width;
         canvas.height = img.height;
-        
+
         // Draw image on canvas
         ctx.drawImage(img, 0, 0);
-        
+
         // Convert to blob with compression
         canvas.toBlob(
           (blob) => resolve(blob),
@@ -216,7 +216,7 @@ const TextPastePopup = ({
           quality
         );
       };
-      
+
       img.src = URL.createObjectURL(file);
     });
   };
@@ -224,7 +224,7 @@ const TextPastePopup = ({
   // Upload image to server
   const uploadImage = async (file) => {
     const formData = new FormData();
-    
+
     // Compress image first (except for GIFs to preserve animation)
     let fileToProcess = file;
     if (file.type !== 'image/gif') {
@@ -232,17 +232,17 @@ const TextPastePopup = ({
       fileToProcess = await compressImage(file, 0.8);
       console.log(`📊 Compressed size: ${(fileToProcess.size / 1024 / 1024).toFixed(2)} MB`);
     }
-    
+
     // Ensure the file has a proper extension based on its MIME type
     let filename = file.name;
     if (!filename || !filename.includes('.')) {
       const mimeType = fileToProcess.type;
       let extension = '.jpg'; // Default to JPG for compressed images
-      
+
       if (file.type === 'image/gif') extension = '.gif'; // Keep GIF as GIF
       else if (file.type === 'image/png' && file.type === fileToProcess.type) extension = '.png';
       else extension = '.jpg'; // Compressed images become JPG
-      
+
       filename = `clipboard-image${extension}`;
     } else {
       // Update extension if we compressed to JPEG
@@ -250,10 +250,10 @@ const TextPastePopup = ({
         filename = filename.replace(/\.[^/.]+$/, '.jpg');
       }
     }
-    
+
     // Create a new File object with proper filename
     const finalFile = new File([fileToProcess], filename, { type: fileToProcess.type });
-    
+
     formData.append('image', finalFile);
 
     try {
@@ -298,16 +298,16 @@ const TextPastePopup = ({
       if (pastedImage) {
         const response = await uploadImage(pastedImage);
         const { imageId } = response;
-        
+
         // Add only the meta tag (no markdown line)
         const imageMetaTag = `meta::image::${imageId}`;
-        const updatedText = newNoteText + 
-          (newNoteText ? '\n' : '') + 
+        const updatedText = newNoteText +
+          (newNoteText ? '\n' : '') +
           imageMetaTag;
-        
+
         // Update state for UI display
         setNewNoteText(updatedText);
-        
+
         // Call onSave with the updated content directly
         onSave(updatedText);
         setIsUploadingImage(false);
@@ -379,15 +379,14 @@ const TextPastePopup = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-white rounded-lg p-6 w-full max-w-2xl ${
-        selectedPriority === 'critical' ? 'ring-4 ring-red-500' :
+      <div className={`bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ${selectedPriority === 'critical' ? 'ring-2 ring-red-500' :
         selectedPriority === 'high' ? 'ring-2 ring-orange-500' :
-        selectedPriority === 'medium' ? 'ring-2 ring-yellow-500' :
-        selectedPriority === 'low' ? 'ring-2 ring-green-500' :
-        'ring-1 ring-gray-200'
-      }`}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Create New Note</h2>
+          selectedPriority === 'medium' ? 'ring-2 ring-yellow-500' :
+            selectedPriority === 'low' ? 'ring-2 ring-blue-500' :
+              'ring-1 ring-gray-200'
+        }`}>
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">Quick Paste Note</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -403,7 +402,7 @@ const TextPastePopup = ({
               value={newNoteText}
               onChange={handleTextChange}
               onPaste={handlePaste}
-              className="w-full h-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full h-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Type your note here... (Press Cmd+Enter to save, or paste images)"
             />
             {/* Tag suggestions popup */}
@@ -423,9 +422,8 @@ const TextPastePopup = ({
                     <div
                       key={tag}
                       onClick={() => handleSelectTag(tag)}
-                      className={`p-2 cursor-pointer hover:bg-purple-100 ${
-                        selectedTagIndex === index ? "bg-purple-200" : ""
-                      }`}
+                      className={`p-2 cursor-pointer hover:bg-purple-100 ${selectedTagIndex === index ? "bg-purple-200" : ""
+                        }`}
                     >
                       {tag}
                     </div>
@@ -434,13 +432,15 @@ const TextPastePopup = ({
               </div>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Clipboard Content (Reference Only)</label>
-            <div className="w-full h-32 p-2 border border-gray-300 rounded-lg bg-gray-50 overflow-auto">
-              <pre className="whitespace-pre-wrap text-sm text-gray-600">{pasteText}</pre>
+          {!imagePreview && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Clipboard Content (Reference Only)</label>
+              <div className="w-full h-32 p-2 border border-gray-300 rounded-lg bg-gray-50 overflow-auto">
+                <pre className="whitespace-pre-wrap text-sm text-gray-600">{pasteText}</pre>
+              </div>
             </div>
-          </div>
-          
+          )}
+
           {/* Image section */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -454,7 +454,7 @@ const TextPastePopup = ({
                 Choose File
               </button>
             </div>
-            
+
             <input
               ref={fileInputRef}
               type="file"
@@ -462,7 +462,7 @@ const TextPastePopup = ({
               onChange={handleFileSelect}
               className="hidden"
             />
-            
+
             {imagePreview && (
               <div className="relative border border-gray-300 rounded-lg p-2 bg-gray-50">
                 <img
@@ -482,61 +482,65 @@ const TextPastePopup = ({
                 </div>
               </div>
             )}
-            
+
             {!imagePreview && (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500 text-sm">
                 Paste an image here or click "Choose File" to select one
               </div>
             )}
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+
+          <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
+            <div className="flex items-center justify-center gap-4">
               <button
                 onClick={() => setIsWatchSelected(!isWatchSelected)}
-                className={`p-1 rounded-md ${isWatchSelected ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                title="Watch"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isWatchSelected ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50 border border-gray-300'
+                  }`}
+                title="Add to Watch List"
               >
-                <EyeIcon className="h-5 w-5" />
+                Watch
               </button>
               <button
                 onClick={() => setIsSensitiveSelected(!isSensitiveSelected)}
-                className={`px-2 py-1 rounded-md text-xs font-medium ${isSensitiveSelected ? 'bg-red-100 text-red-600 border border-red-300' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-300'}`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isSensitiveSelected ? 'bg-red-100 text-red-700 border border-red-300' : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300'
+                  }`}
                 title="Mark as Sensitive"
               >
                 Sensitive
               </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700">Priority:</span>
-              <div className="flex gap-1">
+
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedPriority(selectedPriority === 'critical' ? null : 'critical')}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'critical' ? 'bg-red-600 ring-2 ring-red-300 text-white' : 'bg-red-200 hover:bg-red-300 text-red-700'}`}
-                  title="Critical"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'critical' ? 'bg-red-100 text-red-700 border border-red-300' : 'text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300'
+                    }`}
+                  title="Critical Priority"
                 >
-                  C
+                  Critical
                 </button>
                 <button
                   onClick={() => setSelectedPriority(selectedPriority === 'high' ? null : 'high')}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'high' ? 'bg-orange-600 ring-2 ring-orange-300 text-white' : 'bg-orange-200 hover:bg-orange-300 text-orange-700'}`}
-                  title="High"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'high' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50 border border-orange-300'
+                    }`}
+                  title="High Priority"
                 >
-                  H
+                  High
                 </button>
                 <button
                   onClick={() => setSelectedPriority(selectedPriority === 'medium' ? null : 'medium')}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'medium' ? 'bg-yellow-600 ring-2 ring-yellow-300 text-white' : 'bg-yellow-200 hover:bg-yellow-300 text-yellow-700'}`}
-                  title="Medium"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'medium' ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-300'
+                    }`}
+                  title="Medium Priority"
                 >
-                  M
+                  Medium
                 </button>
                 <button
                   onClick={() => setSelectedPriority(selectedPriority === 'low' ? null : 'low')}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'low' ? 'bg-green-600 ring-2 ring-green-300 text-white' : 'bg-green-200 hover:bg-green-300 text-green-700'}`}
-                  title="Low"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'low' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-300'
+                    }`}
+                  title="Low Priority"
                 >
-                  L
+                  Low
                 </button>
               </div>
             </div>
@@ -562,11 +566,10 @@ const TextPastePopup = ({
           <button
             onClick={handleSave}
             disabled={isUploadingImage}
-            className={`px-4 py-2 rounded-lg text-white ${
-              isUploadingImage 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-indigo-600 hover:bg-indigo-700'
-            }`}
+            className={`px-4 py-2 rounded-lg text-white ${isUploadingImage
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg transition-all'
+              }`}
           >
             {isUploadingImage ? 'Uploading...' : 'Save Note'}
           </button>

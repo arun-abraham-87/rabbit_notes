@@ -7,207 +7,163 @@ const API_BASE_URL = 'http://localhost:5001/api';
 
 // Notes API functions
 export const addNewNoteCommon = async (content, tags, noteDate) => {
-    const response = await fetch(`${API_BASE_URL}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, tags, noteDate }),
-    });
-    if (!response.ok) throw new Error('Failed to add note');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, tags, noteDate }),
+  });
+  if (!response.ok) throw new Error('Failed to add note');
+  return await response.json();
 };
 
 export const getNoteById = async (id) => {
-    const fetchDebugPrefix = `[📥 GET NOTE] [${new Date().toISOString()}]`;
-    console.log(`${fetchDebugPrefix} ========== GET NOTE BY ID ==========`);
-    console.log(`${fetchDebugPrefix} Note ID: ${id}`);
-    console.log('[ApiUtils] getNoteById called:', id);
-    const fetchStartTime = Date.now();
-    const response = await fetch(`${API_BASE_URL}/notes/${id}`);
-    const fetchDuration = Date.now() - fetchStartTime;
-    console.log(`${fetchDebugPrefix} Fetch completed in ${fetchDuration}ms`);
-    console.log('[ApiUtils] getNoteById response status:', response.status);
-    console.log('[ApiUtils] getNoteById response ok:', response.ok);
-    if (!response.ok) {
-        console.error(`${fetchDebugPrefix} ❌ ERROR: Fetch failed`, { status: response.status, id });
-        console.error('[ApiUtils] getNoteById failed:', { status: response.status, id });
-        throw new Error('Failed to fetch note');
-    }
-    const result = await response.json();
-    console.log(`${fetchDebugPrefix} ✅ Fetch successful`);
-    console.log(`${fetchDebugPrefix} Returned note ID: ${result?.id}`);
-    console.log(`${fetchDebugPrefix} Returned note content length: ${result?.content?.length}`);
-    
-    // Count linked events in fetched content
-    const fetchedLinkedEventLines = result?.content?.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::')) || [];
-    console.log(`${fetchDebugPrefix} Linked event lines in fetched content: ${fetchedLinkedEventLines.length}`);
-    console.log(`${fetchDebugPrefix} Linked event lines:`, fetchedLinkedEventLines);
-    console.log(`${fetchDebugPrefix} Content preview (last 500 chars):`, result?.content?.substring(Math.max(0, result.content.length - 500)));
-    console.log(`${fetchDebugPrefix} ========== GET NOTE COMPLETE ==========`);
-    console.log('[ApiUtils] getNoteById success:', { id, hasContent: !!result?.content, contentLength: result?.content?.length });
-    console.log('[ApiUtils] getNoteById - content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
-    return result;
+  const fetchDebugPrefix = `[📥 GET NOTE] [${new Date().toISOString()}]`;
+  console.log(`${fetchDebugPrefix} ========== GET NOTE BY ID ==========`);
+  console.log(`${fetchDebugPrefix} Note ID: ${id}`);
+  console.log('[ApiUtils] getNoteById called:', id);
+  const fetchStartTime = Date.now();
+  const response = await fetch(`${API_BASE_URL}/notes/${id}`);
+  const fetchDuration = Date.now() - fetchStartTime;
+  console.log(`${fetchDebugPrefix} Fetch completed in ${fetchDuration}ms`);
+  console.log('[ApiUtils] getNoteById response status:', response.status);
+  console.log('[ApiUtils] getNoteById response ok:', response.ok);
+  if (!response.ok) {
+    console.error(`${fetchDebugPrefix} ❌ ERROR: Fetch failed`, { status: response.status, id });
+    console.error('[ApiUtils] getNoteById failed:', { status: response.status, id });
+    throw new Error('Failed to fetch note');
+  }
+  const result = await response.json();
+  console.log(`${fetchDebugPrefix} ✅ Fetch successful`);
+  console.log(`${fetchDebugPrefix} Returned note ID: ${result?.id}`);
+  console.log(`${fetchDebugPrefix} Returned note content length: ${result?.content?.length}`);
+
+  // Count linked events in fetched content
+  const fetchedLinkedEventLines = result?.content?.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::')) || [];
+  console.log(`${fetchDebugPrefix} Linked event lines in fetched content: ${fetchedLinkedEventLines.length}`);
+  console.log(`${fetchDebugPrefix} Linked event lines:`, fetchedLinkedEventLines);
+  console.log(`${fetchDebugPrefix} Content preview (last 500 chars):`, result?.content?.substring(Math.max(0, result.content.length - 500)));
+  console.log(`${fetchDebugPrefix} ========== GET NOTE COMPLETE ==========`);
+  console.log('[ApiUtils] getNoteById success:', { id, hasContent: !!result?.content, contentLength: result?.content?.length });
+  console.log('[ApiUtils] getNoteById - content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
+  return result;
 };
 
-export const updateNoteById = async (id, updatedContent) => {
-    const apiDebugPrefix = `[🌐 API UPDATE] [${new Date().toISOString()}]`;
-    console.log(`${apiDebugPrefix} ========== API UPDATE CALLED ==========`);
-    console.log(`${apiDebugPrefix} Note ID: ${id}`);
-    console.log(`${apiDebugPrefix} Content length: ${updatedContent?.length}`);
-    console.log(`${apiDebugPrefix} Content preview (first 300 chars):`, updatedContent?.substring(0, 300));
-    console.log(`${apiDebugPrefix} Content preview (last 300 chars):`, updatedContent?.substring(Math.max(0, updatedContent.length - 300)));
-    
-    // Count linked events in the content being sent
-    const linkedEventLines = updatedContent.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
-    console.log(`${apiDebugPrefix} Linked event lines in content being sent: ${linkedEventLines.length}`);
-    console.log(`${apiDebugPrefix} Linked event lines:`, linkedEventLines);
-    
-    const reorderedContent = reorderMetaTags(updatedContent);
-    console.log(`${apiDebugPrefix} After reorderMetaTags, content length: ${reorderedContent?.length}`);
-    
-    // Count linked events after reordering
-    const reorderedLinkedEventLines = reorderedContent.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
-    console.log(`${apiDebugPrefix} Linked event lines after reorderMetaTags: ${reorderedLinkedEventLines.length}`);
-    console.log(`${apiDebugPrefix} Linked event lines after reorder:`, reorderedLinkedEventLines);
-    
-    if (linkedEventLines.length !== reorderedLinkedEventLines.length) {
-      console.error(`${apiDebugPrefix} ⚠️ WARNING: Linked event line count changed after reorderMetaTags!`);
-      console.error(`${apiDebugPrefix}   Before: ${linkedEventLines.length} lines`);
-      console.error(`${apiDebugPrefix}   After: ${reorderedLinkedEventLines.length} lines`);
-      console.error(`${apiDebugPrefix}   Before lines:`, linkedEventLines);
-      console.error(`${apiDebugPrefix}   After lines:`, reorderedLinkedEventLines);
-    }
-    
-    console.log(`${apiDebugPrefix} Content preview after reorder (last 500 chars):`, reorderedContent?.substring(Math.max(0, reorderedContent.length - 500)));
-    
-    const requestStartTime = Date.now();
-    const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: reorderedContent }),
-    });
-    
-    const requestDuration = Date.now() - requestStartTime;
-    console.log(`${apiDebugPrefix} Request completed in ${requestDuration}ms`);
-    console.log(`${apiDebugPrefix} Response status: ${response.status}`);
-    console.log(`${apiDebugPrefix} Response ok: ${response.ok}`);
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`${apiDebugPrefix} ❌ ERROR: Update failed`, { status: response.status, errorText });
-        throw new Error('Failed to update note');
-    }
-    
-    const result = await response.json();
-    console.log(`${apiDebugPrefix} ✅ Update successful`);
-    console.log(`${apiDebugPrefix} Returned note ID: ${result?.id}`);
-    console.log(`${apiDebugPrefix} Returned note content length: ${result?.content?.length}`);
-    
-    // Count linked events in the returned content
-    const returnedLinkedEventLines = result?.content?.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::')) || [];
-    console.log(`${apiDebugPrefix} Linked event lines in returned content: ${returnedLinkedEventLines.length}`);
-    console.log(`${apiDebugPrefix} Linked event lines returned:`, returnedLinkedEventLines);
-    
-    if (reorderedLinkedEventLines.length !== returnedLinkedEventLines.length) {
-      console.error(`${apiDebugPrefix} ⚠️ WARNING: Linked event line count changed after backend update!`);
-      console.error(`${apiDebugPrefix}   Sent: ${reorderedLinkedEventLines.length} lines`);
-      console.error(`${apiDebugPrefix}   Returned: ${returnedLinkedEventLines.length} lines`);
-      console.error(`${apiDebugPrefix}   Sent lines:`, reorderedLinkedEventLines);
-      console.error(`${apiDebugPrefix}   Returned lines:`, returnedLinkedEventLines);
-    }
-    
-    console.log(`${apiDebugPrefix} Returned content preview (last 500 chars):`, result?.content?.substring(Math.max(0, result.content.length - 500)));
-    console.log(`${apiDebugPrefix} ========== API UPDATE COMPLETE ==========`);
-    
-    return result;
+export const updateNoteById = async (id, updatedContent, tags) => {
+  const apiDebugPrefix = `[🌐 API UPDATE] [${new Date().toISOString()}]`;
+  console.log(`${apiDebugPrefix} ========== API UPDATE CALLED ==========`);
+  console.log(`${apiDebugPrefix} Note ID: ${id}`);
+  console.log(`${apiDebugPrefix} Content length: ${updatedContent?.length}`);
+  console.log(`${apiDebugPrefix} Tags:`, tags);
+
+  // ... existing logging ...
+
+  const reorderedContent = reorderMetaTags(updatedContent);
+  const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: reorderedContent,
+      tags: tags
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`${apiDebugPrefix} ❌ ERROR: Update failed`, { status: response.status, errorText });
+    throw new Error('Failed to update note');
+  }
+
+  const result = await response.json();
+  return result;
 };
 
 export const deleteNoteById = async (id) => {
-    const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    // If 404, the note is already deleted - don't throw error
-    if (response.status === 404) {
-        console.log('[ApiUtils] Note already deleted (404):', id);
-        return { success: true, alreadyDeleted: true };
-    }
-    if (!response.ok) throw new Error('Failed to delete note');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  // If 404, the note is already deleted - don't throw error
+  if (response.status === 404) {
+    console.log('[ApiUtils] Note already deleted (404):', id);
+    return { success: true, alreadyDeleted: true };
+  }
+  if (!response.ok) throw new Error('Failed to delete note');
+  return await response.json();
 };
 
 // Image deletion functions
 export const deleteImageById = async (imageId) => {
-    const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to delete image');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Failed to delete image');
+  return await response.json();
 };
 
 export const deleteImagesFromNote = async (noteContent) => {
-    const imageIds = extractImageIds(noteContent);
-    const deletePromises = imageIds.map(imageId => 
-        deleteImageById(imageId).catch(error => {
-            console.warn(`Failed to delete image ${imageId}:`, error);
-            return null; // Don't fail the whole operation if one image fails
-        })
-    );
-    
-    await Promise.all(deletePromises);
-    return imageIds;
+  const imageIds = extractImageIds(noteContent);
+  const deletePromises = imageIds.map(imageId =>
+    deleteImageById(imageId).catch(error => {
+      console.warn(`Failed to delete image ${imageId}:`, error);
+      return null; // Don't fail the whole operation if one image fails
+    })
+  );
+
+  await Promise.all(deletePromises);
+  return imageIds;
 };
 
 export const deleteNoteWithImages = async (id, noteContent) => {
-    try {
-        // First delete associated images
-        await deleteImagesFromNote(noteContent);
-        console.log('✅ Associated images deleted');
-    } catch (error) {
-        console.warn('⚠️ Some images could not be deleted:', error);
-        // Continue with note deletion even if image deletion fails
-    }
-    
-    // Then delete the note
-    return await deleteNoteById(id);
+  try {
+    // First delete associated images
+    await deleteImagesFromNote(noteContent);
+    console.log('✅ Associated images deleted');
+  } catch (error) {
+    console.warn('⚠️ Some images could not be deleted:', error);
+    // Continue with note deletion even if image deletion fails
+  }
+
+  // Then delete the note
+  return await deleteNoteById(id);
 };
 
 export const loadAllNotes = async (searchText, noteDate) => {
-    const encodedQuery = encodeURIComponent(searchText || '');
-    const url = new URL(`${API_BASE_URL}/notes`);
-    url.searchParams.append('search', encodedQuery);
-    url.searchParams.append('currentDate', 'false');
-    if (noteDate) url.searchParams.append('noteDate', noteDate);
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to load all notes');
-    const data = await response.json();
-    return {
-        notes: data.notes.map(note => ({
-            ...note,
-            content: typeof note.content === 'object' ? note.content.content : note.content
-        })),
-        totals: data.totals
-    };
+  const encodedQuery = encodeURIComponent(searchText || '');
+  const url = new URL(`${API_BASE_URL}/notes`);
+  url.searchParams.append('search', encodedQuery);
+  url.searchParams.append('currentDate', 'false');
+  if (noteDate) url.searchParams.append('noteDate', noteDate);
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to load all notes');
+  const data = await response.json();
+  return {
+    notes: data.notes.map(note => ({
+      ...note,
+      content: typeof note.content === 'object' ? note.content.content : note.content
+    })),
+    totals: data.totals
+  };
 };
 
 export const loadNotes = async (searchText, noteDate) => {
-    const encodedQuery = encodeURIComponent(searchText || '');
-    const url = new URL(`${API_BASE_URL}/notes`);
-    url.searchParams.append('search', encodedQuery);
-    url.searchParams.append('currentDate', (!searchText || searchText.trim().length === 0).toString());
-    if (noteDate) url.searchParams.append('noteDate', noteDate);
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to load notes');
-    const data = await response.json();
-    return {
-        notes: data.notes.map(note => ({
-            ...note,
-            content: typeof note.content === 'object' ? note.content.content : note.content
-        })),
-        totals: data.totals
-    };
+  const encodedQuery = encodeURIComponent(searchText || '');
+  const url = new URL(`${API_BASE_URL}/notes`);
+  url.searchParams.append('search', encodedQuery);
+  url.searchParams.append('currentDate', (!searchText || searchText.trim().length === 0).toString());
+  if (noteDate) url.searchParams.append('noteDate', noteDate);
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to load notes');
+  const data = await response.json();
+  return {
+    notes: data.notes.map(note => ({
+      ...note,
+      content: typeof note.content === 'object' ? note.content.content : note.content
+    })),
+    totals: data.totals
+  };
 };
 
 // Journal APIs
@@ -266,204 +222,204 @@ export const listJournals = async () => {
 
 // Tag Operations
 export const loadTags = async () => {
-    try {
-        //
-        const response = await fetch(`${API_BASE_URL}/objects`);
-        //
-        if (!response.ok) {
-            console.warn('Failed to fetch tags, returning empty array');
-            return [];
-        }
-        const data = await response.json();
-        //
-        //
-        //
-        return data;
-    } catch (error) {
-        console.warn('Error fetching tags:', error);
-        return [];
+  try {
+    //
+    const response = await fetch(`${API_BASE_URL}/objects`);
+    //
+    if (!response.ok) {
+      console.warn('Failed to fetch tags, returning empty array');
+      return [];
     }
+    const data = await response.json();
+    //
+    //
+    //
+    return data;
+  } catch (error) {
+    console.warn('Error fetching tags:', error);
+    return [];
+  }
 };
 
 export const loadWorkstreams = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/workstreams`);
-        if (!response.ok) {
-            console.warn('Failed to fetch workstreams, returning empty array');
-            return [];
-        }
-        return await response.json();
-    } catch (error) {
-        console.warn('Error fetching workstreams:', error);
-        return [];
+  try {
+    const response = await fetch(`${API_BASE_URL}/workstreams`);
+    if (!response.ok) {
+      console.warn('Failed to fetch workstreams, returning empty array');
+      return [];
     }
+    return await response.json();
+  } catch (error) {
+    console.warn('Error fetching workstreams:', error);
+    return [];
+  }
 };
 
 export const loadPeople = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/people`);
-        if (!response.ok) {
-            console.warn('Failed to fetch people, returning empty array');
-            return [];
-        }
-        return await response.json();
-    } catch (error) {
-        console.warn('Error fetching people:', error);
-        return [];
+  try {
+    const response = await fetch(`${API_BASE_URL}/people`);
+    if (!response.ok) {
+      console.warn('Failed to fetch people, returning empty array');
+      return [];
     }
+    return await response.json();
+  } catch (error) {
+    console.warn('Error fetching people:', error);
+    return [];
+  }
 };
 
 export const fetchPeopleWithFilters = async (filters = {}) => {
-    try {
-        const params = new URLSearchParams();
-        
-        if (filters.startsWith) {
-            params.append('startsWith', filters.startsWith);
-        }
-        if (filters.tags && filters.tags.length > 0) {
-            filters.tags.forEach(tag => params.append('tags', tag));
-        }
-        if (filters.search) {
-            params.append('search', filters.search);
-        }
-        if (filters.hasPhoto !== undefined) {
-            params.append('hasPhoto', filters.hasPhoto);
-        }
-        if (filters.withoutPhoto !== undefined) {
-            params.append('withoutPhoto', filters.withoutPhoto);
-        }
-        
-        const queryString = params.toString();
-        const url = queryString 
-            ? `${API_BASE_URL}/people?${queryString}`
-            : `${API_BASE_URL}/people`;
-        
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.warn('Failed to fetch people with filters, returning empty array');
-            return [];
-        }
-        return await response.json();
-    } catch (error) {
-        console.warn('Error fetching people with filters:', error);
-        return [];
+  try {
+    const params = new URLSearchParams();
+
+    if (filters.startsWith) {
+      params.append('startsWith', filters.startsWith);
     }
+    if (filters.tags && filters.tags.length > 0) {
+      filters.tags.forEach(tag => params.append('tags', tag));
+    }
+    if (filters.search) {
+      params.append('search', filters.search);
+    }
+    if (filters.hasPhoto !== undefined) {
+      params.append('hasPhoto', filters.hasPhoto);
+    }
+    if (filters.withoutPhoto !== undefined) {
+      params.append('withoutPhoto', filters.withoutPhoto);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${API_BASE_URL}/people?${queryString}`
+      : `${API_BASE_URL}/people`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn('Failed to fetch people with filters, returning empty array');
+      return [];
+    }
+    return await response.json();
+  } catch (error) {
+    console.warn('Error fetching people with filters:', error);
+    return [];
+  }
 };
 
 export const fetchPeopleTags = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/people/tags`);
-        if (!response.ok) {
-            console.warn('Failed to fetch people tags, returning empty array');
-            return [];
-        }
-        return await response.json();
-    } catch (error) {
-        console.warn('Error fetching people tags:', error);
-        return [];
+  try {
+    const response = await fetch(`${API_BASE_URL}/people/tags`);
+    if (!response.ok) {
+      console.warn('Failed to fetch people tags, returning empty array');
+      return [];
     }
+    return await response.json();
+  } catch (error) {
+    console.warn('Error fetching people tags:', error);
+    return [];
+  }
 };
 
 export const getAllTags = async () => {
-    const response = await fetch(`${API_BASE_URL}/tags`);
-    if (!response.ok) throw new Error('Failed to fetch tags');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/tags`);
+  if (!response.ok) throw new Error('Failed to fetch tags');
+  return await response.json();
 };
 
 export const updateTags = async (tags) => {
-    const response = await fetch(`${API_BASE_URL}/tags`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags }),
-    });
-    if (!response.ok) throw new Error('Failed to update tags');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/tags`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tags }),
+  });
+  if (!response.ok) throw new Error('Failed to update tags');
+  return await response.json();
 };
 
 export const deleteTag = async (tagId) => {
-    const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to delete tag');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Failed to delete tag');
+  return await response.json();
 };
 
 export const deleteWorkstream = async (workstreamId) => {
-    const response = await fetch(`${API_BASE_URL}/workstreams/${workstreamId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to delete workstream');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/workstreams/${workstreamId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Failed to delete workstream');
+  return await response.json();
 };
 
 export const deletePerson = async (personId) => {
-    const response = await fetch(`${API_BASE_URL}/people/${personId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to delete person');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/people/${personId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Failed to delete person');
+  return await response.json();
 };
 
 export const editTag = async (tagId, newText) => {
+  //
+  const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: newText }),
+  });
+  //
+  if (!response.ok) {
+    const errorText = await response.text();
     //
-    const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newText }),
-    });
-    //
-    if (!response.ok) {
-        const errorText = await response.text();
-        //
-        throw new Error('Failed to edit tag');
-    }
-    return await response.json();
+    throw new Error('Failed to edit tag');
+  }
+  return await response.json();
 };
 
 // Settings API functions
 export const getSettings = async () => {
-    const response = await fetch(`${API_BASE_URL}/settings`);
-    if (!response.ok) throw new Error('Failed to fetch settings');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/settings`);
+  if (!response.ok) throw new Error('Failed to fetch settings');
+  return await response.json();
 };
 
 export const updateSettings = async (settings) => {
-    const response = await fetch(`${API_BASE_URL}/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-    });
-    if (!response.ok) throw new Error('Failed to update settings');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) throw new Error('Failed to update settings');
+  return await response.json();
 };
 
 // Todo Operations
 export const loadTodos = async () => {
-    const response = await fetch(`${API_BASE_URL}/todos`);
-    if (!response.ok) throw new Error('Failed to fetch todos');
-    const data = await response.json();
-    return data.todos || [];
+  const response = await fetch(`${API_BASE_URL}/todos`);
+  if (!response.ok) throw new Error('Failed to fetch todos');
+  const data = await response.json();
+  return data.todos || [];
 };
 
 export const addNewTag = async (tagText) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/objects`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: tagText }),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to add tag');
-        }
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Error adding tag:", error.message);
-        throw error;
+  try {
+    const response = await fetch(`${API_BASE_URL}/objects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: tagText }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to add tag');
     }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error adding tag:", error.message);
+    throw error;
+  }
 };
 
 export const defaultSettings = {
@@ -506,20 +462,20 @@ export const defaultSettings = {
 };
 
 export const createNote = async (content) => {
-    const response = await fetch(`${API_BASE_URL}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-    });
-    if (!response.ok) throw new Error('Failed to create note');
-    return await response.json();
+  const response = await fetch(`${API_BASE_URL}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) throw new Error('Failed to create note');
+  return await response.json();
 };
 
 export const exportAllNotes = async () => {
   try {
     // Create a new ZIP file
     const zip = new JSZip();
-    
+
     // Create folders for notes, journals, and images
     const notesFolder = zip.folder('notes');
     const journalsFolder = zip.folder('journals');
@@ -584,13 +540,13 @@ export const exportAllNotes = async () => {
     const imageFetchPromises = allImages.map(async (imageInfo) => {
       try {
         const { filename, id, extension } = imageInfo;
-        
+
         // If we have the full filename, use it directly
         if (filename && filename.includes('.')) {
           try {
             const imageUrl = `${API_BASE_URL}/images/${filename}`;
             const response = await fetch(imageUrl);
-            
+
             if (response.ok && response.status === 200) {
               const blob = await response.blob();
               imagesFolder.file(filename, blob);
@@ -601,17 +557,17 @@ export const exportAllNotes = async () => {
             console.warn(`Failed to fetch image ${filename}:`, error);
           }
         }
-        
+
         // Fallback: try different extensions if we only have the ID
-        const extensions = extension && extension !== 'unknown' 
+        const extensions = extension && extension !== 'unknown'
           ? [extension, extension.toUpperCase()]
           : ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'JPEG', 'gif', 'GIF', 'webp', 'WEBP', 'heic', 'HEIC'];
-        
+
         for (const ext of extensions) {
           try {
             const imageUrl = `${API_BASE_URL}/images/${id}.${ext}`;
             const response = await fetch(imageUrl);
-            
+
             if (response.ok && response.status === 200) {
               const blob = await response.blob();
               const fileName = `${id}.${ext}`;
@@ -624,7 +580,7 @@ export const exportAllNotes = async () => {
             continue;
           }
         }
-        
+
         console.warn(`Could not find image: ${filename || id}`);
       } catch (error) {
         console.error(`Error fetching image ${imageInfo.filename || imageInfo.id}:`, error);
@@ -642,11 +598,11 @@ export const exportAllNotes = async () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `rabbit_notes_export_${new Date().toISOString().split('T')[0]}.zip`;
-    
+
     // Trigger the download
     document.body.appendChild(a);
     a.click();
-    
+
     // Clean up
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
@@ -670,10 +626,10 @@ export const getTimelines = async (params = {}) => {
   if (status) queryParams.append('status', status);
   if (search) queryParams.append('search', search);
   if (searchTitlesOnly) queryParams.append('searchTitlesOnly', searchTitlesOnly);
-  
+
   const queryString = queryParams.toString();
   const url = `${API_BASE_URL}/timelines${queryString ? `?${queryString}` : ''}`;
-  
+
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch timelines');
   return await response.json();
@@ -690,7 +646,7 @@ export const getTimelineEvents = async (id, search = '') => {
   if (search) queryParams.append('search', search);
   const queryString = queryParams.toString();
   const url = `${API_BASE_URL}/timelines/${id}/events${queryString ? `?${queryString}` : ''}`;
-  
+
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch timeline events');
   return await response.json();
@@ -701,7 +657,7 @@ export const getMasterTimelineEvents = async (year) => {
   if (year) queryParams.append('year', year);
   const queryString = queryParams.toString();
   const url = `${API_BASE_URL}/timelines/master/events${queryString ? `?${queryString}` : ''}`;
-  
+
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch master timeline events');
   return await response.json();

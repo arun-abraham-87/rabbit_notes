@@ -33,7 +33,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   // Ref for the notes textarea to enable auto-focus
   const notesTextareaRef = useRef(null);
 
-  const existingTags = getAllUniqueTags(notes || []);
+  const existingTags = getAllUniqueTags(notes || [], 'event');
 
   useEffect(() => {
     if (!note || !note.content) {

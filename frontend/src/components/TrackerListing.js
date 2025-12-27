@@ -30,6 +30,7 @@ import {
   ArcElement
 } from 'chart.js';
 import TrackerGrid from './TrackerGrid';
+import TrackerTable from './TrackerTable';
 import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
@@ -50,7 +51,7 @@ const TrackerListing = () => {
   const [trackers, setTrackers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Load search term from localStorage on mount
   const [searchTerm, setSearchTerm] = useState(() => {
     const savedSearchTerm = localStorage.getItem('trackerPageSearchTerm');
@@ -72,6 +73,10 @@ const TrackerListing = () => {
     const saved = localStorage.getItem('trackerPageCollapsedGroups');
     return saved ? JSON.parse(saved) : {};
   });
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('trackerPageViewMode');
+    return saved || 'grid'; // 'grid' or 'table'
+  });
   const [showOverdueAlert, setShowOverdueAlert] = useState(true);
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
@@ -84,6 +89,7 @@ const TrackerListing = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
+  const [allNotes, setAllNotes] = useState([]);
 
   useEffect(() => {
     loadTrackers();
@@ -114,6 +120,11 @@ const TrackerListing = () => {
     localStorage.setItem('trackerPageCollapsedGroups', JSON.stringify(collapsedGroups));
   }, [collapsedGroups]);
 
+  // Save viewMode to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('trackerPageViewMode', viewMode);
+  }, [viewMode]);
+
   // Toggle collapse state for a group
   const toggleGroupCollapse = (groupKey) => {
     setCollapsedGroups(prev => ({
@@ -128,7 +139,8 @@ const TrackerListing = () => {
       setError(null);
       const response = await loadNotes();
       const notes = Array.isArray(response) ? response : (response?.notes || []);
-      
+      setAllNotes(notes);
+
       const trackerNotes = notes
         .filter(note => note.content && note.content.split('\n').some(line => line === 'meta::tracker'))
         .map(note => {
@@ -142,7 +154,8 @@ const TrackerListing = () => {
           const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
           const endDate = lines.find(line => line.startsWith('End Date:'))?.replace('End Date:', '').trim();
           const overdueDays = lines.find(line => line.startsWith('overdue:'))?.replace('overdue:', '').trim();
-          
+          const tagsStr = lines.find(line => line.startsWith('Tags:'))?.replace('Tags:', '').trim();
+
           return {
             id: note.id,
             title,
@@ -152,6 +165,7 @@ const TrackerListing = () => {
             days,
             startDate,
             endDate,
+            tags: tagsStr ? tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
             overdueDays: overdueDays || undefined,
             createdAt: note.createdAt,
             completions: {} // Initialize completions
@@ -165,14 +179,14 @@ const TrackerListing = () => {
       const answersByTracker = {};
       const rawNotesByAnswer = {};
       const graphDataByTracker = {};
-      
+
       answers.forEach(answer => {
         const lines = answer.content.split('\n');
         const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
         const answerValue = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
         const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
         const notes = lines.find(line => line.startsWith('Notes:'))?.replace('Notes:', '').trim() || '';
-        
+
         if (link && answerValue && date) {
           // Find the tracker by ID, handling type mismatches (string vs number)
           const tracker = trackerNotes.find(t => {
@@ -180,7 +194,7 @@ const TrackerListing = () => {
             const linkId = String(link);
             return tId === linkId;
           });
-          
+
           if (!tracker) {
             // Check if the link ID matches any tracker ID (case-insensitive)
             const normalizedLinkId = String(link).toLowerCase();
@@ -188,7 +202,7 @@ const TrackerListing = () => {
               const normalizedTrackerId = String(t.id).toLowerCase();
               return normalizedTrackerId === normalizedLinkId;
             });
-            
+
             if (matchingTracker) {
               // Use the matching tracker found with normalization
               tracker = matchingTracker;
@@ -198,25 +212,25 @@ const TrackerListing = () => {
                 trackerTitle: matchingTracker.title
               });
             } else {
-              console.log('[loadTrackers] Tracker not found for answer', { 
-                linkId: String(link), 
+              console.log('[loadTrackers] Tracker not found for answer', {
+                linkId: String(link),
                 linkIdType: typeof link,
                 normalizedLinkId,
                 trackerCount: trackerNotes.length,
-                sampleTrackerIds: trackerNotes.slice(0, 5).map(t => ({ 
-                  id: String(t.id), 
-                  idType: typeof t.id, 
+                sampleTrackerIds: trackerNotes.slice(0, 5).map(t => ({
+                  id: String(t.id),
+                  idType: typeof t.id,
                   normalizedId: String(t.id).toLowerCase(),
-                  title: t.title 
+                  title: t.title
                 }))
               });
             }
           }
-          
+
           if (tracker) {
             // Use tracker.id for consistent key usage (handle type conversion)
             const trackerId = String(tracker.id);
-            
+
             if (!stats[trackerId]) {
               stats[trackerId] = { yes: 0, no: 0, total: 0 };
             }
@@ -267,7 +281,7 @@ const TrackerListing = () => {
         const { dates, yesCounts, noCounts } = graphDataByTracker[trackerId];
         const sortedIndices = dates.map((_, i) => i)
           .sort((a, b) => new Date(dates[a]) - new Date(dates[b]));
-        
+
         graphDataByTracker[trackerId] = {
           dates: sortedIndices.map(i => dates[i]),
           yesCounts: sortedIndices.map(i => yesCounts[i]),
@@ -279,7 +293,7 @@ const TrackerListing = () => {
       setTrackerAnswers(answersByTracker);
       setRawNotes(rawNotesByAnswer);
       setGraphData(graphDataByTracker);
-      
+
       // Debug: Log loaded answers for verification
       console.log('[loadTrackers] Loaded answers summary', {
         totalAnswers: answers.length,
@@ -290,20 +304,20 @@ const TrackerListing = () => {
           allDates: answersByTracker[k].map(a => a.date).sort()
         }))
       });
-      
+
       // Debug: Specifically check "Merlin Go for Work" tracker
       const merlinTracker = trackerNotes.find(t => t.title === 'Merlin Go for Work');
       if (merlinTracker) {
         const merlinId = String(merlinTracker.id);
         const merlinAnswers = answersByTracker[merlinId] || [];
-        
+
         // Also check all answers in the backend to see if any have the merlin tracker ID
         const allMerlinAnswersInBackend = answers.filter(answer => {
           const lines = answer.content.split('\n');
           const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
           return String(link) === merlinId;
         });
-        
+
         console.log('[loadTrackers] Merlin Go for Work tracker details', {
           trackerId: merlinId,
           trackerIdType: typeof merlinTracker.id,
@@ -336,8 +350,8 @@ const TrackerListing = () => {
   };
 
   const handleTrackerUpdated = (updatedTracker) => {
-    setTrackers(prevTrackers => 
-      prevTrackers.map(tracker => 
+    setTrackers(prevTrackers =>
+      prevTrackers.map(tracker =>
         tracker.id === updatedTracker.id ? updatedTracker : tracker
       )
     );
@@ -378,7 +392,7 @@ const TrackerListing = () => {
     try {
       await deleteNoteById(answerId);
       // Remove the answer from the trackerAnswers state
-      const trackerId = Object.keys(trackerAnswers).find(tId => 
+      const trackerId = Object.keys(trackerAnswers).find(tId =>
         trackerAnswers[tId].some(answer => answer.id === answerId)
       );
       if (trackerId) {
@@ -477,13 +491,13 @@ const TrackerListing = () => {
   const fuzzyMatch = (text, pattern) => {
     if (!pattern) return true;
     if (!text) return false;
-    
+
     const textLower = text.toLowerCase();
     const patternLower = pattern.toLowerCase();
-    
+
     // First try exact substring match
     if (textLower.includes(patternLower)) return true;
-    
+
     // Fuzzy match: check if all pattern characters appear in order
     let patternIndex = 0;
     for (let i = 0; i < textLower.length && patternIndex < patternLower.length; i++) {
@@ -497,10 +511,10 @@ const TrackerListing = () => {
   // Toggle completion for a tracker on a given date
   const handleToggleDay = async (trackerId, dateStr, value = null) => {
     console.log('[handleToggleDay] START', { trackerId, dateStr, value, timestamp: new Date().toISOString() });
-    
+
     // Normalize trackerId to string for consistent key usage
     const trackerIdStr = String(trackerId);
-    
+
     const tracker = trackers.find(t => String(t.id) === trackerIdStr);
     if (!tracker) {
       console.log('[handleToggleDay] ERROR: Tracker not found', { trackerId, trackerIdStr });
@@ -516,10 +530,10 @@ const TrackerListing = () => {
     if (isRemoval) {
       // Handle removal - find and delete ALL notes for this date, then update state
       console.log('[handleToggleDay] Handling removal', { trackerId, dateStr });
-      
+
       // Collect all note IDs to delete from state
       const notesToDeleteFromState = trackerAnswers[trackerIdStr]?.filter(a => a.date === dateStr).map(a => a.id) || [];
-      
+
       // Also search rawNotes for all notes with matching date
       const notesToDeleteFromCache = [];
       for (const [noteId, content] of Object.entries(rawNotes)) {
@@ -530,26 +544,26 @@ const TrackerListing = () => {
           notesToDeleteFromCache.push(noteId);
         }
       }
-      
+
       // Combine and deduplicate note IDs
       const allNotesToDelete = [...new Set([...notesToDeleteFromState, ...notesToDeleteFromCache])];
-      
+
       // Also check API for any additional notes
       try {
         const response = await loadNotes();
         const notes = Array.isArray(response) ? response : (response?.notes || []);
-        
+
         const matchingNotesFromAPI = notes.filter(note => {
           if (!note.content) return false;
           const lines = note.content.split('\n');
           const hasTrackerAnswer = lines.some(line => line === 'meta::tracker_answer');
           if (!hasTrackerAnswer) return false;
-          
+
           const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
           const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
           return noteDate === dateStr && String(noteLink) === trackerIdStr;
         });
-        
+
         matchingNotesFromAPI.forEach(note => {
           if (!allNotesToDelete.includes(note.id)) {
             allNotesToDelete.push(note.id);
@@ -558,11 +572,11 @@ const TrackerListing = () => {
       } catch (error) {
         console.error('[handleToggleDay] Error searching API for notes to delete', { error });
       }
-      
+
       // Delete all matching notes from backend
       if (allNotesToDelete.length > 0) {
         console.log('[handleToggleDay] Deleting notes', { count: allNotesToDelete.length, noteIds: allNotesToDelete });
-        
+
         // Delete all notes in parallel
         const deletePromises = allNotesToDelete.map(async (noteId) => {
           try {
@@ -580,9 +594,9 @@ const TrackerListing = () => {
             }
           }
         });
-        
+
         await Promise.all(deletePromises);
-        
+
         // Remove all deleted notes from rawNotes
         setRawNotes(prev => {
           const updated = { ...prev };
@@ -592,24 +606,24 @@ const TrackerListing = () => {
           return updated;
         });
       }
-      
+
       setTrackers(prev => {
         const currentTracker = prev.find(t => t.id === trackerId);
-        console.log('[handleToggleDay] Current tracker completions before removal', { 
-          trackerId, 
-          dateStr, 
+        console.log('[handleToggleDay] Current tracker completions before removal', {
+          trackerId,
+          dateStr,
           hasCompletion: !!(currentTracker?.completions?.[dateStr]),
-          allCompletions: currentTracker?.completions 
+          allCompletions: currentTracker?.completions
         });
-        
+
         return prev.map(t => {
           if (t.id !== trackerId) return t;
           const completions = { ...t.completions };
           delete completions[dateStr]; // Remove the completion
-          console.log('[handleToggleDay] Removed completion from tracker state', { 
-            trackerId, 
-            dateStr, 
-            completionsAfter: completions 
+          console.log('[handleToggleDay] Removed completion from tracker state', {
+            trackerId,
+            dateStr,
+            completionsAfter: completions
           });
           return { ...t, completions };
         });
@@ -618,28 +632,28 @@ const TrackerListing = () => {
       // Update trackerAnswers to remove the answer
       setTrackerAnswers(prev => {
         const prevAnswers = prev[trackerIdStr] || [];
-        console.log('[handleToggleDay] Current trackerAnswers before removal', { 
-          trackerId, 
-          dateStr, 
+        console.log('[handleToggleDay] Current trackerAnswers before removal', {
+          trackerId,
+          dateStr,
           prevAnswersCount: prevAnswers.length,
           hasAnswer: prevAnswers.some(a => a.date === dateStr),
           allAnswers: prevAnswers.map(a => ({ date: a.date, answer: a.answer }))
         });
 
         const filteredAnswers = prevAnswers.filter(a => a.date !== dateStr);
-        console.log('[handleToggleDay] Filtered answers after removal', { 
-          trackerId, 
-          dateStr, 
+        console.log('[handleToggleDay] Filtered answers after removal', {
+          trackerId,
+          dateStr,
           filteredAnswersCount: filteredAnswers.length,
           filteredAnswers: filteredAnswers.map(a => ({ date: a.date, answer: a.answer }))
         });
 
         const newState = { ...prev, [trackerIdStr]: filteredAnswers };
-        console.log('[handleToggleDay] New trackerAnswers state', { 
-          trackerId, 
-          newState: Object.keys(newState).map(k => ({ 
-            key: k, 
-            count: newState[k]?.length || 0 
+        console.log('[handleToggleDay] New trackerAnswers state', {
+          trackerId,
+          newState: Object.keys(newState).map(k => ({
+            key: k,
+            count: newState[k]?.length || 0
           }))
         });
 
@@ -664,14 +678,14 @@ const TrackerListing = () => {
 
     // Check if answer already exists in state - find the latest one if multiple exist
     const existingAnswersInState = trackerAnswers[trackerIdStr]?.filter(a => a.date === dateStr) || [];
-    let existingAnswer = existingAnswersInState.length > 0 
+    let existingAnswer = existingAnswersInState.length > 0
       ? existingAnswersInState.sort((a, b) => {
-          // Sort by ID (assuming newer notes have higher IDs or use createdAt if available)
-          // For now, just take the last one in the array (most recently added to state)
-          return existingAnswersInState.indexOf(b) - existingAnswersInState.indexOf(a);
-        })[0]
+        // Sort by ID (assuming newer notes have higher IDs or use createdAt if available)
+        // For now, just take the last one in the array (most recently added to state)
+        return existingAnswersInState.indexOf(b) - existingAnswersInState.indexOf(a);
+      })[0]
       : null;
-    
+
     // If not found in state, search through rawNotes to find all existing notes with this date
     let existingNoteId = null;
     if (existingAnswer && existingAnswer.id) {
@@ -687,7 +701,7 @@ const TrackerListing = () => {
           matchingNotesFromCache.push({ id: noteId, content });
         }
       }
-      
+
       // If found in cache, use the one with the highest ID (assuming newer notes have higher IDs)
       if (matchingNotesFromCache.length > 0) {
         // Sort by ID (assuming newer = higher ID) or use note creation order
@@ -695,25 +709,25 @@ const TrackerListing = () => {
         existingNoteId = matchingNotesFromCache[0].id;
         existingAnswer = { id: existingNoteId, date: dateStr, answer: '', value: '' };
       }
-      
+
       // Always check the API to find the latest note (even if found in cache)
       try {
         console.log('[handleToggleDay] Searching API for existing notes', { trackerId, dateStr });
         const response = await loadNotes();
         const notes = Array.isArray(response) ? response : (response?.notes || []);
-        
+
         // Find ALL tracker answer notes with matching date and tracker link
         const matchingNotes = notes.filter(note => {
           if (!note.content) return false;
           const lines = note.content.split('\n');
           const hasTrackerAnswer = lines.some(line => line === 'meta::tracker_answer');
           if (!hasTrackerAnswer) return false;
-          
+
           const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
           const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
           return noteDate === dateStr && String(noteLink) === trackerIdStr;
         });
-        
+
         if (matchingNotes.length > 0) {
           // Sort by createdAt (newest first) or by ID (assuming newer = higher ID)
           const sortedNotes = matchingNotes.sort((a, b) => {
@@ -724,12 +738,12 @@ const TrackerListing = () => {
             // Fallback to ID comparison (assuming newer notes have higher IDs)
             return String(b.id).localeCompare(String(a.id));
           });
-          
+
           // Use the most recent note
           const latestNote = sortedNotes[0];
           existingNoteId = latestNote.id;
           existingAnswer = { id: latestNote.id, date: dateStr, answer: '', value: '' };
-          
+
           // Add all matching notes to rawNotes for future lookups
           setRawNotes(prev => {
             const updated = { ...prev };
@@ -740,14 +754,14 @@ const TrackerListing = () => {
             });
             return updated;
           });
-          
-          console.log('[handleToggleDay] Found existing notes in API', { 
+
+          console.log('[handleToggleDay] Found existing notes in API', {
             totalMatches: matchingNotes.length,
             latestNoteId: existingNoteId,
             dateStr,
             allNoteIds: matchingNotes.map(n => n.id)
           });
-          
+
           // If there are multiple notes, log a warning
           if (matchingNotes.length > 1) {
             console.warn('[handleToggleDay] Multiple notes found for same date, using latest', {
@@ -763,10 +777,10 @@ const TrackerListing = () => {
         console.error('[handleToggleDay] Error searching API for existing note', { error });
       }
     }
-    
-    console.log('[handleToggleDay] Existing answer check', { 
-      trackerId, 
-      dateStr, 
+
+    console.log('[handleToggleDay] Existing answer check', {
+      trackerId,
+      dateStr,
       hasExistingAnswer: !!existingAnswer,
       existingAnswerId: existingAnswer?.id,
       foundInRawNotes: !!existingNoteId && !trackerAnswers[trackerIdStr]?.find(a => a.date === dateStr)
@@ -776,15 +790,15 @@ const TrackerListing = () => {
       let response;
       if (existingNoteId) {
         // Update existing note
-        console.log('[handleToggleDay] Updating existing note', { 
-          noteId: existingNoteId, 
-          newAnswer: answer 
+        console.log('[handleToggleDay] Updating existing note', {
+          noteId: existingNoteId,
+          newAnswer: answer
         });
-        
+
         // Get the existing note content from rawNotes
         const existingContent = rawNotes[existingNoteId];
         if (!existingContent) {
-          console.error('[handleToggleDay] ERROR: Cannot find existing note content', { 
+          console.error('[handleToggleDay] ERROR: Cannot find existing note content', {
             noteId: existingNoteId,
             availableIds: Object.keys(rawNotes).slice(0, 5)
           });
@@ -808,7 +822,7 @@ const TrackerListing = () => {
             }
             return line;
           });
-          
+
           // Add answer for line if it doesn't exist and tracker name is available
           let updatedContent = updatedLines.join('\n');
           if (!hasAnswerForLine && tracker?.title) {
@@ -819,24 +833,24 @@ const TrackerListing = () => {
               updatedContent = updatedLines.join('\n');
             }
           }
-          
-          console.log('[handleToggleDay] Updating note with full content', { 
+
+          console.log('[handleToggleDay] Updating note with full content', {
             noteId: existingNoteId,
             oldContentPreview: existingContent.substring(0, 100),
             newContentPreview: updatedContent.substring(0, 100)
           });
-          
+
           await updateNoteById(existingNoteId, updatedContent);
           response = { id: existingNoteId }; // Use existing ID
-          
+
           // Update rawNotes to reflect the new content immediately
           setRawNotes(prev => ({
             ...prev,
             [existingNoteId]: updatedContent
           }));
-          
-          console.log('[handleToggleDay] Note updated successfully', { 
-            noteId: existingNoteId 
+
+          console.log('[handleToggleDay] Note updated successfully', {
+            noteId: existingNoteId
           });
         }
       } else {
@@ -844,7 +858,7 @@ const TrackerListing = () => {
         console.log('[handleToggleDay] Creating new note', { trackerId, dateStr, answer });
         response = await createTrackerAnswerNote(trackerId, answer, dateStr, '', tracker?.title || '');
         console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
-        
+
         // Add newly created note to rawNotes for future lookups
         if (response && response.id && response.content) {
           setRawNotes(prev => ({
@@ -854,26 +868,26 @@ const TrackerListing = () => {
           console.log('[handleToggleDay] Added new note to rawNotes', { noteId: response.id });
         }
       }
-      
+
       if (response && response.id) {
         setTrackers(prev => prev.map(t => {
           if (t.id !== trackerId) return t;
           const completions = { ...t.completions };
           completions[dateStr] = !completions[dateStr];
-          console.log('[handleToggleDay] Updated tracker completions', { 
-            trackerId, 
-            dateStr, 
-            completionValue: completions[dateStr] 
+          console.log('[handleToggleDay] Updated tracker completions', {
+            trackerId,
+            dateStr,
+            completionValue: completions[dateStr]
           });
           return { ...t, completions };
         }));
-        
+
         // Update trackerAnswers for immediate UI feedback
         setTrackerAnswers(prev => {
           const prevAnswers = prev[trackerIdStr] || [];
-          console.log('[handleToggleDay] Current trackerAnswers before update', { 
-            trackerId, 
-            dateStr, 
+          console.log('[handleToggleDay] Current trackerAnswers before update', {
+            trackerId,
+            dateStr,
             prevAnswersCount: prevAnswers.length,
             existingAnswerIndex: prevAnswers.findIndex(a => a.date === dateStr)
           });
@@ -891,9 +905,9 @@ const TrackerListing = () => {
               date: dateStr,
               id: response.id
             };
-            console.log('[handleToggleDay] Updated existing answer in state', { 
-              trackerId, 
-              dateStr, 
+            console.log('[handleToggleDay] Updated existing answer in state', {
+              trackerId,
+              dateStr,
               index: idx,
               updatedAnswer: newAnswers[idx]
             });
@@ -908,21 +922,21 @@ const TrackerListing = () => {
                 id: response.id
               }
             ];
-            console.log('[handleToggleDay] Added new answer to state', { 
-              trackerId, 
-              dateStr, 
+            console.log('[handleToggleDay] Added new answer to state', {
+              trackerId,
+              dateStr,
               newAnswer: newAnswers[newAnswers.length - 1],
               totalAnswers: newAnswers.length
             });
           }
-          
+
           const newState = { ...prev, [trackerIdStr]: newAnswers };
-          console.log('[handleToggleDay] New trackerAnswers state after update', { 
-            trackerId, 
+          console.log('[handleToggleDay] New trackerAnswers state after update', {
+            trackerId,
             newAnswersCount: newAnswers.length,
-            newState: Object.keys(newState).map(k => ({ 
-              key: k, 
-              count: newState[k]?.length || 0 
+            newState: Object.keys(newState).map(k => ({
+              key: k,
+              count: newState[k]?.length || 0
             }))
           });
 
@@ -938,7 +952,7 @@ const TrackerListing = () => {
       console.error('[handleToggleDay] ERROR:', error);
       toast.error('Failed to record answer: ' + error.message);
     }
-    
+
     console.log('[handleToggleDay] END', { trackerId, dateStr, value });
   };
 
@@ -968,7 +982,7 @@ const TrackerListing = () => {
     // Convert days to weekday indices (0=Sun, 1=Mon, ...)
     const selectedDays = tracker.days.map(d => {
       if (typeof d === 'string') {
-        const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+        const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
         return idx >= 0 ? idx : d;
       }
       return d;
@@ -1001,17 +1015,17 @@ const TrackerListing = () => {
     const trackerId = String(tracker.id);
     const answers = trackerAnswers[trackerId] || [];
     if (answers.length === 0) return false; // No entries, not overdue
-    
+
     // Find the most recent answer
     const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
     const lastAnswer = sortedAnswers[0];
     if (!lastAnswer || !lastAnswer.date) return false;
-    
+
     // Calculate days since last entry
     const today = moment();
     const lastDate = moment(lastAnswer.date);
     const daysSince = today.diff(lastDate, 'days');
-    
+
     // Use tracker's overdueDays if set, otherwise default to 30
     const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
     return daysSince > overdueThreshold;
@@ -1021,7 +1035,7 @@ const TrackerListing = () => {
   const filteredTrackers = trackers.filter(tracker => {
     // Fuzzy search on title and question
     const matchesSearch = fuzzyMatch(tracker.title || '', searchTerm) ||
-                         fuzzyMatch(tracker.question || '', searchTerm);
+      fuzzyMatch(tracker.question || '', searchTerm);
     const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
     const matchesType = filterType === 'all' || tracker.type === filterType;
     const matchesOverdue = !filterOverdue || isTrackerOverdue(tracker);
@@ -1082,10 +1096,40 @@ const TrackerListing = () => {
     return groups;
   };
 
+  // Helper to group trackers by tags
+  const groupByTags = (trackers) => {
+    const groups = {};
+    trackers.forEach(tracker => {
+      const tags = Array.isArray(tracker.tags) ? tracker.tags : [];
+
+      if (tags.length === 0) {
+        if (!groups['untagged']) groups['untagged'] = [];
+        groups['untagged'].push(tracker);
+      } else {
+        tags.forEach(tag => {
+          if (!groups[tag]) groups[tag] = [];
+          groups[tag].push(tracker);
+        });
+      }
+    });
+
+    // Sort each group by name
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => {
+        const nameA = (a.title || '').toLowerCase();
+        const nameB = (b.title || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    });
+    return groups;
+  };
+
   // Use the selected grouping option for all trackers
   const getGroups = () => {
     if (groupBy === 'none') return { _flat: filteredTrackers };
-    return groupBy === 'type' ? groupByType(filteredTrackers) : groupByCadence(filteredTrackers);
+    if (groupBy === 'type') return groupByType(filteredTrackers);
+    if (groupBy === 'tags') return groupByTags(filteredTrackers);
+    return groupByCadence(filteredTrackers);
   };
 
   const groups = getGroups();
@@ -1093,7 +1137,7 @@ const TrackerListing = () => {
   const renderGroupedTrackers = (groups) => {
     // Unified section styling
     const sectionBg = 'bg-blue-50';
-    
+
     // Format group title for display
     const formatGroupTitle = (key) => {
       if (groupBy === 'type') {
@@ -1106,6 +1150,8 @@ const TrackerListing = () => {
           'other': 'Other'
         };
         return typeMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
+      } else if (groupBy === 'tags') {
+        return key === 'untagged' ? 'Untagged' : key;
       } else {
         // Cadence-based grouping
         const cadenceMap = {
@@ -1118,20 +1164,21 @@ const TrackerListing = () => {
         return cadenceMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
       }
     };
-    
+
     return (
       <div className={`${sectionBg} rounded-lg p-4 mb-6`}>
         {groupBy === 'none' ? (
           // Render flat list (no grouping)
-          <TrackerGrid 
-            trackers={groups._flat || []} 
-            onToggleDay={handleToggleDay} 
-            trackerAnswers={trackerAnswers} 
+          <TrackerGrid
+            trackers={groups._flat || []}
+            onToggleDay={handleToggleDay}
+            trackerAnswers={trackerAnswers}
             onEdit={handleEditTracker}
             isFocusMode={isFocusMode}
             isDevMode={isDevMode}
             onRefresh={loadTrackers}
             onTrackerConverted={handleTrackerConverted}
+            onTrackerDeleted={handleTrackerDeleted}
           />
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
@@ -1150,10 +1197,10 @@ const TrackerListing = () => {
                   Yearly ({groups.yearly.length})
                 </button>
                 {!collapsedGroups['yearly'] && (
-                  <TrackerGrid 
-                    trackers={groups.yearly} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
+                  <TrackerGrid
+                    trackers={groups.yearly}
+                    onToggleDay={handleToggleDay}
+                    trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
@@ -1178,10 +1225,10 @@ const TrackerListing = () => {
                   Monthly ({groups.monthly.length})
                 </button>
                 {!collapsedGroups['monthly'] && (
-                  <TrackerGrid 
-                    trackers={groups.monthly} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
+                  <TrackerGrid
+                    trackers={groups.monthly}
+                    onToggleDay={handleToggleDay}
+                    trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
@@ -1206,10 +1253,10 @@ const TrackerListing = () => {
                   Weekly ({groups.weekly.length})
                 </button>
                 {!collapsedGroups['weekly'] && (
-                  <TrackerGrid 
-                    trackers={groups.weekly} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
+                  <TrackerGrid
+                    trackers={groups.weekly}
+                    onToggleDay={handleToggleDay}
+                    trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
@@ -1233,11 +1280,11 @@ const TrackerListing = () => {
                   )}
                   Daily ({groups.daily.length})
                 </button>
-                {!collapsedGroups['daily'] && (
-                  <TrackerGrid 
-                    trackers={groups.daily} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
+                {!collapsedGroups['daily'] && (viewMode === 'grid' ? (
+                  <TrackerGrid
+                    trackers={groups.daily}
+                    onToggleDay={handleToggleDay}
+                    trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
@@ -1245,7 +1292,15 @@ const TrackerListing = () => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                   />
-                )}
+                ) : (
+                  <TrackerTable
+                    trackers={groups.daily}
+                    trackerAnswers={trackerAnswers}
+                    onEdit={handleEditTracker}
+                    onTrackerDeleted={handleTrackerDeleted}
+                    isFocusMode={isFocusMode}
+                  />
+                ))}
               </div>
             )}
             {groups.custom && groups.custom.length > 0 && (
@@ -1261,11 +1316,11 @@ const TrackerListing = () => {
                   )}
                   Custom ({groups.custom.length})
                 </button>
-                {!collapsedGroups['custom'] && (
-                  <TrackerGrid 
-                    trackers={groups.custom} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
+                {!collapsedGroups['custom'] && (viewMode === 'grid' ? (
+                  <TrackerGrid
+                    trackers={groups.custom}
+                    onToggleDay={handleToggleDay}
+                    trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
@@ -1273,20 +1328,28 @@ const TrackerListing = () => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                   />
-                )}
+                ) : (
+                  <TrackerTable
+                    trackers={groups.custom}
+                    trackerAnswers={trackerAnswers}
+                    onEdit={handleEditTracker}
+                    onTrackerDeleted={handleTrackerDeleted}
+                    isFocusMode={isFocusMode}
+                  />
+                ))}
               </div>
             )}
           </>
-        ) : (
-          // Render type-based groups
-          Object.keys(groups).sort().map(typeKey => {
-            const typeTrackers = groups[typeKey];
-            if (typeTrackers && typeTrackers.length > 0) {
-              const isCollapsed = collapsedGroups[typeKey];
+        ) : groupBy === 'type' || groupBy === 'tags' ? (
+          // Render type-based or tag-based groups
+          Object.keys(groups).sort().map(groupKey => {
+            const groupTrackers = groups[groupKey];
+            if (groupTrackers && groupTrackers.length > 0) {
+              const isCollapsed = collapsedGroups[groupKey];
               return (
-                <div key={typeKey} className="ml-8">
+                <div key={groupKey} className="ml-8">
                   <button
-                    onClick={() => toggleGroupCollapse(typeKey)}
+                    onClick={() => toggleGroupCollapse(groupKey)}
                     className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
                   >
                     {isCollapsed ? (
@@ -1294,13 +1357,13 @@ const TrackerListing = () => {
                     ) : (
                       <ChevronDownIcon className="h-5 w-5" />
                     )}
-                    {formatGroupTitle(typeKey)} ({typeTrackers.length})
+                    {formatGroupTitle(groupKey)} ({groupTrackers.length})
                   </button>
-                  {!isCollapsed && (
-                    <TrackerGrid 
-                      trackers={typeTrackers} 
-                      onToggleDay={handleToggleDay} 
-                      trackerAnswers={trackerAnswers} 
+                  {!isCollapsed && (viewMode === 'grid' ? (
+                    <TrackerGrid
+                      trackers={groupTrackers}
+                      onToggleDay={handleToggleDay}
+                      trackerAnswers={trackerAnswers}
                       onEdit={handleEditTracker}
                       isFocusMode={isFocusMode}
                       isDevMode={isDevMode}
@@ -1308,12 +1371,23 @@ const TrackerListing = () => {
                       onTrackerConverted={handleTrackerConverted}
                       onTrackerDeleted={handleTrackerDeleted}
                     />
-                  )}
+                  ) : (
+                    <TrackerTable
+                      trackers={groupTrackers}
+                      trackerAnswers={trackerAnswers}
+                      onEdit={handleEditTracker}
+                      onTrackerDeleted={handleTrackerDeleted}
+                      onToggleDay={handleToggleDay}
+                      isFocusMode={isFocusMode}
+                    />
+                  ))}
                 </div>
               );
             }
             return null;
           })
+        ) : (
+          null
         )}
       </div>
     );
@@ -1346,7 +1420,7 @@ const TrackerListing = () => {
           </div>
         </div>
       )}
-      
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
         <div className="flex gap-3">
@@ -1366,24 +1440,23 @@ const TrackerListing = () => {
             <span className="text-sm font-medium text-gray-700">Dev mode</span>
           </label>
           <button
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              isFocusMode 
-                ? 'bg-green-600 text-white hover:bg-green-700' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-lg transition-colors ${isFocusMode
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
             onClick={() => setIsFocusMode(!isFocusMode)}
           >
             {isFocusMode ? 'Focus Mode: On' : 'Focus Mode: Off'}
           </button>
-        <button
+          <button
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          onClick={() => setShowAddTracker(true)}
+            onClick={() => setShowAddTracker(true)}
           >
             + Add Tracker
           </button>
         </div>
       </div>
-      
+
       {/* Search Box and Grouping Option */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <div className="relative max-w-md">
@@ -1408,7 +1481,7 @@ const TrackerListing = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        
+
         {/* Filter Options */}
         <div className="flex items-center gap-4 flex-wrap">
           {/* Overdue Filter */}
@@ -1421,40 +1494,81 @@ const TrackerListing = () => {
             />
             <span className="text-sm font-medium text-gray-700">Show Overdue Only</span>
           </label>
-          
+
           {/* Group By Buttons */}
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Group by:</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setGroupBy('none')}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  groupBy === 'none'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`px-3 py-2 rounded-lg transition-colors ${groupBy === 'none'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 None
               </button>
               <button
                 onClick={() => setGroupBy('cadence')}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  groupBy === 'cadence'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`px-3 py-2 rounded-lg transition-colors ${groupBy === 'cadence'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 Cadence
               </button>
               <button
                 onClick={() => setGroupBy('type')}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  groupBy === 'type'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`px-3 py-2 rounded-lg transition-colors ${groupBy === 'type'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 Type
+              </button>
+              <button
+                onClick={() => setGroupBy('tags')}
+                className={`px-3 py-2 rounded-lg transition-colors ${groupBy === 'tags'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                Tags
+              </button>
+            </div>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">View:</label>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'grid'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  Grid
+                </div>
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'table'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  Table
+                </div>
               </button>
             </div>
           </div>
@@ -1469,12 +1583,13 @@ const TrackerListing = () => {
       {showAddTracker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
-            <AddTracker 
-              onTrackerAdded={handleTrackerAdded} 
-              onTrackerUpdated={handleTrackerUpdated} 
+            <AddTracker
+              onTrackerAdded={handleTrackerAdded}
+              onTrackerUpdated={handleTrackerUpdated}
               editingTracker={editingTracker}
               onCancel={() => { setShowAddTracker(false); setEditingTracker(null); }}
               onTrackerDeleted={handleTrackerDeleted}
+              notes={allNotes}
             />
           </div>
         </div>

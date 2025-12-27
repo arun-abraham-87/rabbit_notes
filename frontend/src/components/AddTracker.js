@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { addNewNoteCommon, updateNoteById } from '../utils/ApiUtils';
+import { addNewNoteCommon, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
+import { getAllUniqueTags } from '../utils/EventUtils';
 
-const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel, onTrackerDeleted }) => {
+const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel, onTrackerDeleted, notes }) => {
   const [title, setTitle] = useState('');
+  const [tags, setTags] = useState([]); // Store as array
+  const [tagInput, setTagInput] = useState('');
   const [question, setQuestion] = useState('');
   const [type, setType] = useState('Yes,No');
   const [cadence, setCadence] = useState('Daily');
@@ -33,6 +36,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
   useEffect(() => {
     if (editingTracker) {
       setTitle(editingTracker.title || '');
+      setTags(Array.isArray(editingTracker.tags) ? editingTracker.tags : (editingTracker.tags ? editingTracker.tags.split(',').map(t => t.trim()) : []));
       setQuestion(editingTracker.question || '');
       setType(editingTracker.type || 'Yes,No');
       setCadence(editingTracker.cadence || 'Daily');
@@ -40,7 +44,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
       setEndDate(editingTracker.endDate || '');
       setTrackFromYesterday(editingTracker.trackFromYesterday || false);
       setOverdueDays(editingTracker.overdueDays || '');
-      
+
       // Set selected days for weekly cadence
       if (editingTracker.days) {
         const daysState = {
@@ -62,11 +66,37 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
     }
   }, [editingTracker]);
 
+  const existingTags = getAllUniqueTags(notes || [], 'tracker');
+
   const handleDayChange = (day) => {
     setSelectedDays(prev => ({
       ...prev,
       [day]: !prev[day]
     }));
+  };
+
+  const handleAddTag = () => {
+    if (!tagInput.trim()) return;
+    const tag = tagInput.trim();
+    const t = tag.startsWith('#') ? tag : `#${tag}`;
+    if (!tags.includes(t)) {
+      setTags([...tags, t]);
+    }
+    setTagInput('');
+  };
+
+  const handleAddExistingTag = (tag) => {
+    const t = tag.startsWith('#') ? tag : `#${tag}`;
+    if (!tags.includes(t)) {
+      setTags([...tags, t]);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -86,12 +116,23 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
     setIsSubmitting(true);
 
     try {
+      // Process tags into an array
+      const tagArray = tags
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+        .map(t => t.startsWith('#') ? t : `#${t}`);
+
       // Format the note content
       let content = `Title: ${title}
 Question: ${question}
 Type: ${type}
 Cadence: ${cadence}
 Start Date: ${startDate}`;
+
+      // Add tags if provided
+      if (tagArray.length > 0) {
+        content += `\nTags: ${tagArray.join(', ')}`;
+      }
 
       // Add end date if selected
       if (endDate) {
@@ -121,13 +162,14 @@ Start Date: ${startDate}`;
 
       if (editingTracker) {
         // Update existing tracker
-        await updateNoteById(editingTracker.id, content);
+        await updateNoteById(editingTracker.id, content, tagArray);
         onTrackerUpdated({
           ...editingTracker,
           title,
           question,
           type,
           cadence,
+          tags,
           startDate,
           endDate,
           trackFromYesterday,
@@ -141,13 +183,14 @@ Start Date: ${startDate}`;
         if (onCancel) onCancel();
       } else {
         // Add new tracker
-        const response = await addNewNoteCommon(content, undefined, null);
+        const response = await addNewNoteCommon(content, tagArray, null);
         onTrackerAdded({
           id: response.id,
           title,
           question,
           type,
           cadence,
+          tags,
           startDate,
           endDate,
           trackFromYesterday,
@@ -158,9 +201,10 @@ Start Date: ${startDate}`;
           createdAt: new Date().toISOString()
         });
         toast.success('Tracker added successfully');
-        
+
         // Only reset form when adding a new tracker
         setTitle('');
+        setTags([]);
         setQuestion('');
         setType('Yes,No');
         setCadence('Daily');
@@ -192,7 +236,7 @@ Start Date: ${startDate}`;
       <h2 className="text-xl font-bold mb-4">
         {editingTracker ? 'Edit Tracker' : 'Add New Tracker'}
       </h2>
-      
+
       {/* Error Message */}
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
@@ -200,7 +244,7 @@ Start Date: ${startDate}`;
           <span>{error}</span>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title Input */}
         <div>
@@ -216,6 +260,75 @@ Start Date: ${startDate}`;
             placeholder="Enter tracker title"
             required
           />
+        </div>
+
+        {/* Tags Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tags
+          </label>
+
+          {/* Existing Tag Suggestions */}
+          {existingTags.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs text-gray-500 mb-1">Suggestions:</p>
+              <div className="flex flex-wrap gap-1">
+                {existingTags.map((tag, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleAddExistingTag(tag)}
+                    className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tag Input Field */}
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              placeholder="Add tags (press Enter)..."
+            />
+            <button
+              type="button"
+              onClick={handleAddTag}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+
+          {/* Added Tag Pills */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                >
+                  {tag.trim()}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedTags = tags.filter((_, i) => i !== index);
+                      setTags(updatedTags);
+                    }}
+                    className="ml-1 text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Question Input */}
@@ -363,6 +476,28 @@ Start Date: ${startDate}`;
         <div className="flex justify-end gap-4 mt-6">
           {editingTracker ? (
             <>
+              <button
+                type="button"
+                className="mr-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                onClick={async () => {
+                  if (window.confirm('Are you sure you want to delete this tracker and all its data?')) {
+                    try {
+                      await deleteNoteById(editingTracker.id);
+                      if (onTrackerDeleted) {
+                        onTrackerDeleted(editingTracker.id);
+                      }
+                      if (onCancel) {
+                        onCancel();
+                      }
+                    } catch (error) {
+                      console.error('Error deleting tracker:', error);
+                      setError('Failed to delete tracker. Please try again.');
+                    }
+                  }
+                }}
+              >
+                Delete
+              </button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

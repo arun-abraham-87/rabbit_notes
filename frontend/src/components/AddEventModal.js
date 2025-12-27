@@ -30,7 +30,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
       setIsRecurring(!!initialValues.recurrenceType);
       setRecurrenceType(initialValues.recurrenceType || 'daily');
       setIsDeadline(isAddDeadline || false);
-      
+
       // Extract notes from the content if it exists
       if (initialValues.content) {
         const lines = initialValues.content.split('\n');
@@ -42,7 +42,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
     }
   }, [initialValues, isAddDeadline]);
 
-  const existingTags = getAllUniqueTags(notes || []);
+  const existingTags = getAllUniqueTags(notes || [], 'event');
 
   if (!isOpen) return null;
 
@@ -75,10 +75,10 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
 
   const handleSubmit = () => {
     if (!description.trim() || !eventDate) return;
-    
+
     let content = `event_description:${description.trim()}\n`;
     content += `event_date:${formatDateWithNoonTime(eventDate)}`;
-    
+
     if (!isDeadline) {
       if (showEndDate && endDate) {
         content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
@@ -92,7 +92,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
           content += `\nevent_recurring_end:${recurrenceEndDate}`;
         }
       }
-      
+
       // Add tags if any
       if (tags) {
         content += `\nevent_tags:${tags}`;
@@ -103,16 +103,16 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
         content += `\nevent_notes:${eventNotes}`;
       }
     }
-    
+
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
     if (isDeadline) {
       content += `\nmeta::event_deadline`;
     }
-    console.log("Calling add event",content) 
+    console.log("Calling add event", content)
     onAdd(content);
     console.log("Called add event")
-    
+
     // Reset form
     setDescription('');
     setEventDate('');
@@ -148,13 +148,13 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">{isDeadline ? 'Add Deadline' : 'Add Event'}</h2>
-        
+
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <input

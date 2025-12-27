@@ -9,6 +9,7 @@ import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteW
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
+import { Alerts } from './Alerts';
 
 // API Base URL for image uploads
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -43,7 +44,7 @@ const NotesMainContainer = ({
     const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-    const [resetFilters, setResetFilters] = useState(false);
+    const [resetTrigger, setResetTrigger] = useState(0);
     const [focusMode, setFocusMode] = useState(() => {
         // Load focus mode state from localStorage on component mount
         const saved = localStorage.getItem('focusMode');
@@ -259,7 +260,7 @@ const NotesMainContainer = ({
             setExcludeWatchEvents(false);
             setShowDeadlinePassedFilter(false);
             // Trigger UI filter reset
-            setResetFilters(true);
+            setResetTrigger(Date.now());
             // Clear the state to prevent it from persisting
             window.history.replaceState({}, document.title);
         }
@@ -313,7 +314,7 @@ const NotesMainContainer = ({
             setExcludeExpenses(false);
             setShowDeadlinePassedFilter(false);
             // Trigger UI filter reset
-            setResetFilters(true);
+            setResetTrigger(Date.now());
             hasParsedInitialUrl.current = true;
         }
     }, [location.pathname, location.search, allNotes, setSearchQuery]);
@@ -332,22 +333,13 @@ const NotesMainContainer = ({
             setExcludeWatchEvents(false);
             setShowDeadlinePassedFilter(false);
             // Trigger UI filter reset
-            setResetFilters(true);
+            setResetTrigger(Date.now());
             // Clear the temporary search query
             localStorage.removeItem('tempSearchQuery');
         }
     }, [setSearchQuery]);
 
-    // Reset the resetFilters flag after it's been processed
-    useEffect(() => {
-        if (resetFilters) {
-            // Reset the flag after a short delay to allow the NoteFilters component to process it
-            const timer = setTimeout(() => {
-                setResetFilters(false);
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [resetFilters]);
+    // No longer need the timeout reset for a timestamp trigger
 
     // Global keyboard event listener for 'f' key to toggle focus mode and 'c' key to focus search
     useEffect(() => {
@@ -382,6 +374,15 @@ const NotesMainContainer = ({
                     // Dispatch a custom event to open note editor in text mode
                     const openNoteEditorEvent = new CustomEvent('openNoteEditorTextMode');
                     document.dispatchEvent(openNoteEditorEvent);
+                }
+                if (e.key === "r" || e.key === "R") {
+                    e.preventDefault();
+                    console.log('Reset shortcut triggered');
+                    setResetTrigger(Date.now());
+                    // Also clear local state directly for immediate UI feedback
+                    setLocalSearchQuery('');
+                    setSearchQuery('');
+                    Alerts.success('Filters reset');
                 }
                 if (e.key === "Escape") {
                     e.preventDefault();
@@ -941,14 +942,14 @@ const NotesMainContainer = ({
                                 onExcludeExpensesChange={setExcludeExpenses}
                                 onExcludeSensitiveChange={setExcludeSensitive}
                                 onExcludeTrackersChange={setExcludeTrackers}
-                                resetFilters={resetFilters}
+                                resetTrigger={resetTrigger}
                             />
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setFocusMode(!focusMode)}
                                     className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${focusMode
-                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
                                 >
@@ -967,8 +968,8 @@ const NotesMainContainer = ({
                                 <button
                                     onClick={() => setPopularMode(!popularMode)}
                                     className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${popularMode
-                                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     title={popularMode ? 'Exit popular mode' : 'Enter popular mode'}
                                 >

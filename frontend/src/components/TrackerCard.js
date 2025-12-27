@@ -77,7 +77,7 @@ function formatMonthDateString(date) {
 
 export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted }) {
   const navigate = useNavigate();
-  
+
   // Debug: Log answers received
   React.useEffect(() => {
     console.log('[TrackerCard] Answers received', {
@@ -88,7 +88,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       answersByDate: answers.map(a => ({ date: a.date, answer: a.answer, hasAnswer: !!a.answer }))
     });
   }, [tracker.id, answers.length]);
-  
+
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -105,7 +105,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     let selectedDays = tracker.days.map(d => {
       if (typeof d === 'string') {
         // Try to convert to weekday index
-        const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+        const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
         return idx >= 0 ? idx : d;
       }
       return d;
@@ -163,25 +163,25 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [showConvertMenu, setShowConvertMenu] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
-    console.log('[TrackerCard.handleDateClick] START', { 
-      trackerId: tracker.id, 
-      dateStr, 
-      timestamp: new Date().toISOString() 
+    console.log('[TrackerCard.handleDateClick] START', {
+      trackerId: tracker.id,
+      dateStr,
+      timestamp: new Date().toISOString()
     });
 
     const type = tracker.type.toLowerCase();
     const answer = getAnswerForDate(dateStr);
-    
-    console.log('[TrackerCard.handleDateClick] Answer found', { 
-      trackerId: tracker.id, 
-      dateStr, 
+
+    console.log('[TrackerCard.handleDateClick] Answer found', {
+      trackerId: tracker.id,
+      dateStr,
       hasAnswer: !!answer,
       answerValue: answer?.answer,
       answerType: answer?.type
     });
 
     setExistingAnswer(answer);
-    
+
     if (type === 'value') {
       setSelectedDate(dateStr);
       setValue(answer ? answer.value : '');
@@ -190,7 +190,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       // Cycle through yes -> no -> not selected (null) -> yes
       const currentAnswer = answer && answer.answer ? answer.answer.toLowerCase() : null;
       let newAnswer = null;
-      
+
       if (currentAnswer === null || currentAnswer === '') {
         // No answer -> yes
         newAnswer = 'yes';
@@ -201,14 +201,14 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         // No -> remove (null)
         newAnswer = null;
       }
-      
-      console.log('[TrackerCard.handleDateClick] Cycling yes/no', { 
-        trackerId: tracker.id, 
+
+      console.log('[TrackerCard.handleDateClick] Cycling yes/no', {
+        trackerId: tracker.id,
         dateStr,
         currentAnswer,
         newAnswer
       });
-      
+
       // If removing (null), delete the note if it exists
       if (newAnswer === null && answer && answer.id) {
         deleteNoteById(answer.id).then(() => {
@@ -230,9 +230,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       onToggleDay(tracker.id, dateStr);
     }
 
-    console.log('[TrackerCard.handleDateClick] END', { 
-      trackerId: tracker.id, 
-      dateStr 
+    console.log('[TrackerCard.handleDateClick] END', {
+      trackerId: tracker.id,
+      dateStr
     });
   };
 
@@ -256,9 +256,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   const handleYesNo = async (answer) => {
-    console.log('[TrackerCard.handleYesNo] START', { 
-      trackerId: tracker.id, 
-      selectedDate, 
+    console.log('[TrackerCard.handleYesNo] START', {
+      trackerId: tracker.id,
+      selectedDate,
       answer,
       hasExistingAnswer: !!existingAnswer,
       existingAnswerId: existingAnswer?.id,
@@ -267,54 +267,54 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     });
 
     // Check if we're toggling (clicking the same answer) or switching
-    const isToggle = existingAnswer && existingAnswer.answer && 
-                     existingAnswer.answer.toLowerCase() === answer.toLowerCase();
-    
-    console.log('[TrackerCard.handleYesNo] Is toggle?', { 
-      isToggle, 
+    const isToggle = existingAnswer && existingAnswer.answer &&
+      existingAnswer.answer.toLowerCase() === answer.toLowerCase();
+
+    console.log('[TrackerCard.handleYesNo] Is toggle?', {
+      isToggle,
       existingAnswerValue: existingAnswer?.answer,
       newAnswer: answer
     });
 
     if (existingAnswer && existingAnswer.id) {
       // Update existing note - this works for both toggling and switching
-      console.log('[TrackerCard.handleYesNo] Updating existing note', { 
-        noteId: existingAnswer.id, 
-        newAnswer: answer 
+      console.log('[TrackerCard.handleYesNo] Updating existing note', {
+        noteId: existingAnswer.id,
+        newAnswer: answer
       });
       try {
         await updateNoteById(existingAnswer.id, answer);
-        console.log('[TrackerCard.handleYesNo] Note updated successfully', { 
-          noteId: existingAnswer.id 
+        console.log('[TrackerCard.handleYesNo] Note updated successfully', {
+          noteId: existingAnswer.id
         });
-        
+
         // Update the UI state by calling onToggleDay
         // handleToggleDay now checks for existing answers and updates them
         onToggleDay(tracker.id, selectedDate, answer);
       } catch (error) {
-        console.error('[TrackerCard.handleYesNo] ERROR updating note', { 
-          noteId: existingAnswer.id, 
-          error 
+        console.error('[TrackerCard.handleYesNo] ERROR updating note', {
+          noteId: existingAnswer.id,
+          error
         });
       }
     } else {
       // Create new answer
-      console.log('[TrackerCard.handleYesNo] Creating new answer', { 
-        trackerId: tracker.id, 
-        selectedDate, 
-        answer 
+      console.log('[TrackerCard.handleYesNo] Creating new answer', {
+        trackerId: tracker.id,
+        selectedDate,
+        answer
       });
       onToggleDay(tracker.id, selectedDate, answer);
     }
-    
+
     setShowYesNoModal(false);
     setSelectedDate(null);
     setExistingAnswer(null);
-    
-    console.log('[TrackerCard.handleYesNo] END', { 
-      trackerId: tracker.id, 
-      selectedDate, 
-      answer 
+
+    console.log('[TrackerCard.handleYesNo] END', {
+      trackerId: tracker.id,
+      selectedDate,
+      answer
     });
   };
 
@@ -328,7 +328,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
     const isValueTracker = type === 'value';
-    
+
     let answer;
     if (isValueTracker) {
       if (!customValue.trim()) {
@@ -345,10 +345,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     } else {
       answer = 'yes'; // Default for other trackers
     }
-    
+
     // Check if there's already an answer for this date
     const existingAnswer = customExistingAnswer || getAnswerForDate(customDate);
-    
+
     if (existingAnswer && existingAnswer.id) {
       // Update existing note
       await updateNoteById(existingAnswer.id, answer);
@@ -356,7 +356,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       // Create new answer
       onToggleDay(tracker.id, customDate, answer);
     }
-    
+
     setShowCustomDateModal(false);
     setCustomValue('');
     setCustomDate(moment().format('YYYY-MM-DD'));
@@ -371,15 +371,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   const handleRemoveCustomDateAnswer = async () => {
-    console.log('[TrackerCard.handleRemoveCustomDateAnswer] START', { 
-      trackerId: tracker.id, 
-      customDate, 
+    console.log('[TrackerCard.handleRemoveCustomDateAnswer] START', {
+      trackerId: tracker.id,
+      customDate,
       customExistingAnswer,
       timestamp: new Date().toISOString()
     });
 
     if (customExistingAnswer && customExistingAnswer.id) {
-      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Deleting note', { 
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Deleting note', {
         noteId: customExistingAnswer.id,
         date: customExistingAnswer.date,
         answer: customExistingAnswer.answer
@@ -387,51 +387,51 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
 
       try {
         await deleteNoteById(customExistingAnswer.id);
-        console.log('[TrackerCard.handleRemoveCustomDateAnswer] Note deleted successfully', { 
-          noteId: customExistingAnswer.id 
+        console.log('[TrackerCard.handleRemoveCustomDateAnswer] Note deleted successfully', {
+          noteId: customExistingAnswer.id
         });
       } catch (error) {
-        console.error('[TrackerCard.handleRemoveCustomDateAnswer] ERROR deleting note', { 
-          noteId: customExistingAnswer.id, 
-          error 
+        console.error('[TrackerCard.handleRemoveCustomDateAnswer] ERROR deleting note', {
+          noteId: customExistingAnswer.id,
+          error
         });
       }
 
       // Refresh UI
-      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Calling onToggleDay with null', { 
-        trackerId: tracker.id, 
-        customDate 
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Calling onToggleDay with null', {
+        trackerId: tracker.id,
+        customDate
       });
       onToggleDay(tracker.id, customDate, null);
-      console.log('[TrackerCard.handleRemoveCustomDateAnswer] onToggleDay called', { 
-        trackerId: tracker.id, 
-        customDate 
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] onToggleDay called', {
+        trackerId: tracker.id,
+        customDate
       });
-      
+
       setCustomExistingAnswer(null);
       setCustomValue('');
     } else {
-      console.log('[TrackerCard.handleRemoveCustomDateAnswer] No existing answer to remove', { 
-        hasCustomExistingAnswer: !!customExistingAnswer 
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] No existing answer to remove', {
+        hasCustomExistingAnswer: !!customExistingAnswer
       });
     }
 
-    console.log('[TrackerCard.handleRemoveCustomDateAnswer] END', { 
-      trackerId: tracker.id, 
-      customDate 
+    console.log('[TrackerCard.handleRemoveCustomDateAnswer] END', {
+      trackerId: tracker.id,
+      customDate
     });
   };
 
   const handleRemoveAcknowledgement = async () => {
-    console.log('[TrackerCard.handleRemoveAcknowledgement] START', { 
-      trackerId: tracker.id, 
-      selectedDate, 
+    console.log('[TrackerCard.handleRemoveAcknowledgement] START', {
+      trackerId: tracker.id,
+      selectedDate,
       existingAnswer,
       timestamp: new Date().toISOString()
     });
 
     if (existingAnswer && existingAnswer.id) {
-      console.log('[TrackerCard.handleRemoveAcknowledgement] Deleting note', { 
+      console.log('[TrackerCard.handleRemoveAcknowledgement] Deleting note', {
         noteId: existingAnswer.id,
         date: existingAnswer.date,
         answer: existingAnswer.answer
@@ -439,29 +439,29 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
 
       try {
         await deleteNoteById(existingAnswer.id);
-        console.log('[TrackerCard.handleRemoveAcknowledgement] Note deleted successfully', { 
-          noteId: existingAnswer.id 
+        console.log('[TrackerCard.handleRemoveAcknowledgement] Note deleted successfully', {
+          noteId: existingAnswer.id
         });
       } catch (error) {
-        console.error('[TrackerCard.handleRemoveAcknowledgement] ERROR deleting note', { 
-          noteId: existingAnswer.id, 
-          error 
+        console.error('[TrackerCard.handleRemoveAcknowledgement] ERROR deleting note', {
+          noteId: existingAnswer.id,
+          error
         });
       }
 
       // Refresh UI by toggling the day (removes completion)
-      console.log('[TrackerCard.handleRemoveAcknowledgement] Calling onToggleDay with null', { 
-        trackerId: tracker.id, 
-        selectedDate 
+      console.log('[TrackerCard.handleRemoveAcknowledgement] Calling onToggleDay with null', {
+        trackerId: tracker.id,
+        selectedDate
       });
       onToggleDay(tracker.id, selectedDate, null);
-      console.log('[TrackerCard.handleRemoveAcknowledgement] onToggleDay called', { 
-        trackerId: tracker.id, 
-        selectedDate 
+      console.log('[TrackerCard.handleRemoveAcknowledgement] onToggleDay called', {
+        trackerId: tracker.id,
+        selectedDate
       });
     } else {
-      console.log('[TrackerCard.handleRemoveAcknowledgement] No existing answer to remove', { 
-        hasExistingAnswer: !!existingAnswer 
+      console.log('[TrackerCard.handleRemoveAcknowledgement] No existing answer to remove', {
+        hasExistingAnswer: !!existingAnswer
       });
     }
 
@@ -470,9 +470,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     setValue('');
     setExistingAnswer(null);
 
-    console.log('[TrackerCard.handleRemoveAcknowledgement] END', { 
-      trackerId: tracker.id, 
-      selectedDate 
+    console.log('[TrackerCard.handleRemoveAcknowledgement] END', {
+      trackerId: tracker.id,
+      selectedDate
     });
   };
 
@@ -597,15 +597,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       // Delete all selected entries
       const deletePromises = Array.from(selectedEntries).map(id => deleteNoteById(id));
       await Promise.all(deletePromises);
-      
+
       // Clear selections
       setSelectedEntries(new Set());
-      
+
       // Reload trackers to refresh the list
       if (onRefresh) {
         onRefresh();
       }
-      
+
       toast.success(`Successfully deleted ${selectedCount} entry/entries`);
     } catch (error) {
       console.error('Error deleting selected entries:', error);
@@ -619,7 +619,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       // Get the current tracker note
       let trackerNote;
       let trackerContent = null;
-      
+
       try {
         trackerNote = await getNoteById(tracker.id);
         if (trackerNote && trackerNote.content) {
@@ -640,16 +640,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         if (tracker.startDate) contentLines.push(`Start Date: ${tracker.startDate}`);
         if (tracker.endDate) contentLines.push(`End Date: ${tracker.endDate}`);
         contentLines.push('meta::tracker');
-        
+
         trackerContent = contentLines.join('\n');
         console.log('Reconstructed tracker content from tracker object for conversion');
       }
-      
+
       if (!trackerContent) {
         alert('Unable to get tracker content. The tracker may have been deleted.');
         return;
       }
-      
+
       // Update the Type field in the note content
       const lines = trackerContent.split('\n');
       const updatedLines = lines.map(line => {
@@ -658,9 +658,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         }
         return line;
       });
-      
+
       const updatedContent = updatedLines.join('\n');
-      
+
       // Update the tracker note (or create it if it doesn't exist)
       if (trackerNote && trackerNote.id) {
         // Note exists, update it
@@ -677,16 +677,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           // Note: The tracker object will still reference the old ID, but the refresh should handle this
         }
       }
-      
+
       // Notify parent component to refresh
       if (onTrackerConverted) {
         onTrackerConverted(tracker.id, newType);
       }
-      
+
       if (onRefresh) {
         onRefresh();
       }
-      
+
       setShowConvertMenu(false);
       toast.success(`Tracker converted to ${newType === 'adhoc_date' ? 'Adhoc Date' : 'Adhoc Value'}`);
     } catch (error) {
@@ -703,13 +703,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         alert('Invalid tracker: missing ID');
         return;
       }
-      
+
       console.log(`Starting duplication for tracker ${tracker.id} (${tracker.title})`);
-      
+
       // Get the current tracker note
       let trackerNote;
       let trackerContent = null;
-      
+
       try {
         trackerNote = await getNoteById(tracker.id);
         if (trackerNote && trackerNote.content) {
@@ -730,16 +730,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         if (tracker.startDate) contentLines.push(`Start Date: ${tracker.startDate}`);
         if (tracker.endDate) contentLines.push(`End Date: ${tracker.endDate}`);
         contentLines.push('meta::tracker');
-        
+
         trackerContent = contentLines.join('\n');
         console.log('Reconstructed tracker content from tracker object');
       }
-      
+
       if (!trackerContent) {
         alert('Unable to get tracker content. The tracker may have been deleted.');
         return;
       }
-      
+
       // Parse the tracker note content
       const lines = trackerContent.split('\n');
       const updatedLines = lines.map(line => {
@@ -754,23 +754,23 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         }
         return line;
       }).filter(line => line !== ''); // Remove empty lines
-      
+
       const duplicatedContent = updatedLines.join('\n');
-      
+
       // Create the duplicated tracker note
       const newTrackerNote = await addNewNoteCommon(duplicatedContent, [], null);
-      
+
       if (!newTrackerNote || !newTrackerNote.id) {
         alert('Failed to create duplicated tracker');
         return;
       }
-      
+
       const newTrackerId = newTrackerNote.id;
-      
+
       // Debug: Log answers array
       console.log(`[Duplicate] Answers array for tracker ${tracker.id}:`, answers);
       console.log(`[Duplicate] Answers length:`, answers ? answers.length : 0);
-      
+
       // Duplicate all answer notes
       if (answers && answers.length > 0) {
         console.log(`[Duplicate] Processing ${answers.length} answers...`);
@@ -789,7 +789,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           return true;
         });
         console.log(`[Duplicate] Attempting to duplicate ${validAnswers.length} answer notes for tracker ${tracker.id} (filtered from ${answers.length} total)`);
-        
+
         // Use Promise.allSettled instead of Promise.all to handle individual failures
         const duplicatePromises = validAnswers.map(async (answer) => {
           try {
@@ -799,11 +799,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               console.warn(`Invalid answer ID, skipping:`, answer);
               return { success: false, answerId: answer.id };
             }
-            
+
             // Get the original answer note
             let answerNote;
             let answerContent = null;
-            
+
             try {
               answerNote = await getNoteById(answerId);
               if (answerNote && answerNote.content) {
@@ -812,17 +812,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             } catch (fetchError) {
               // If note doesn't exist, reconstruct it from the answer object
               console.warn(`Answer note ${answerId} could not be fetched, reconstructing from answer object:`, fetchError.message);
-              
+
               // Reconstruct answer content from answer object data
               const answerValue = answer.answer || answer.value || '';
               const answerDate = answer.date || '';
               const answerNotes = answer.notes || '';
-              
+
               if (!answerValue || !answerDate) {
                 console.warn(`[Duplicate] Cannot reconstruct answer - missing value or date:`, answer);
                 return { success: false, answerId: answerId };
               }
-              
+
               // Build the answer content similar to createTrackerAnswerNote
               const contentLines = [
                 `Answer: ${answerValue}`,
@@ -831,30 +831,30 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 `meta::link:${newTrackerId}`,
                 `meta::tracker_answer`
               ];
-              
+
               if (answerNotes && answerNotes.trim()) {
                 contentLines.push(`Notes: ${answerNotes.trim()}`);
               }
-              
+
               answerContent = contentLines.join('\n');
               console.log(`[Duplicate] Reconstructed answer content from answer object:`, answerContent);
             }
-            
+
             if (!answerContent) {
               console.warn(`Answer note ${answerId} has no content, skipping`);
               return { success: false, answerId: answerId };
             }
-            
+
             // Parse and update the answer note content
             const answerLines = answerContent.split('\n');
             console.log(`[Duplicate] Answer content (first 10 lines):`, answerLines.slice(0, 10));
-            
+
             // Verify required fields exist
             const hasAnswer = answerLines.some(line => line.startsWith('Answer:'));
             const hasDate = answerLines.some(line => line.startsWith('Date:'));
             const hasLink = answerLines.some(line => line.startsWith('meta::link:'));
             const hasTrackerAnswer = answerLines.some(line => line === 'meta::tracker_answer');
-            
+
             console.log(`[Duplicate] Answer note structure check:`, {
               hasAnswer,
               hasDate,
@@ -862,7 +862,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               hasTrackerAnswer,
               totalLines: answerLines.length
             });
-            
+
             if (!hasAnswer || !hasDate || !hasLink || !hasTrackerAnswer) {
               console.warn(`[Duplicate] Answer note ${answerId} is missing required fields!`, {
                 hasAnswer,
@@ -871,7 +871,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 hasTrackerAnswer
               });
             }
-            
+
             const updatedAnswerLines = answerLines.map(line => {
               // Update the meta::link to point to the new tracker
               if (line.startsWith('meta::link:')) {
@@ -880,11 +880,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               }
               return line;
             });
-            
+
             const duplicatedAnswerContent = updatedAnswerLines.join('\n');
             console.log(`[Duplicate] Duplicated answer content:`, duplicatedAnswerContent);
             console.log(`[Duplicate] Duplicated answer content (first 10 lines):`, duplicatedAnswerContent.split('\n').slice(0, 10));
-            
+
             // Create the duplicated answer note
             console.log(`[Duplicate] Creating duplicated answer note with content:`, duplicatedAnswerContent.substring(0, 200));
             const duplicatedAnswer = await addNewNoteCommon(duplicatedAnswerContent, [], null);
@@ -896,11 +896,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             return { success: false, answerId: answer.id, error: error.message };
           }
         });
-        
+
         // Use Promise.allSettled to ensure all promises complete even if some fail
         console.log(`[Duplicate] Waiting for ${duplicatePromises.length} answer duplications to complete...`);
         const results = await Promise.allSettled(duplicatePromises);
-        
+
         // Log detailed results
         results.forEach((result, index) => {
           if (result.status === 'fulfilled') {
@@ -913,15 +913,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             console.error(`[Duplicate] ✗ Answer ${index + 1} rejected:`, result.reason);
           }
         });
-        
-        const successfulDuplicates = results.filter(r => 
+
+        const successfulDuplicates = results.filter(r =>
           r.status === 'fulfilled' && r.value && r.value.success === true
         ).length;
-        const failedDuplicates = results.filter(r => 
+        const failedDuplicates = results.filter(r =>
           r.status === 'rejected' || (r.status === 'fulfilled' && (!r.value || r.value.success === false))
         ).length;
         console.log(`[Duplicate] Duplication complete: ${successfulDuplicates} succeeded, ${failedDuplicates} failed out of ${validAnswers.length} answer notes`);
-        
+
         // Show appropriate success message
         if (validAnswers.length > 0) {
           if (successfulDuplicates === validAnswers.length) {
@@ -938,16 +938,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         console.warn(`[Duplicate] No answers to duplicate. Answers array:`, answers);
         toast.success('Tracker duplicated successfully (no answers to duplicate)');
       }
-      
+
       // Wait a bit before refreshing to ensure all notes are saved
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Refresh the tracker list
       if (onRefresh) {
         console.log('[Duplicate] Refreshing tracker list...');
         onRefresh();
       }
-      
+
       setShowConvertMenu(false);
     } catch (error) {
       console.error('Error duplicating tracker:', error);
@@ -989,12 +989,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
         let selectedDays = tracker.days.map(d => {
           if (typeof d === 'string') {
-            const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+            const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
             return idx >= 0 ? idx : d;
           }
           return d;
         }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-        
+
         const all = [];
         const today = moment();
         let d = moment(today).startOf('day');
@@ -1006,7 +1006,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           d.subtract(1, 'days');
           safety++;
         }
-        
+
         const start = all.length - 7 - dateOffset * 7;
         const end = all.length - dateOffset * 7;
         return all.slice(Math.max(0, start), Math.max(0, end));
@@ -1041,7 +1041,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const calculateAge = (date) => {
     const today = moment();
     const targetDate = moment(date);
-    
+
     let years = today.year() - targetDate.year();
     let months = today.month() - targetDate.month();
     let days = today.date() - targetDate.date();
@@ -1071,16 +1071,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // Get last recorded date for yes/no trackers
   const getLastRecordedYes = () => {
     if (!answers || answers.length === 0) return null;
-    
+
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    
+
     if (!isYesNoTracker) return null;
-    
+
     // Filter to only "yes" answers
     const yesAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
     if (yesAnswers.length === 0) return null;
-    
+
     // Sort by date (most recent first) and return the most recent
     const sortedAnswers = [...yesAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
     return sortedAnswers[0].date;
@@ -1088,16 +1088,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
 
   const getLastRecordedNo = () => {
     if (!answers || answers.length === 0) return null;
-    
+
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    
+
     if (!isYesNoTracker) return null;
-    
+
     // Filter to only "no" answers
     const noAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'no');
     if (noAnswers.length === 0) return null;
-    
+
     // Sort by date (most recent first) and return the most recent
     const sortedAnswers = [...noAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
     return sortedAnswers[0].date;
@@ -1106,17 +1106,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // For backward compatibility with non-yes/no trackers
   const getLastRecordedDate = () => {
     if (!answers || answers.length === 0) return null;
-    
+
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    
+
     if (isYesNoTracker) {
       // For yes/no trackers, use the most recent answer regardless of yes/no
       // This ensures overdue calculation uses the last recorded date even if it's "no"
       const sortedAnswers = [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
       return sortedAnswers[0].date;
     }
-    
+
     // For non-yes/no trackers, get the most recent answer
     const sortedAnswers = [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
     return sortedAnswers[0].date;
@@ -1128,7 +1128,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const lastRecordedYesAge = lastRecordedYesDate ? calculateAge(lastRecordedYesDate) : null;
   const lastRecordedNoDate = getLastRecordedNo();
   const lastRecordedNoAge = lastRecordedNoDate ? calculateAge(lastRecordedNoDate) : null;
-  
+
   // Calculate days since last entry
   const getDaysSinceLastEntry = () => {
     if (!lastRecordedDate) return null;
@@ -1136,15 +1136,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     const lastDate = moment(lastRecordedDate);
     return today.diff(lastDate, 'days');
   };
-  
+
   const daysSinceLastEntry = getDaysSinceLastEntry();
   // Get overdue threshold from tracker.overdueDays if present, otherwise default to 30
   const isUsingDefaultOverdue = !tracker.overdueDays;
   const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
   const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry > overdueThreshold;
   // Calculate days until overdue (if not already overdue)
-  const daysUntilOverdue = daysSinceLastEntry !== null && !isOverdue 
-    ? overdueThreshold - daysSinceLastEntry 
+  const daysUntilOverdue = daysSinceLastEntry !== null && !isOverdue
+    ? overdueThreshold - daysSinceLastEntry
     : null;
 
   // Calculate weekly progress
@@ -1152,19 +1152,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     const today = moment();
     const startOfWeek = moment(today).startOf('week').subtract(dateOffset * 7, 'days');
     const endOfWeek = moment(today).endOf('week').subtract(dateOffset * 7, 'days');
-    
+
     const weekAnswers = answers.filter(ans => {
       const answerDate = moment(ans.date);
       return answerDate.isSameOrAfter(startOfWeek) && answerDate.isSameOrBefore(endOfWeek);
     });
-    
+
     // For yes/no trackers, count only "yes" answers
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    const completedDays = isYesNoTracker 
+    const completedDays = isYesNoTracker
       ? weekAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes').length
       : weekAnswers.length;
-    
+
     return {
       completed: completedDays,
       total: 7,
@@ -1175,36 +1175,36 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // Calculate current streak
   const getCurrentStreak = () => {
     if (!answers || answers.length === 0) return 0;
-    
+
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    
+
     // Filter answers - for yes/no, only count "yes"
     const validAnswers = isYesNoTracker
       ? answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes')
       : answers;
-    
+
     if (validAnswers.length === 0) return 0;
-    
+
     // Sort by date (most recent first)
     const sortedAnswers = [...validAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
-    
+
     // Check if most recent answer is today or yesterday
     const today = moment().startOf('day');
     const mostRecent = moment(sortedAnswers[0].date).startOf('day');
     const daysDiff = today.diff(mostRecent, 'days');
-    
+
     // If most recent is more than 1 day ago, streak is broken
     if (daysDiff > 1) return 0;
-    
+
     // Count consecutive days
     let streak = 0;
     let currentDate = moment(today);
-    
+
     for (const answer of sortedAnswers) {
       const answerDate = moment(answer.date).startOf('day');
       const diff = currentDate.diff(answerDate, 'days');
-      
+
       if (diff === 0 || diff === 1) {
         streak++;
         currentDate = answerDate;
@@ -1212,7 +1212,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         break;
       }
     }
-    
+
     return streak;
   };
 
@@ -1220,12 +1220,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const getTotalCheckIns = () => {
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-    
+
     // For yes/no trackers, count only "yes" answers
     if (isYesNoTracker) {
       return answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes').length;
     }
-    
+
     return answers.length;
   };
 
@@ -1259,7 +1259,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
 
   return (
     <div className={`bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : ''}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
-      
+
       {/* Header */}
       <div className="mb-6">
         <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
@@ -1281,6 +1281,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 );
               })()}
             </div>
+            {tracker.tags && Array.isArray(tracker.tags) && tracker.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {tracker.tags.map((tag, idx) => (
+                  <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    {tag.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
             {!isFocusMode && (
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1345,8 +1354,8 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   </button>
                   {showConvertMenu && (
                     <>
-                      <div 
-                        className="fixed inset-0 z-40" 
+                      <div
+                        className="fixed inset-0 z-40"
                         onClick={() => setShowConvertMenu(false)}
                       />
                       <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
@@ -1391,12 +1400,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         const isAdhocDate = type === 'adhoc_date';
         const isAdhocValue = type === 'adhoc_value';
         const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-        
+
         if (isAdhocDate || isAdhocValue || isYesNoTracker) {
           // For yes/no trackers, always show last 7 days regardless of answers
           // For adhoc trackers, show last events with answers
           let displayDays = [];
-          
+
           if (isYesNoTracker) {
             // Check if tracker has selected days (for weekly cadence)
             let daysToShow = [];
@@ -1405,12 +1414,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               const selectedDays = tracker.days.map(d => {
                 if (typeof d === 'string') {
                   // Try to convert to weekday index
-                  const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+                  const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
                   return idx >= 0 ? idx : d;
                 }
                 return d;
               }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-              
+
               // Get last 7 occurrences of selected days
               daysToShow = getLastSevenSelectedWeekdays(selectedDays);
             } else {
@@ -1419,7 +1428,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 daysToShow.push(moment().subtract(i, 'days'));
               }
             }
-            
+
             // Create displayDays array with answers
             daysToShow.forEach(day => {
               const dateStr = day.format('YYYY-MM-DD');
@@ -1442,7 +1451,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               answer: answer
             }));
           }
-          
+
           // Calculate days from last logging for adhoc_date and adhoc_value only
           let daysFromLastLogging = null;
           if (!isYesNoTracker && answers.length > 0) {
@@ -1452,130 +1461,130 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             const today = moment();
             daysFromLastLogging = today.diff(lastDate, 'days');
           }
-          
+
           return (
-              <div className="flex gap-2 justify-center items-center">
-                {displayDays.length === 0 ? (
-                  <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
-                ) : (
-                  <>
-                    {displayDays.map((dayData) => {
-                      const dateMoment = dayData.dateMoment;
-                      const dateStr = dayData.date;
-                      const answer = dayData.answer;
-                      const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
-                      const weekdayLabel = dateMoment.format('ddd');
-                      const monthLabel = dateMoment.format('MMM YYYY');
-                      const dayNumber = dateMoment.date();
-                      
-                      const displayValue = isAdhocValue && answer ? (answer.value || answer.answer || '') : null;
-                      const yesNoValue = isYesNoTracker && answer ? (answer.answer || answer.value || '').toLowerCase() : null;
-                      
-                      // Calculate difference from previous value for adhoc value trackers
-                      let valueDifference = null;
-                      let daysDifference = null;
-                      // Calculate days difference for adhoc date trackers
-                      let adhocDateDaysDifference = null;
-                      
-                      if (isAdhocValue && answer && displayValue) {
-                        // Sort all answers by date to find previous one
-                        const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
-                        const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || (a.date === answer.date && (a.value || a.answer) === displayValue));
-                        if (currentIndex > 0) {
-                          const previousAnswer = sortedAllAnswers[currentIndex - 1];
-                          const previousValue = previousAnswer.value || previousAnswer.answer || '';
-                          const currentValueNum = parseFloat(displayValue);
-                          const previousValueNum = parseFloat(previousValue);
-                          if (!isNaN(currentValueNum) && !isNaN(previousValueNum)) {
-                            const diff = currentValueNum - previousValueNum;
-                            const roundedDiff = parseFloat(diff.toFixed(2)); // Round to 2 decimal places
-                            valueDifference = roundedDiff > 0 ? `+${roundedDiff}` : `${roundedDiff}`;
-                          }
-                          // Calculate days difference
-                          const currentDate = moment(answer.date);
-                          const previousDate = moment(previousAnswer.date);
-                          const daysDiff = currentDate.diff(previousDate, 'days');
-                          daysDifference = daysDiff;
+            <div className="flex gap-2 justify-center items-center">
+              {displayDays.length === 0 ? (
+                <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
+              ) : (
+                <>
+                  {displayDays.map((dayData) => {
+                    const dateMoment = dayData.dateMoment;
+                    const dateStr = dayData.date;
+                    const answer = dayData.answer;
+                    const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
+                    const weekdayLabel = dateMoment.format('ddd');
+                    const monthLabel = dateMoment.format('MMM YYYY');
+                    const dayNumber = dateMoment.date();
+
+                    const displayValue = isAdhocValue && answer ? (answer.value || answer.answer || '') : null;
+                    const yesNoValue = isYesNoTracker && answer ? (answer.answer || answer.value || '').toLowerCase() : null;
+
+                    // Calculate difference from previous value for adhoc value trackers
+                    let valueDifference = null;
+                    let daysDifference = null;
+                    // Calculate days difference for adhoc date trackers
+                    let adhocDateDaysDifference = null;
+
+                    if (isAdhocValue && answer && displayValue) {
+                      // Sort all answers by date to find previous one
+                      const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+                      const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || (a.date === answer.date && (a.value || a.answer) === displayValue));
+                      if (currentIndex > 0) {
+                        const previousAnswer = sortedAllAnswers[currentIndex - 1];
+                        const previousValue = previousAnswer.value || previousAnswer.answer || '';
+                        const currentValueNum = parseFloat(displayValue);
+                        const previousValueNum = parseFloat(previousValue);
+                        if (!isNaN(currentValueNum) && !isNaN(previousValueNum)) {
+                          const diff = currentValueNum - previousValueNum;
+                          const roundedDiff = parseFloat(diff.toFixed(2)); // Round to 2 decimal places
+                          valueDifference = roundedDiff > 0 ? `+${roundedDiff}` : `${roundedDiff}`;
                         }
-                      } else if (isAdhocDate && answer) {
-                        // For adhoc date trackers, calculate days difference from previous date entry
-                        const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
-                        const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || a.date === answer.date);
-                        if (currentIndex > 0) {
-                          const previousAnswer = sortedAllAnswers[currentIndex - 1];
-                          const currentDate = moment(answer.date);
-                          const previousDate = moment(previousAnswer.date);
-                          const daysDiff = currentDate.diff(previousDate, 'days');
-                          adhocDateDaysDifference = daysDiff;
-                        }
+                        // Calculate days difference
+                        const currentDate = moment(answer.date);
+                        const previousDate = moment(previousAnswer.date);
+                        const daysDiff = currentDate.diff(previousDate, 'days');
+                        daysDifference = daysDiff;
                       }
-                      
-                      // Determine button color for yes/no trackers
-                      let buttonBgColor = '';
-                      let buttonBorderColor = '';
-                      if (isYesNoTracker) {
-                        if (yesNoValue === 'yes') {
-                          buttonBgColor = 'bg-green-300';
-                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-green-400';
-                        } else if (yesNoValue === 'no') {
-                          buttonBgColor = 'bg-red-300';
-                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-red-400';
-                        } else {
-                          // No answer (none state)
-                          buttonBgColor = 'bg-gray-200';
-                          buttonBorderColor = isToday ? 'border-blue-500' : 'border-gray-300';
-                        }
-                      } else {
+                    } else if (isAdhocDate && answer) {
+                      // For adhoc date trackers, calculate days difference from previous date entry
+                      const sortedAllAnswers = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+                      const currentIndex = sortedAllAnswers.findIndex(a => a.id === answer.id || a.date === answer.date);
+                      if (currentIndex > 0) {
+                        const previousAnswer = sortedAllAnswers[currentIndex - 1];
+                        const currentDate = moment(answer.date);
+                        const previousDate = moment(previousAnswer.date);
+                        const daysDiff = currentDate.diff(previousDate, 'days');
+                        adhocDateDaysDifference = daysDiff;
+                      }
+                    }
+
+                    // Determine button color for yes/no trackers
+                    let buttonBgColor = '';
+                    let buttonBorderColor = '';
+                    if (isYesNoTracker) {
+                      if (yesNoValue === 'yes') {
                         buttonBgColor = 'bg-green-300';
+                        buttonBorderColor = isToday ? 'border-blue-500' : 'border-green-400';
+                      } else if (yesNoValue === 'no') {
+                        buttonBgColor = 'bg-red-300';
+                        buttonBorderColor = isToday ? 'border-blue-500' : 'border-red-400';
+                      } else {
+                        // No answer (none state)
+                        buttonBgColor = 'bg-gray-200';
                         buttonBorderColor = isToday ? 'border-blue-500' : 'border-gray-300';
                       }
-                      
-                      return (
-                        <div key={dateStr} className="flex flex-col items-center w-10">
-                          <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
-                          <button
-                            onClick={() => {
-                              if (isYesNoTracker) {
-                                // Cycle yes -> no -> none
-                                handleDateClick(dateMoment, dateStr);
-                              } else if (isAdhocDate && answer) {
-                                setAdhocDate(answer.date);
-                                setAdhocNotes(answer.notes || '');
-                                setEditingAdhocAnswer(answer);
-                                setShowAdhocDateModal(true);
-                              } else if (isAdhocValue && answer) {
-                                setAdhocDate(answer.date);
-                                setAdhocValue(answer.value || answer.answer || '');
-                                setAdhocNotes(answer.notes || '');
-                                setEditingAdhocAnswer(answer);
-                                setShowAdhocValueModal(true);
-                              }
-                            }}
-                            className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
-                            title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : isAdhocDate && answer && adhocDateDaysDifference !== null ? ` (${adhocDateDaysDifference} day${adhocDateDaysDifference !== 1 ? 's' : ''} since previous)` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
-                          >
-                            {dayNumber}
-                          </button>
-                          {monthLabel && (
-                            <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
-                          )}
-                          {isAdhocValue && displayValue && (
-                            <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={`${displayValue}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}`}>
-                              {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
+                    } else {
+                      buttonBgColor = 'bg-green-300';
+                      buttonBorderColor = isToday ? 'border-blue-500' : 'border-gray-300';
+                    }
+
+                    return (
+                      <div key={dateStr} className="flex flex-col items-center w-10">
+                        <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
+                        <button
+                          onClick={() => {
+                            if (isYesNoTracker) {
+                              // Cycle yes -> no -> none
+                              handleDateClick(dateMoment, dateStr);
+                            } else if (isAdhocDate && answer) {
+                              setAdhocDate(answer.date);
+                              setAdhocNotes(answer.notes || '');
+                              setEditingAdhocAnswer(answer);
+                              setShowAdhocDateModal(true);
+                            } else if (isAdhocValue && answer) {
+                              setAdhocDate(answer.date);
+                              setAdhocValue(answer.value || answer.answer || '');
+                              setAdhocNotes(answer.notes || '');
+                              setEditingAdhocAnswer(answer);
+                              setShowAdhocValueModal(true);
+                            }
+                          }}
+                          className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
+                          title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : isAdhocDate && answer && adhocDateDaysDifference !== null ? ` (${adhocDateDaysDifference} day${adhocDateDaysDifference !== 1 ? 's' : ''} since previous)` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
+                        >
+                          {dayNumber}
+                        </button>
+                        {monthLabel && (
+                          <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                        )}
+                        {isAdhocValue && displayValue && (
+                          <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={`${displayValue}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}`}>
+                            {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
               {/* Days from last logging - for adhoc_date and adhoc_value only */}
               {(isAdhocDate || isAdhocValue) && daysFromLastLogging !== null && (
                 <div className="bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-center">
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-700 font-medium leading-tight">
                       {daysFromLastLogging === 0 ? 'Today' : `${daysFromLastLogging} day${daysFromLastLogging !== 1 ? 's' : ''}`}
-                  </span>
+                    </span>
                     {daysFromLastLogging !== 0 && (
                       <span className="text-[10px] text-gray-600 leading-tight">
                         since last logging
@@ -1610,100 +1619,100 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             </div>
           );
         }
-        
+
         // Regular trackers - show weekly progress
         return (
           <div className="space-y-6">
             {/* This Week's Progress */}
             <div>
               <p className="text-sm text-gray-500 mb-3">This Week's Progress</p>
-              
+
               {/* Weekly check-ins */}
               <div className="flex items-center gap-2 mb-3">
-            <button
+                <button
                   className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
-              onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
+                  onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
                   aria-label="Previous week"
-            >
+                >
                   <ChevronLeftIcon className="h-5 w-5 text-gray-400" />
-            </button>
-                
+                </button>
+
                 <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
                   {weekDays.map((day) => {
                     const dateStr = day.format('YYYY-MM-DD');
                     const dayNumber = day.date();
                     const weekdayLabel = day.format('ddd').toUpperCase();
                     const isToday = day.format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
-                    
+
                     // Check if this day is completed
-            const answerObj = answers.find(ans => ans.date === dateStr);
+                    const answerObj = answers.find(ans => ans.date === dateStr);
                     const type = tracker.type ? tracker.type.toLowerCase() : '';
                     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
                     let isCompleted = false;
-                    
+
                     if (isYesNoTracker) {
-              const answerValue = answerObj?.answer || answerObj?.value;
+                      const answerValue = answerObj?.answer || answerObj?.value;
                       isCompleted = answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'yes';
-              } else {
+                    } else {
                       isCompleted = !!answerObj;
-            }
-                    
-          return (
+                    }
+
+                    return (
                       <div key={dateStr} className="flex flex-col items-center flex-shrink-0">
                         <span className="text-xs text-gray-500 mb-1.5">{weekdayLabel}</span>
                         <div className="relative">
-              <button
+                          <button
                             onClick={() => handleDateClick(day, dateStr)}
                             className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all
-                              ${isToday 
-                                ? 'bg-blue-500 border-blue-500 text-white' 
+                              ${isToday
+                                ? 'bg-blue-500 border-blue-500 text-white'
                                 : isCompleted
                                   ? 'bg-white border-gray-300 text-gray-700'
                                   : 'bg-white border-gray-300 text-gray-700'
                               }`}
                             title={day.format('MMM D, YYYY')}
-              >
+                          >
                             {dayNumber}
-              </button>
+                          </button>
                           {isCompleted && !isToday && (
                             <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
-                            <CheckIcon className="h-2.5 w-2.5 text-white" />
-                          </div>
-              )}
+                              <CheckIcon className="h-2.5 w-2.5 text-white" />
+                            </div>
+                          )}
                         </div>
-            </div>
-          );
-        })}
+                      </div>
+                    );
+                  })}
                 </div>
-                
-            {dateOffset > 0 && (
-              <button
+
+                {dateOffset > 0 && (
+                  <button
                     className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
-                onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
+                    onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
                     aria-label="Next week"
-              >
+                  >
                     <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-              </button>
-            )}
+                  </button>
+                )}
               </div>
-              
+
               {/* Month/Year */}
               <p className="text-xs text-gray-400 text-center mb-3">{currentMonthYear}</p>
-              
+
               {/* Progress Bar */}
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-gray-600">{weeklyProgress.percentage}% Complete This Week</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${weeklyProgress.percentage}%` }}
                   ></div>
                 </div>
               </div>
             </div>
-            
+
             {/* Your Momentum */}
             <div>
               <h4 className="text-base font-bold text-gray-900 mb-4">Your Momentum</h4>
@@ -1716,7 +1725,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     <p className="text-xs text-gray-500 mt-1">You're doing great! Keep it up.</p>
                   )}
                 </div>
-                
+
                 {/* Current Streak */}
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Current Streak</p>
@@ -1747,7 +1756,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <div className="text-center mb-2">
               <h2 className="text-xl font-semibold">{tracker.title}</h2>
             </div>
-            
+
             {/* Month Navigation */}
             <div className="flex items-center justify-center mb-2 gap-4">
               <button
@@ -1784,7 +1793,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 <span className="text-xl">&#8594;</span>
               </button>
             </div>
-            
+
             {/* Cadence and Events Count */}
             <div className="text-center mb-4 text-sm text-gray-600">
               {(() => {
@@ -1795,10 +1804,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   const ansDate = moment(ans.date).format('YYYY-MM-DD');
                   return ansDate >= monthStart && ansDate <= monthEnd;
                 }).length;
-                
+
                 // Format cadence for display
                 const cadenceDisplay = cadence.charAt(0).toUpperCase() + cadence.slice(1);
-                
+
                 return `${cadenceDisplay} • ${eventsInMonth} event${eventsInMonth !== 1 ? 's' : ''} marked`;
               })()}
             </div>
@@ -1806,7 +1815,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               {getAllDatesInMonth(monthlyModalMonth).map(dateObj => {
                 const dateStr = dateObj.format('YYYY-MM-DD');
                 const answerObj = answers.find(ans => ans.date === dateStr);
-                
+
                 // Check if there's a pending change for this date, otherwise use existing answer
                 const pendingValue = monthlyModalPendingChanges[dateStr];
                 let displayValue = null;
@@ -1819,28 +1828,28 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   displayValue = ansValue;
                   displayValueString = String(ansValue);
                 }
-                
+
                 let color = '';
                 let isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
                 let isValueTracker = tracker.type && tracker.type.toLowerCase() === 'value';
-                
+
                 // Check if this date is allowed for weekly trackers
                 let isDateAllowed = true;
                 if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
                   // Get allowed weekday indices
                   const selectedDays = tracker.days.map(d => {
                     if (typeof d === 'string') {
-                      const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+                      const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
                       return idx >= 0 ? idx : d;
                     }
                     return d;
                   }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-                  
+
                   // Check if this date's weekday is in the allowed days
                   const dateWeekday = dateObj.day(); // 0 = Sunday, 6 = Saturday
                   isDateAllowed = selectedDays.includes(dateWeekday);
                 }
-                
+
                 if (isYesNoTracker) {
                   if (displayValue === 'yes') {
                     color = 'bg-green-300';
@@ -1852,19 +1861,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 } else {
                   color = displayValue ? 'bg-green-300' : '';
                 }
-                
+
                 // Disable color styling if date is not allowed for weekly trackers
                 const isDisabled = !isDateAllowed && cadence === 'weekly';
                 const isClickable = (isYesNoTracker || isValueTracker) && !isDisabled;
-                
+
                 const handleMonthlyDateClick = () => {
                   if (!isYesNoTracker && !isValueTracker) return; // Only allow clicking for yes/no or value trackers
                   if (!isDateAllowed && cadence === 'weekly') return; // Disable clicks for non-allowed dates
-                  
+
                   if (isValueTracker) {
                     // Show popup for value entry
-                    const currentValue = pendingValue !== undefined 
-                      ? pendingValue 
+                    const currentValue = pendingValue !== undefined
+                      ? pendingValue
                       : (answerObj && (answerObj.answer || answerObj.value) ? String(answerObj.answer || answerObj.value) : '');
                     setMonthlyModalValueInput({
                       show: true,
@@ -1874,10 +1883,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     });
                   } else if (isYesNoTracker) {
                     // Toggle yes/no for yes/no trackers
-                    const currentState = pendingValue !== undefined 
-                      ? pendingValue 
+                    const currentState = pendingValue !== undefined
+                      ? pendingValue
                       : (answerObj && answerObj.answer ? answerObj.answer.toLowerCase() : null);
-                    
+
                     // Toggle: null -> yes -> no -> null
                     let newValue = null;
                     if (currentState === null || currentState === '') {
@@ -1887,21 +1896,21 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     } else if (currentState === 'no') {
                       newValue = null; // Remove
                     }
-                    
-                    console.log('[TrackerCard] Monthly date click', { 
-                      dateStr, 
-                      currentState, 
+
+                    console.log('[TrackerCard] Monthly date click', {
+                      dateStr,
+                      currentState,
                       newValue,
                       isDateAllowed
                     });
-                    
+
                     setMonthlyModalPendingChanges(prev => ({
                       ...prev,
                       [dateStr]: newValue
                     }));
                   }
                 };
-                
+
                 return (
                   <div key={dateStr} className={`flex flex-col items-center w-10`}>
                     <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.format('ddd')}</span>
@@ -1913,18 +1922,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     )}
                     <button
                       onClick={handleMonthlyDateClick}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${
-                        isDisabled 
-                          ? 'border-gray-200 opacity-30 cursor-not-allowed' 
-                          : isClickable
-                            ? 'border-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-400' 
-                            : 'border-gray-300 cursor-default'
-                      }`}
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${isDisabled
+                        ? 'border-gray-200 opacity-30 cursor-not-allowed'
+                        : isClickable
+                          ? 'border-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-400'
+                          : 'border-gray-300 cursor-default'
+                        }`}
                       title={
-                        dateObj.format('MMM D, YYYY') + 
-                        (isDisabled ? ' - Not available for this tracker' : 
-                         isYesNoTracker ? ' - Click to toggle yes/no/remove' :
-                         isValueTracker ? ' - Click to add/edit value' : '')
+                        dateObj.format('MMM D, YYYY') +
+                        (isDisabled ? ' - Not available for this tracker' :
+                          isYesNoTracker ? ' - Click to toggle yes/no/remove' :
+                            isValueTracker ? ' - Click to add/edit value' : '')
                       }
                       disabled={!isClickable}
                     >
@@ -1935,60 +1943,60 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               })}
             </div>
             {/* Save button for yes/no and value trackers */}
-            {((tracker.type && tracker.type.toLowerCase().includes('yes')) || 
-              (tracker.type && tracker.type.toLowerCase() === 'value')) && 
+            {((tracker.type && tracker.type.toLowerCase().includes('yes')) ||
+              (tracker.type && tracker.type.toLowerCase() === 'value')) &&
               Object.keys(monthlyModalPendingChanges).length > 0 && (
-              <div className="mt-4 flex justify-center gap-4">
-                <button
-                  onClick={async () => {
-                    console.log('[TrackerCard] Saving monthly modal changes', { 
-                      changes: monthlyModalPendingChanges 
-                    });
-                    
-                    // Apply each change
-                    for (const [dateStr, value] of Object.entries(monthlyModalPendingChanges)) {
-                      if (value === null) {
-                        // Remove: find existing answer and delete it
-                        const existingAnswer = answers.find(ans => ans.date === dateStr);
-                        if (existingAnswer && existingAnswer.id) {
-                          try {
-                            await deleteNoteById(existingAnswer.id);
-                            console.log('[TrackerCard] Removed answer', { dateStr, noteId: existingAnswer.id });
-                            // Update UI by calling onToggleDay with null
+                <div className="mt-4 flex justify-center gap-4">
+                  <button
+                    onClick={async () => {
+                      console.log('[TrackerCard] Saving monthly modal changes', {
+                        changes: monthlyModalPendingChanges
+                      });
+
+                      // Apply each change
+                      for (const [dateStr, value] of Object.entries(monthlyModalPendingChanges)) {
+                        if (value === null) {
+                          // Remove: find existing answer and delete it
+                          const existingAnswer = answers.find(ans => ans.date === dateStr);
+                          if (existingAnswer && existingAnswer.id) {
+                            try {
+                              await deleteNoteById(existingAnswer.id);
+                              console.log('[TrackerCard] Removed answer', { dateStr, noteId: existingAnswer.id });
+                              // Update UI by calling onToggleDay with null
+                              onToggleDay(tracker.id, dateStr, null);
+                            } catch (error) {
+                              console.error('[TrackerCard] ERROR removing answer', { dateStr, error });
+                            }
+                          } else {
+                            // No existing answer, just update state
                             onToggleDay(tracker.id, dateStr, null);
-                          } catch (error) {
-                            console.error('[TrackerCard] ERROR removing answer', { dateStr, error });
                           }
                         } else {
-                          // No existing answer, just update state
-                          onToggleDay(tracker.id, dateStr, null);
+                          // Update or create: use onToggleDay which handles both cases
+                          console.log('[TrackerCard] Setting answer', { dateStr, value });
+                          onToggleDay(tracker.id, dateStr, value);
                         }
-                      } else {
-                        // Update or create: use onToggleDay which handles both cases
-                        console.log('[TrackerCard] Setting answer', { dateStr, value });
-                        onToggleDay(tracker.id, dateStr, value);
                       }
-                    }
-                    
-                    // Clear pending changes
-                    setMonthlyModalPendingChanges({});
-                    console.log('[TrackerCard] Monthly modal changes saved');
-                  }}
-                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Save Changes ({Object.keys(monthlyModalPendingChanges).length} changes)
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('[TrackerCard] Cancelling monthly modal changes');
-                    setMonthlyModalPendingChanges({});
-                  }}
-                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+
+                      // Clear pending changes
+                      setMonthlyModalPendingChanges({});
+                      console.log('[TrackerCard] Monthly modal changes saved');
+                    }}
+                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Save Changes ({Object.keys(monthlyModalPendingChanges).length} changes)
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('[TrackerCard] Cancelling monthly modal changes');
+                      setMonthlyModalPendingChanges({});
+                    }}
+                    className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             {/* Value Input Popup for value trackers */}
             {monthlyModalValueInput.show && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
@@ -2067,10 +2075,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       {showLastValuesModal && (() => {
         const type = tracker.type ? tracker.type.toLowerCase() : '';
         const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
-        
+
         // Filter answers based on yes/no filter
         let filteredAnswers = (answers || []).filter(ans => ans.value !== undefined || ans.answer !== undefined);
-        
+
         if (isYesNoTracker) {
           if (yesNoFilter === 'yes') {
             filteredAnswers = filteredAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
@@ -2078,7 +2086,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             filteredAnswers = filteredAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'no');
           }
         }
-        
+
         // Group by year
         const groupedByYear = filteredAnswers.reduce((acc, ans) => {
           const year = moment(ans.date).year();
@@ -2088,10 +2096,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           acc[year].push(ans);
           return acc;
         }, {});
-        
+
         // Sort years descending
         const sortedYears = Object.keys(groupedByYear).sort((a, b) => parseInt(b) - parseInt(a));
-        
+
         // Create a map of dates to background colors for highlighting same-day records
         const dateColorMap = new Map();
         const backgroundColors = [
@@ -2105,7 +2113,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           'bg-cyan-50'
         ];
         let colorIndex = 0;
-        
+
         // Assign colors to dates
         filteredAnswers.forEach(ans => {
           const dateStr = moment(ans.date).format('YYYY-MM-DD');
@@ -2114,7 +2122,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             colorIndex++;
           }
         });
-        
+
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative max-h-[80vh] overflow-y-auto">
@@ -2130,7 +2138,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 &times;
               </button>
               <h2 className="text-lg font-semibold mb-4 text-center">All Recorded Values</h2>
-              
+
               {/* Selection controls */}
               <div className="flex gap-2 justify-between items-center mb-4">
                 <div className="flex gap-2">
@@ -2157,43 +2165,40 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   </button>
                 )}
               </div>
-              
+
               {/* Filter buttons for yes/no trackers */}
               {isYesNoTracker && (
                 <div className="flex gap-2 justify-center mb-4">
                   <button
                     onClick={() => setYesNoFilter('both')}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                      yesNoFilter === 'both'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${yesNoFilter === 'both'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
                   >
                     Both
                   </button>
                   <button
                     onClick={() => setYesNoFilter('yes')}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                      yesNoFilter === 'yes'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${yesNoFilter === 'yes'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
                   >
                     Yes Only
                   </button>
                   <button
                     onClick={() => setYesNoFilter('no')}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                      yesNoFilter === 'no'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${yesNoFilter === 'no'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
                   >
                     No Only
                   </button>
                 </div>
               )}
-              
+
               <div className="mt-2 text-xs text-gray-600 w-full">
                 {sortedYears.length === 0 ? (
                   <div className="text-gray-400 italic text-center">No values entered yet.</div>
@@ -2343,7 +2348,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             {tracker.question && (
               <div className="mb-4 text-sm text-gray-700 font-medium">{tracker.question}</div>
             )}
-            
+
             {/* Date Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Date:</label>
@@ -2369,13 +2374,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 max={moment().format('YYYY-MM-DD')}
               />
             </div>
-            
+
             {/* Yes/No or Value Input based on tracker type */}
             {(() => {
               const type = tracker.type ? tracker.type.toLowerCase() : '';
               const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
               const isValueTracker = type === 'value';
-              
+
               if (isYesNoTracker) {
                 return (
                   <div className="mb-4">
@@ -2383,21 +2388,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     <div className="flex gap-4">
                       <button
                         onClick={() => setCustomValue('yes')}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          customValue === 'yes'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-green-100'
-                        }`}
+                        className={`px-4 py-2 rounded-lg transition-colors ${customValue === 'yes'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-green-100'
+                          }`}
                       >
                         Yes
                       </button>
                       <button
                         onClick={() => setCustomValue('no')}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          customValue === 'no'
-                            ? 'bg-red-500 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-red-100'
-                        }`}
+                        className={`px-4 py-2 rounded-lg transition-colors ${customValue === 'no'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-red-100'
+                          }`}
                       >
                         No
                       </button>
@@ -2432,7 +2435,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 return null;
               }
             })()}
-            
+
             <div className="flex justify-between items-center mt-4">
               <div>
                 {customExistingAnswer && (
@@ -2615,7 +2618,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
           const isAdhocDate = type === 'adhoc_date';
           const isAdhocValue = type === 'adhoc_value';
-          
+
           // For adhoc trackers, only show overdue info
           if (isAdhocDate || isAdhocValue) {
             if (daysUntilOverdue === null && !isOverdue) return null;
@@ -2636,11 +2639,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               </div>
             );
           }
-          
+
           if (isYesNoTracker) {
             // For yes/no trackers, show last recorded yes and no separately
             if (!lastRecordedYesDate && !lastRecordedNoDate) return null;
-            
+
             return (
               <div className="flex flex-col gap-1">
                 {lastRecordedYesDate && (
@@ -2672,30 +2675,30 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           } else {
             // For other trackers, show the old format
             if (!lastRecordedDate) return null;
-            
+
             return (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1">
-              <span className="font-medium">Last recorded:</span>
-              <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">Age:</span>
-              <span>{lastRecordedAge}</span>
-            </div>
-            {daysUntilOverdue !== null && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Overdue in:</span>
-                <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Last recorded:</span>
+                  <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Age:</span>
+                  <span>{lastRecordedAge}</span>
+                </div>
+                {daysUntilOverdue !== null && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Overdue in:</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                  </div>
+                )}
+                {isOverdue && daysSinceLastEntry !== null && (
+                  <div className="flex items-center gap-1 text-red-600">
+                    <span className="font-medium">Overdue:</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                  </div>
+                )}
               </div>
-            )}
-            {isOverdue && daysSinceLastEntry !== null && (
-              <div className="flex items-center gap-1 text-red-600">
-                <span className="font-medium">Overdue:</span>
-                <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
-              </div>
-            )}
-          </div>
             );
           }
         })()}
@@ -2757,7 +2760,7 @@ function EnhancedStats({ answers, tracker }) {
   // Completion rate (for daily trackers)
   let completionRate = null;
   if (tracker.cadence && tracker.cadence.toLowerCase() === 'daily' && firstDate) {
-    const daysBetween = Math.max(1, Math.ceil((new Date(lastDate) - new Date(firstDate)) / (1000*60*60*24)) + 1);
+    const daysBetween = Math.max(1, Math.ceil((new Date(lastDate) - new Date(firstDate)) / (1000 * 60 * 60 * 24)) + 1);
     completionRate = (total / daysBetween) * 100;
   }
 
@@ -2790,7 +2793,7 @@ function EnhancedStats({ answers, tracker }) {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
               return context.parsed.y === 1 ? 'Yes' : 'No';
             }
@@ -2804,7 +2807,7 @@ function EnhancedStats({ answers, tracker }) {
         beginAtZero: true,
         ticks: {
           stepSize: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
-          callback: function(value) {
+          callback: function (value) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
               return value === 1 ? 'Yes' : 'No';
             }

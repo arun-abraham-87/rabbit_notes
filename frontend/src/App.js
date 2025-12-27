@@ -16,7 +16,7 @@ import OverTheYears from './pages/OverTheYears';
 import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings, addNewTag, loadTags } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
-import { NotesProvider} from './contexts/NotesContext';
+import { NotesProvider } from './contexts/NotesContext';
 import { LeftPanelProvider, useLeftPanel } from './contexts/LeftPanelContext';
 import NoteEditorModal from './components/NoteEditorModal';
 import WatchList from './components/WatchList';
@@ -42,28 +42,27 @@ import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
 
 // MainContentArea component that adjusts based on left panel state
-const MainContentArea = ({ 
-  allNotes, 
-  setAllNotes, 
-  addNote, 
-  searchQuery, 
-  setSearchQuery, 
-  setNoteDate, 
-  settings, 
-  addTag, 
-  refreshTags, 
-  objList, 
+const MainContentArea = ({
+  allNotes,
+  setAllNotes,
+  addNote,
+  searchQuery,
+  setSearchQuery,
+  setNoteDate,
+  settings,
+  addTag,
+  refreshTags,
+  objList,
   updateNote,
   navigate,
   handleCreatePurchaseNote
 }) => {
   const { isVisible } = useLeftPanel();
-  
+
   return (
-    <div 
-      className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${
-        isVisible ? 'ml-80' : 'ml-0'
-      }`}
+    <div
+      className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${isVisible ? 'ml-80' : 'ml-0'
+        }`}
     >
       <div className="h-full">
         <Routes>
@@ -352,9 +351,9 @@ const AppContent = () => {
 
       // Check if we're inside a modal (image upload modal or any modal)
       // Modals typically have z-50 class or are within a fixed overlay
-      const isInModal = e.target.closest('.fixed.inset-0') || 
-                        e.target.closest('[role="dialog"]') ||
-                        document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+      const isInModal = e.target.closest('.fixed.inset-0') ||
+        e.target.closest('[role="dialog"]') ||
+        document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
       if (isInModal) {
         return;
       }
@@ -377,13 +376,13 @@ const AppContent = () => {
             setShowPastePopup(true);
             return;
           }
-          
+
           // If no text, check for image content
           const clipboardItems = await navigator.clipboard.read();
-          const hasImage = clipboardItems.some(item => 
+          const hasImage = clipboardItems.some(item =>
             item.types.some(type => type.startsWith('image/'))
           );
-          
+
           if (hasImage) {
             // Open popup even if there's only an image
             setPasteText(''); // Empty text since it's just an image
@@ -410,12 +409,12 @@ const AppContent = () => {
           e.preventDefault();
           nextEvent.preventDefault();
           nextEvent.stopPropagation();
-          
+
           if (nextEvent.key === 't') {
             navigate('/tags');
           } else if (nextEvent.key === 'n') {
             navigate('/notes');
-          } else if (nextEvent.key === 'h') {
+          } else if (nextEvent.key === 'h' || nextEvent.key === 'd') {
             navigate('/dashboard');
           } else if (nextEvent.key === 'e') {
             navigate('/events');
@@ -435,7 +434,7 @@ const AppContent = () => {
           // Always remove the event listener, regardless of the key pressed
           window.removeEventListener('keydown', handleNextKey);
         };
-        
+
         // Listen for the next key press with capture phase to ensure it fires before other handlers
         window.addEventListener('keydown', handleNextKey, { once: true, capture: true });
         return;
@@ -444,12 +443,12 @@ const AppContent = () => {
       // Handle Option + single-key navigation shortcuts (global)
       // On Mac, altKey is true when Option is pressed
       if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-        
-        
+
+
         if (e.key === 'n') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           navigate('/notes');
           return;
         }
@@ -457,7 +456,7 @@ const AppContent = () => {
         if (e.key === 'e') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           navigate('/events');
           return;
         }
@@ -465,14 +464,14 @@ const AppContent = () => {
 
       // Handle single key shortcuts (global)
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
-          e.target.tagName !== 'INPUT' && 
-          e.target.tagName !== 'TEXTAREA' &&
-          e.target.contentEditable !== 'true') {
-        
+        e.target.tagName !== 'INPUT' &&
+        e.target.tagName !== 'TEXTAREA' &&
+        e.target.contentEditable !== 'true') {
+
         if (e.key === 'b') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           // Toggle the left panel (sidebar)
           const leftPanelToggleEvent = new CustomEvent('toggleLeftPanel');
           document.dispatchEvent(leftPanelToggleEvent);
@@ -503,7 +502,7 @@ const AppContent = () => {
 
       // Get the first line from clipboard content
       const firstClipboardLine = pasteText.split('\n')[0].trim();
-      
+
       // Use custom content if provided (for image uploads), otherwise build normally
       let noteContent;
       if (customContent) {
@@ -514,7 +513,7 @@ const AppContent = () => {
         // Create the note with textbox content and first line from clipboard
         noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
       }
-      
+
       // Add comments for selections
       let comments = [];
       if (selectedPriority) {
@@ -526,35 +525,35 @@ const AppContent = () => {
       if (comments.length > 0) {
         noteContent += '\n\n' + comments.join(', ');
       }
-      
+
       // Add todo meta tag if priority is selected
       if (selectedPriority) {
         noteContent += `\nmeta::todo::${formattedDateTime}`;
         noteContent += `\nmeta::${selectedPriority}`;
       }
-      
+
       // Add watch meta tag if watch is selected
       if (isWatchSelected) {
         noteContent += `\nmeta::watch::${formattedDateTime}`;
         noteContent += getDummyCadenceLine();
       }
-      
+
       // Add sensitive meta tag if sensitive is selected
       if (isSensitiveSelected) {
         noteContent += `\nmeta::sensitive::`;
       }
-      
+
       const newNote = await createNote(noteContent);
-      
+
       // Track the last added note
       setLastAddedNoteId(newNote.id);
       localStorage.setItem('lastAddedNoteId', newNote.id.toString());
-      
+
       // Refresh the notes list with the current search query and date
       const data = await loadAllNotes(searchQuery, noteDate);
       setAllNotes(data.notes || []);
       setTotals(data.totals || 0);
-      
+
       setShowPastePopup(false);
       setPasteText('');
       setNewNoteText('');
@@ -571,16 +570,16 @@ const AppContent = () => {
   const handleCreatePurchaseNote = async (noteContent) => {
     try {
       const newNote = await createNote(noteContent);
-      
+
       // Track the last added note
       setLastAddedNoteId(newNote.id);
       localStorage.setItem('lastAddedNoteId', newNote.id.toString());
-      
+
       // Refresh the notes list
       const data = await loadAllNotes(searchQuery, noteDate);
       setAllNotes(data.notes || []);
       setTotals(data.totals || 0);
-      
+
       Alerts.success('Purchase note created successfully');
     } catch (error) {
       console.error('Error creating purchase note:', error);
@@ -601,7 +600,7 @@ const AppContent = () => {
     }
   }, [navigate]);
 
- 
+
 
   const searchAllNotesFromCache = async (searchText) => {
 
@@ -609,7 +608,7 @@ const AppContent = () => {
       // Use MiniSearch for in-memory search
       const searchResults = searchNotes(searchText);
       setTotals(searchResults.length);
-    } 
+    }
   };
 
   const fetchAllNotesFromServer = async () => {
@@ -627,7 +626,7 @@ const AppContent = () => {
     }
   };
 
- 
+
 
   const addNote = async (content, tags) => {
     try {
@@ -653,7 +652,7 @@ const AppContent = () => {
       // Create a new tag using the proper API
       const response = await addNewTag(tagText);
       if (callback) await callback();
-      
+
     } catch (error) {
       console.error('Error adding tag:', error);
     }
@@ -716,7 +715,7 @@ const AppContent = () => {
                 </div>
 
                 {/* Right panel: main content */}
-                <MainContentArea 
+                <MainContentArea
                   allNotes={allNotes}
                   setAllNotes={setAllNotes}
                   addNote={addNote}
@@ -731,9 +730,9 @@ const AppContent = () => {
                   navigate={navigate}
                   handleCreatePurchaseNote={handleCreatePurchaseNote}
                 />
-                
+
                 {/* Right panel: pinned notes */}
-                <RightPanel 
+                <RightPanel
                   notes={allNotes}
                   setNotes={setAllNotes}
                   setActivePage={(page) => navigate(`/${page}`)}

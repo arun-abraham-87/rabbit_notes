@@ -20,7 +20,7 @@ const NoteFilters = ({
   onExcludeExpensesChange,
   onExcludeSensitiveChange,
   onExcludeTrackersChange,
-  resetFilters = false
+  resetTrigger = 0
 }) => {
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
@@ -95,19 +95,27 @@ const NoteFilters = ({
     }
   }, [excludeTrackers, onExcludeTrackersChange]);
 
-  // Reset all filters when resetFilters prop is true
+  // Reset all filters when resetTrigger changes (and is not 0)
   useEffect(() => {
-    if (resetFilters) {
-      setExcludeEvents(false);
-      setExcludeMeetings(false);
-      setExcludeEventNotes(false);
-      setExcludeBackupNotes(false);
-      setExcludeWatchEvents(false);
-      setExcludeBookmarks(false);
-      setExcludeExpenses(false);
-      setExcludeSensitive(false);
+    if (resetTrigger > 0) {
+      console.log('🔄 [NoteFilters] Reset filters triggered via trigger:', resetTrigger);
+      setExcludeEvents(settings.excludeEventsByDefault || false);
+      setExcludeMeetings(settings.excludeMeetingsByDefault || false);
+      setExcludeEventNotes(true);
+      setExcludeBackupNotes(true);
+      setExcludeWatchEvents(true);
+      setExcludeBookmarks(true);
+      setExcludeExpenses(true);
+      setExcludeSensitive(true);
+      setExcludeTrackers(true);
+      // Clear search query and lines
+      if (setSearchQuery) setSearchQuery('');
+      if (setLines) setLines([{ id: 'line-0', text: '', isTitle: false }]);
     }
-  }, [resetFilters]);
+    // We intentionally only depend on resetTrigger.
+    // Using refs or other methods for settings if needed, but for now just trim dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetTrigger]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -302,15 +310,15 @@ const NoteFilters = ({
   const handleClear = () => {
     setExcludeEvents(false);
     setExcludeMeetings(false);
-    setExcludeEventNotes(false); // Clear all checkboxes
-    setExcludeBackupNotes(false); // Clear all checkboxes
-    setExcludeWatchEvents(false); // Clear watch events checkbox
-    setExcludeBookmarks(false); // Clear bookmarks checkbox
-    setExcludeExpenses(false); // Clear expenses checkbox
-    setExcludeSensitive(false); // Clear sensitive checkbox
-    setExcludeTrackers(false); // Clear tracker checkbox
-    setLines([{ id: 'line-0', text: '', isTitle: false }]);
-    setSearchQuery('');
+    setExcludeEventNotes(false);
+    setExcludeBackupNotes(false);
+    setExcludeWatchEvents(false);
+    setExcludeBookmarks(false);
+    setExcludeExpenses(false);
+    setExcludeSensitive(false);
+    setExcludeTrackers(false);
+    if (setLines) setLines([{ id: 'line-0', text: '', isTitle: false }]);
+    if (setSearchQuery) setSearchQuery('');
   };
 
   const handleReset = () => {

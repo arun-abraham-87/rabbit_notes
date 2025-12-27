@@ -53,9 +53,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .map(word => word.trim().toLowerCase())
           .filter(word => word.length > 0);
 
-        
-        
-        
+
+
+
       } else {
         // Regular AND search - split on spaces
         searchWords = searchQuery
@@ -64,9 +64,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .map(word => word.trim())
           .filter(word => word.length > 0);
 
-        
-        
-        
+
+
+
       }
     }
 
@@ -96,7 +96,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         const matchInTags = noteTags.some(tag => tag.includes(word));
 
         if (matchInContent || matchInEvent || matchInTags) {
-          
+
         }
 
         return matchInContent || matchInEvent || matchInTags;
@@ -109,7 +109,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         : searchWords.every(word => wordMatchesInNote(word));
 
       if (matchesSearchQuery) {
-        
+
       }
 
       // Check if the note is from today (if required)
@@ -122,7 +122,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
       return matchesSearchQuery;
     });
 
-    
+
     return filteredNotes;
 
   } catch (error) {
@@ -156,15 +156,15 @@ function parseDate(dateString) {
 const sortNotes = (notes) => {
   try {
     return [...notes].sort((a, b) => {
-      
-      
-      
-      
-      
+
+
+
+
+
       const dateA = parseDate(a?.created_datetime);
       const dateB = parseDate(b?.created_datetime);
-      
-      
+
+
       return dateB - dateA; // Sort by date descending
     });
   } catch (error) {
@@ -176,13 +176,13 @@ app.get('/api/notes', (req, res) => {
   try {
     // Decode the search query and clean it up
     const searchQuery = req.query.search ? decodeURIComponent(req.query.search).trim() : '';
-    
-    
+
+
 
     const currentDateNotesOnly = req.query.currentDate === 'true';
-    
+
     const noteDate = req.query.noteDate;
-    
+
 
     const files = fs.readdirSync(NOTES_DIR)
       .filter(file => {
@@ -236,7 +236,7 @@ app.get('/api/images', (req, res) => {
     if (!fs.existsSync(IMAGES_DIR)) {
       return res.json({ images: [] });
     }
-    
+
     const files = fs.readdirSync(IMAGES_DIR);
     const images = files
       .filter(file => {
@@ -248,7 +248,7 @@ app.get('/api/images', (req, res) => {
         id: path.parse(file).name, // UUID without extension
         extension: path.extname(file).slice(1).toLowerCase() // extension without dot
       }));
-    
+
     res.json({ images });
   } catch (err) {
     console.error('Error listing images:', err.message);
@@ -296,9 +296,9 @@ app.get('/api/todos', (req, res) => {
 
 app.put('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
-  const { content } = req.body;
+  const { content, tags } = req.body;
   let updatedNote = null;
-  
+
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteUpdated = false;
@@ -313,15 +313,18 @@ app.put('/api/notes/:id', (req, res) => {
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
 
         if (Array.isArray(notesInFile)) {
-          
+
           // Find the note by its ID
           const noteIndex = notesInFile.findIndex(note => note.id === noteId);
 
           if (noteIndex !== -1) {
-            // Update the note content
+            // Update the note content and tags
             notesInFile[noteIndex].content = content;
+            if (tags !== undefined) {
+              notesInFile[noteIndex].tags = tags;
+            }
             updatedNote = notesInFile[noteIndex];
-            
+
             noteUpdated = true;
 
             // Write the updated notes array back to the file
@@ -372,7 +375,7 @@ app.post('/api/notes', (req, res) => {
     const formattedToday = `${todayInTimezone[2]}-${todayInTimezone[1].padStart(2, '0')}-${todayInTimezone[0].padStart(2, '0')}`;
 
     let created_datetime;
-    
+
     console.log(noteDate)
     console.log(formattedToday)
 
@@ -387,9 +390,9 @@ app.post('/api/notes', (req, res) => {
       // Format it to the desired format: "dd/MM/yyyy, hh:mm:ss am/pm"
       created_datetime = noteDateObj.format("DD/MM/YYYY, hh:mm:ss a");
     }
-    
-    
-    
+
+
+
 
     const note = { id, content, created_datetime, tags };
 
@@ -605,37 +608,37 @@ app.put('/api/objects/:id', (req, res) => {
   try {
     const id = req.params.id;
     const { text } = req.body;
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
     const fileName = `objects.md`;
     const filePath = path.join(NOTES_DIR, fileName);
 
     if (!fs.existsSync(filePath)) {
-      
+
       return res.status(404).json({ error: 'Objects not found' });
     }
 
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     let objects = JSON.parse(fileContent || '[]');
-    
-    
-    
+
+
+
 
     const objectIndex = objects.findIndex(obj => obj.id === id);
-    
-    
+
+
     if (objectIndex === -1) {
-      
+
       return res.status(404).json({ error: 'Object not found' });
     }
 
-    
+
     objects[objectIndex].text = text;
-    
+
 
     fs.writeFileSync(filePath, JSON.stringify(objects, null, 2));
     res.json({ message: 'Object updated successfully', object: objects[objectIndex] });
@@ -746,12 +749,12 @@ app.get('/api/people', (req, res) => {
           .split('\n')
           .filter(line => line.startsWith('meta::tag::'))
           .map(line => line.split('::')[2]);
-        
+
         // Special case for "no-tags" filter
         if (tags.includes('no-tags')) {
           return noteTags.length === 0;
         }
-        
+
         // Regular tag filtering - at least one tag must match
         return tags.some(tag => noteTags.includes(tag));
       });
@@ -846,10 +849,10 @@ app.delete('/api/workstreams/:id', (req, res) => {
   try {
     const id = req.params.id;
     const files = fs.readdirSync(NOTES_DIR);
-    
+
     for (const file of files) {
       if (file === 'objects.md' || file === 'images') continue;
-      
+
       const notesFilePath = path.join(NOTES_DIR, file);
       if (fs.lstatSync(notesFilePath).isDirectory()) continue;
 
@@ -881,10 +884,10 @@ app.delete('/api/people/:id', (req, res) => {
   try {
     const id = req.params.id;
     const files = fs.readdirSync(NOTES_DIR);
-    
+
     for (const file of files) {
       if (file === 'objects.md' || file === 'images') continue;
-      
+
       const notesFilePath = path.join(NOTES_DIR, file);
       if (fs.lstatSync(notesFilePath).isDirectory()) continue;
 
@@ -930,21 +933,21 @@ app.post('/api/images', upload.single('image'), (req, res) => {
     console.log("Image File not found");
     return res.status(400).json({ error: 'No image uploaded.' });
   }
-  
+
   // Generate unique filename to avoid conflicts
   const uniqueId = uuidv4();
   const ext = path.extname(req.file.originalname);
   const newFilename = `${uniqueId}${ext}`;
   const oldPath = req.file.path;
   const newPath = path.join(IMAGES_DIR, newFilename);
-  
+
   // Rename file to have unique name
   fs.renameSync(oldPath, newPath);
-  
+
   // Return the image URL and ID that can be used in markdown and meta tags
   const imageUrl = `/api/images/${newFilename}`;
-  res.status(200).json({ 
-    message: 'Image uploaded successfully.', 
+  res.status(200).json({
+    message: 'Image uploaded successfully.',
     filename: newFilename,
     imageUrl: imageUrl,
     imageId: uniqueId
@@ -955,19 +958,19 @@ app.post('/api/images', upload.single('image'), (req, res) => {
 app.delete('/api/images/:imageId', (req, res) => {
   console.log("Image Delete api called");
   const { imageId } = req.params;
-  
+
   if (!imageId) {
     return res.status(400).json({ error: 'Image ID is required.' });
   }
-  
+
   // Try common extensions to find the file
   const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
   let deletedFile = null;
-  
+
   for (const ext of extensions) {
     const filename = `${imageId}.${ext}`;
     const imagePath = path.join(IMAGES_DIR, filename);
-    
+
     if (fs.existsSync(imagePath)) {
       try {
         fs.unlinkSync(imagePath);
@@ -980,14 +983,14 @@ app.delete('/api/images/:imageId', (req, res) => {
       }
     }
   }
-  
+
   if (!deletedFile) {
     return res.status(404).json({ error: 'Image not found.' });
   }
-  
-  res.status(200).json({ 
-    message: 'Image deleted successfully.', 
-    filename: deletedFile 
+
+  res.status(200).json({
+    message: 'Image deleted successfully.',
+    filename: deletedFile
   });
 });
 
@@ -997,11 +1000,11 @@ const server = app.listen(PORT, '0.0.0.0', (err) => {
     console.error('Error starting server:', err);
     process.exit(1);
   }
-  
-  
-  
-  
-  
+
+
+
+
+
 });
 
 // Handle server errors

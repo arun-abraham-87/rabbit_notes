@@ -44,6 +44,11 @@ const NotesMainContainer = ({
     const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+    const [savedSearches, setSavedSearches] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('savedNoteSearches') || '[]'); } catch { return []; }
+    });
+    const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
+    const [saveSearchName, setSaveSearchName] = useState('');
     const [resetTrigger, setResetTrigger] = useState(0);
     const [focusMode, setFocusMode] = useState(() => {
         // Load focus mode state from localStorage on component mount
@@ -800,11 +805,85 @@ const NotesMainContainer = ({
 
     }, [mergedObjList]);
 
+    const getCurrentFilterState = () => ({
+        searchQuery,
+        excludeEvents, excludeMeetings, excludeEventNotes, excludeBackupNotes,
+        excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive,
+        excludeTrackers, showDeadlinePassedFilter,
+    });
+
+    const handleSaveSearch = () => {
+        const name = saveSearchName.trim();
+        if (!name) return;
+        const entry = { name, filters: getCurrentFilterState(), createdAt: Date.now() };
+        const updated = [...savedSearches.filter(s => s.name !== name), entry];
+        setSavedSearches(updated);
+        localStorage.setItem('savedNoteSearches', JSON.stringify(updated));
+        setSaveSearchName('');
+        setShowSaveSearchModal(false);
+    };
+
+    const handleApplySavedSearch = (entry) => {
+        const f = entry.filters;
+        setSearchQuery(f.searchQuery || '');
+        setLocalSearchQuery(f.searchQuery || '');
+        setExcludeEvents(f.excludeEvents ?? false);
+        setExcludeMeetings(f.excludeMeetings ?? false);
+        setExcludeEventNotes(f.excludeEventNotes ?? true);
+        setExcludeBackupNotes(f.excludeBackupNotes ?? true);
+        setExcludeWatchEvents(f.excludeWatchEvents ?? true);
+        setExcludeBookmarks(f.excludeBookmarks ?? true);
+        setExcludeExpenses(f.excludeExpenses ?? true);
+        setExcludeSensitive(f.excludeSensitive ?? true);
+        setExcludeTrackers(f.excludeTrackers ?? true);
+        setShowDeadlinePassedFilter(f.showDeadlinePassedFilter ?? false);
+    };
+
+    const handleDeleteSavedSearch = (name) => {
+        const updated = savedSearches.filter(s => s.name !== name);
+        setSavedSearches(updated);
+        localStorage.setItem('savedNoteSearches', JSON.stringify(updated));
+    };
+
     return (
         <div className="flex flex-col h-full">
             <div className="container mx-auto px-6 py-6 max-w-7xl">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
                     <div className="mt-4">
+                        {/* Saved searches */}
+                        {savedSearches.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                {savedSearches.map(s => (
+                                    <span key={s.name} className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800 border border-purple-200">
+                                        <button onClick={() => handleApplySavedSearch(s)} className="hover:underline">{s.name}</button>
+                                        <button onClick={() => handleDeleteSavedSearch(s.name)} className="ml-0.5 text-purple-400 hover:text-red-600 leading-none" title="Delete saved search">×</button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Save search modal */}
+                        {showSaveSearchModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg shadow-xl p-6 w-80">
+                                    <h3 className="text-sm font-semibold text-gray-800 mb-3">Save current search</h3>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={saveSearchName}
+                                        onChange={e => setSaveSearchName(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') handleSaveSearch(); if (e.key === 'Escape') setShowSaveSearchModal(false); }}
+                                        placeholder="Search name…"
+                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={() => setShowSaveSearchModal(false)} className="px-3 py-1.5 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                                        <button onClick={handleSaveSearch} disabled={!saveSearchName.trim()} className="px-3 py-1.5 text-xs text-white bg-purple-600 rounded hover:bg-purple-700 disabled:opacity-50">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="relative">
                             <textarea
                                 ref={searchInputRef}
@@ -845,6 +924,16 @@ const NotesMainContainer = ({
                                     <XMarkIcon className="h-5 w-5" />
                                 </button>
                             )}
+                        </div>
+                        {/* Save search button — shown when there's an active search or filter */}
+                        <div className="flex justify-end mt-1">
+                            <button
+                                onClick={() => { setSaveSearchName(''); setShowSaveSearchModal(true); }}
+                                className="text-xs text-purple-600 hover:text-purple-800 hover:underline"
+                                title="Save current search and filters"
+                            >
+                                + Save search
+                            </button>
                         </div>
 
                         {/* Image Preview Section */}

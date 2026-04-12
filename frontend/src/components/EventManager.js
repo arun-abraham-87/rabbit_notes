@@ -35,6 +35,21 @@ const parseLinks = (text) => {
   return processedText;
 };
 
+// Returns true if the note matches the active filter selection.
+// eventFilter may be a string (legacy) or an array of filter names.
+// 'others' means: show events that are NOT tagged deadline or holiday.
+const matchesEventFilter = (note, eventFilter) => {
+  const filters = Array.isArray(eventFilter) ? eventFilter : [eventFilter];
+  if (filters.includes('all')) return true;
+  const lines = note.content.split('\n');
+  const tagsLine = lines.find(l => l.startsWith('event_tags:'));
+  const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(t => t.trim().toLowerCase()) : [];
+  return filters.some(f => {
+    if (f === 'others') return !tags.includes('deadline') && !tags.includes('holiday');
+    return tags.includes(f.toLowerCase());
+  });
+};
+
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
   const navigate = useNavigate();
 
@@ -188,30 +203,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           })) return false;
         }
 
-        // Apply filter based on eventFilter
-        if (eventFilter === 'all') {
-          return true;
-        } else if (eventFilter === 'deadline') {
-          // Show only events with "deadline" tag
-          const lines = note.content.split('\n');
-          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-          if (tagsLine) {
-            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
-            return tags.some(tag => tag.toLowerCase() === 'deadline');
-          }
-          return false;
-        } else if (eventFilter === 'holiday') {
-          // Show only events with "Holiday" tag
-          const lines = note.content.split('\n');
-          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-          if (tagsLine) {
-            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
-            return tags.some(tag => tag.toLowerCase() === 'holiday');
-          }
-          return false;
-        }
-
-        return true;
+        // Apply filter based on eventFilter (supports string or array)
+        return matchesEventFilter(note, eventFilter);
       })
       .filter(note => {
         // Apply text filter if provided

@@ -144,6 +144,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [customValue, setCustomValue] = useState('');
   const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
   const [selectedEntries, setSelectedEntries] = useState(new Set()); // Set of answer IDs
+  const [localTags, setLocalTags] = useState(Array.isArray(tracker.tags) ? tracker.tags : []);
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [tagInput, setTagInput] = useState('');
   // State for monthly modal pending changes (date -> answer value: 'yes', 'no', string value, or null for remove)
   const [monthlyModalPendingChanges, setMonthlyModalPendingChanges] = useState({});
   // State for value input popup in monthly modal
@@ -161,6 +164,52 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [adhocValue, setAdhocValue] = useState('');
   const [editingAdhocAnswer, setEditingAdhocAnswer] = useState(null);
   const [showConvertMenu, setShowConvertMenu] = useState(false);
+
+  // Persist updated tags to the note content
+  const persistTags = async (newTags) => {
+    try {
+      const note = await getNoteById(tracker.id);
+      if (!note || !note.content) return;
+      const lines = note.content.split('\n');
+      const tagsLineIdx = lines.findIndex(l => l.startsWith('Tags:'));
+      let updated;
+      if (newTags.length === 0) {
+        updated = tagsLineIdx !== -1 ? lines.filter((_, i) => i !== tagsLineIdx) : lines;
+      } else {
+        const newTagsLine = `Tags: ${newTags.join(', ')}`;
+        if (tagsLineIdx !== -1) {
+          updated = lines.map((l, i) => i === tagsLineIdx ? newTagsLine : l);
+        } else {
+          updated = [...lines, newTagsLine];
+        }
+      }
+      await updateNoteById(tracker.id, updated.join('\n'));
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error updating tags:', err);
+    }
+  };
+
+  const handleAddTag = async (e) => {
+    e.preventDefault();
+    const tag = tagInput.trim();
+    if (!tag || localTags.includes(tag)) {
+      setTagInput('');
+      setShowTagInput(false);
+      return;
+    }
+    const newTags = [...localTags, tag];
+    setLocalTags(newTags);
+    setTagInput('');
+    setShowTagInput(false);
+    await persistTags(newTags);
+  };
+
+  const handleRemoveTag = async (tag) => {
+    const newTags = localTags.filter(t => t !== tag);
+    setLocalTags(newTags);
+    await persistTags(newTags);
+  };
 
   const handleDateClick = (date, dateStr) => {
     console.log('[TrackerCard.handleDateClick] START', {
@@ -1281,15 +1330,42 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 );
               })()}
             </div>
-            {tracker.tags && Array.isArray(tracker.tags) && tracker.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {tracker.tags.map((tag, idx) => (
-                  <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    {tag.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Inline tag management */}
+            <div className="flex flex-wrap gap-1 mt-1 items-center">
+              {localTags.map((tag, idx) => (
+                <span key={idx} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 group/tag">
+                  {tag.trim()}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleRemoveTag(tag); }}
+                    className="ml-0.5 text-blue-400 hover:text-red-600 transition-colors leading-none"
+                    title={`Remove tag "${tag}"`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {showTagInput ? (
+                <form onSubmit={handleAddTag} className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onBlur={() => { if (!tagInput.trim()) setShowTagInput(false); }}
+                    onKeyDown={e => { if (e.key === 'Escape') { setTagInput(''); setShowTagInput(false); } }}
+                    className="text-xs border border-blue-300 rounded px-1.5 py-0.5 w-24 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    placeholder="Tag name…"
+                  />
+                </form>
+              ) : (
+                <button
+                  onClick={() => setShowTagInput(true)}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Add tag"
+                >
+                  + tag
+                </button>
+              )}
+            </div>
             {!isFocusMode && (
               <div className="flex flex-wrap items-center gap-2">
                 <button

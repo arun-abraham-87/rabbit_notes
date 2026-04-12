@@ -699,6 +699,38 @@ export default function NoteContent({
         setMultiMoveError('');
     };
 
+    // Extract selected lines to a new note
+    const handleExtractToNewNote = async () => {
+        if (multiMoveSelectedRows.size === 0 || multiMoveError) return;
+
+        const sortedIndices = Array.from(multiMoveSelectedRows).sort((a, b) => a - b);
+        const lines = note.content.split('\n');
+
+        // Lines to extract
+        const extractedLines = sortedIndices.map(i => lines[i]);
+
+        // Remaining lines (keep meta:: lines at their original position)
+        const remainingLines = lines.filter((_, i) => !sortedIndices.includes(i));
+
+        const newContent = extractedLines.join('\n');
+        const updatedContent = remainingLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+        // Create the new note
+        if (addNote) {
+            await addNote(newContent);
+        }
+
+        // Update existing note with lines removed
+        const reordered = reorderMetaTags(updatedContent);
+        updateNote(note.id, reordered);
+
+        // Exit multi-move mode
+        setMultiMoveSelectedRows(new Set());
+        setMultiMoveError('');
+        const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
+        document.dispatchEvent(event);
+    };
+
     // Code block functions
     const toggleCodeBlockMode = () => {
         setCodeBlockMode(!codeBlockMode);
@@ -1745,15 +1777,24 @@ export default function NoteContent({
                                     })()}
                                 </span>
                             </div>
-                            <button
-                                draggable={true}
-                                onDragStart={handleMultiMoveDragStart}
-                                onDragEnd={handleMultiMoveDragEnd}
-                                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg cursor-move hover:bg-blue-700 active:bg-blue-800 transition-all duration-150 border-2 border-dashed border-blue-300 shadow-md hover:shadow-lg"
-                                title="Click and drag this button to move the selected lines"
-                            >
-                                🖱️ Drag to Move
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleExtractToNewNote}
+                                    className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-150 shadow-md hover:shadow-lg"
+                                    title="Extract selected lines into a new note and remove from this one"
+                                >
+                                    ✦ New Note
+                                </button>
+                                <button
+                                    draggable={true}
+                                    onDragStart={handleMultiMoveDragStart}
+                                    onDragEnd={handleMultiMoveDragEnd}
+                                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg cursor-move hover:bg-blue-700 active:bg-blue-800 transition-all duration-150 border-2 border-dashed border-blue-300 shadow-md hover:shadow-lg"
+                                    title="Click and drag this button to move the selected lines"
+                                >
+                                    🖱️ Drag to Move
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

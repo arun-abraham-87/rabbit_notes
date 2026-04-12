@@ -973,11 +973,6 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             </div>
           </div>
 
-          {/* Tracked Events Section */}
-          <div className="mb-8">
-            <TrackedEvents notes={notes} />
-          </div>
-
           {/* Flagged Review Dues Section */}
           <div className="mb-8">
             <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
@@ -1146,6 +1141,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 )}
               </div>
             </div>
+
+            {/* Tracked Events Row */}
+            <TrackedEvents notes={notes} />
 
             {/* Upcoming Alerts Row - Moved from bottom to below timelines */}
             <div className="mb-8">

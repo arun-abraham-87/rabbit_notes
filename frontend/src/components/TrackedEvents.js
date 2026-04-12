@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { MapPinIcon } from '@heroicons/react/24/outline';
 
 const TrackedEvents = ({ notes }) => {
   const trackedEvents = useMemo(() => {
@@ -24,48 +23,62 @@ const TrackedEvents = ({ notes }) => {
 
   if (trackedEvents.length === 0) return null;
 
-  const formatDays = (days) => {
-    if (days === null) return '—';
-    if (days === 0) return 'Today';
-    if (days === 1) return '1 day ago';
-    if (days < 0) return `in ${Math.abs(days)} day${Math.abs(days) !== 1 ? 's' : ''}`;
-    const weeks = Math.floor(days / 7);
-    const rem = days % 7;
-    if (days < 7) return `${days} days ago`;
-    if (rem === 0) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
-    return `${weeks}w ${rem}d ago`;
+  const formatDisplay = (days) => {
+    if (days === null) return { value: '—', unit: '' };
+    if (days === 0) return { value: 'Today', unit: '' };
+    const abs = Math.abs(days);
+    const past = days > 0;
+    if (abs < 7) return { value: abs, unit: `day${abs !== 1 ? 's' : ''}` };
+    if (abs < 30) {
+      const w = Math.floor(abs / 7), d = abs % 7;
+      return { value: d ? `${w}w ${d}d` : `${w}`, unit: d ? '' : `week${w !== 1 ? 's' : ''}` };
+    }
+    if (abs < 365) {
+      const m = Math.floor(abs / 30);
+      return { value: m, unit: `month${m !== 1 ? 's' : ''}` };
+    }
+    const y = Math.floor(abs / 365);
+    return { value: y, unit: `year${y !== 1 ? 's' : ''}` };
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <MapPinIcon className="h-5 w-5 text-blue-500" />
-        <h3 className="text-lg font-semibold text-gray-800">
-          Tracked Events ({trackedEvents.length})
-        </h3>
+    <div className="mb-6">
+      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+        Tracked Events
       </div>
-      <div className="flex flex-wrap gap-3">
-        {trackedEvents.map(event => (
-          <div
-            key={event.id}
-            className="bg-white border border-blue-100 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow min-w-[160px]"
-          >
-            <div className="text-sm font-semibold text-gray-800 truncate max-w-[180px]" title={event.title}>
-              {event.title}
-            </div>
-            {event.dateStr && (
-              <div className="text-xs text-gray-400 mt-0.5">
-                {event.date?.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+      <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+        {trackedEvents.map(event => {
+          const { value, unit } = formatDisplay(event.daysDiff);
+          const isPast = event.daysDiff > 0;
+          const isToday = event.daysDiff === 0;
+
+          return (
+            <div
+              key={event.id}
+              className="flex-shrink-0 flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[200px] max-w-xs h-36 bg-white hover:shadow-md transition-shadow relative overflow-hidden"
+            >
+              <div className="text-2xl font-bold text-gray-600">
+                {isToday ? 'Today' : value}
               </div>
-            )}
-            <div className={`text-xs font-medium mt-1 ${
-              event.daysDiff === 0 ? 'text-green-600' :
-              event.daysDiff < 0  ? 'text-blue-600' : 'text-gray-500'
-            }`}>
-              {formatDays(event.daysDiff)}
+              {!isToday && (
+                <div className="text-sm text-gray-400">
+                  {unit} {isPast ? 'since' : 'until'}
+                </div>
+              )}
+              <div
+                className="font-medium text-gray-900 w-full truncate mt-1"
+                title={event.title}
+              >
+                {event.title}
+              </div>
+              {event.date && (
+                <div className="text-xs text-gray-400 mt-auto">
+                  {event.date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

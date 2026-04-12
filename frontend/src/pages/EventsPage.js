@@ -1662,13 +1662,21 @@ event_tags:${expense.tag.join(',')}`;
           </div>
         </div>
 
-        {/* Past Events Note */}
-        {showOnlyDeadlines && pastEventsCount > 0 && hasActiveFilters() && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
-            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
-            <span>
-              {pastEventsCount} past event{pastEventsCount !== 1 ? 's' : ''} match{pastEventsCount !== 1 ? '' : 'es'} your filter{pastEventsCount !== 1 ? 's' : ''}
-            </span>
+        {/* Past Events Banner */}
+        {!showPastEvents && pastEventsCount > 0 && (searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedYear || selectedMonth || selectedDay) && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2">
+              <ExclamationTriangleIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-amber-800">
+                {pastEventsCount} past event{pastEventsCount !== 1 ? 's' : ''} also match{pastEventsCount === 1 ? 'es' : ''} your current filter — not shown
+              </span>
+            </div>
+            <button
+              onClick={() => setShowPastEvents(true)}
+              className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 transition-colors"
+            >
+              Show past events
+            </button>
           </div>
         )}
 

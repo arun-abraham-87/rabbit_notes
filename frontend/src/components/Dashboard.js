@@ -1143,7 +1143,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             </div>
 
             {/* Tracked Events Row */}
-            <TrackedEvents notes={notes} />
+            <TrackedEvents notes={notes} setNotes={setNotes} />
 
             {/* Upcoming Alerts Row - Moved from bottom to below timelines */}
             <div className="mb-8">

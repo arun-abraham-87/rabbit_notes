@@ -1,6 +1,31 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { updateNoteById } from '../utils/ApiUtils';
 
-const TrackedEvents = ({ notes }) => {
+// Cycle: days → weeks → days
+const MODES = ['days', 'weeks'];
+
+function formatDisplay(daysDiff, mode) {
+  if (daysDiff === null) return { big: '—', sub: '' };
+  if (daysDiff === 0) return { big: 'Today', sub: '' };
+  const abs = Math.abs(daysDiff);
+  const label = daysDiff > 0 ? 'since' : 'until';
+  if (mode === 'weeks') {
+    const w = Math.floor(abs / 7);
+    const d = abs % 7;
+    if (w === 0) return { big: `${d}`, sub: `day${d !== 1 ? 's' : ''} ${label}` };
+    return { big: d ? `${w}w ${d}d` : `${w}`, sub: d ? `weeks ${label}` : `week${w !== 1 ? 's' : ''} ${label}` };
+  }
+  // days mode
+  return { big: `${abs}`, sub: `day${abs !== 1 ? 's' : ''} ${label}` };
+}
+
+const TrackedEvents = ({ notes, setNotes }) => {
+  const navigate = useNavigate();
+  const [cardModes, setCardModes] = useState({});        // { noteId: 'days' | 'weeks' }
+  const [confirmUntrack, setConfirmUntrack] = useState(null); // noteId being confirmed
+
   const trackedEvents = useMemo(() => {
     if (!notes) return [];
     return notes
@@ -21,25 +46,32 @@ const TrackedEvents = ({ notes }) => {
       .sort((a, b) => (b.date || 0) - (a.date || 0));
   }, [notes]);
 
-  if (trackedEvents.length === 0) return null;
+  const toggleMode = useCallback((id, e) => {
+    e.stopPropagation();
+    setCardModes(prev => {
+      const current = prev[id] || 'days';
+      const next = MODES[(MODES.indexOf(current) + 1) % MODES.length];
+      return { ...prev, [id]: next };
+    });
+  }, []);
 
-  const formatDisplay = (days) => {
-    if (days === null) return { value: '—', unit: '' };
-    if (days === 0) return { value: 'Today', unit: '' };
-    const abs = Math.abs(days);
-    const past = days > 0;
-    if (abs < 7) return { value: abs, unit: `day${abs !== 1 ? 's' : ''}` };
-    if (abs < 30) {
-      const w = Math.floor(abs / 7), d = abs % 7;
-      return { value: d ? `${w}w ${d}d` : `${w}`, unit: d ? '' : `week${w !== 1 ? 's' : ''}` };
-    }
-    if (abs < 365) {
-      const m = Math.floor(abs / 30);
-      return { value: m, unit: `month${m !== 1 ? 's' : ''}` };
-    }
-    const y = Math.floor(abs / 365);
-    return { value: y, unit: `year${y !== 1 ? 's' : ''}` };
-  };
+  const handleUntrack = useCallback(async (id) => {
+    setConfirmUntrack(null);
+    const note = notes?.find(n => n.id === id);
+    if (!note) return;
+    const updatedContent = note.content.split('\n')
+      .filter(l => l.trim() !== 'meta::event_tracked')
+      .join('\n');
+    await updateNoteById(note.id, updatedContent);
+    if (setNotes) setNotes(prev => prev.map(n => n.id === id ? { ...n, content: updatedContent } : n));
+  }, [notes, setNotes]);
+
+  const goToEvent = useCallback((id, e) => {
+    e.stopPropagation();
+    navigate('/notes', { state: { searchQuery: `id:${id}` } });
+  }, [navigate]);
+
+  if (trackedEvents.length === 0) return null;
 
   return (
     <div className="mb-6">
@@ -48,27 +80,63 @@ const TrackedEvents = ({ notes }) => {
       </div>
       <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
         {trackedEvents.map(event => {
-          const { value, unit } = formatDisplay(event.daysDiff);
-          const isPast = event.daysDiff > 0;
+          const mode = cardModes[event.id] || 'days';
+          const { big, sub } = formatDisplay(event.daysDiff, mode);
           const isToday = event.daysDiff === 0;
+          const isConfirming = confirmUntrack === event.id;
 
           return (
             <div
               key={event.id}
-              className="flex-shrink-0 flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[200px] max-w-xs h-36 bg-white hover:shadow-md transition-shadow relative overflow-hidden"
+              onClick={(e) => toggleMode(event.id, e)}
+              className="group flex-shrink-0 flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[200px] max-w-xs h-36 bg-white hover:shadow-md transition-shadow relative overflow-hidden cursor-pointer"
+              title="Click to toggle days / weeks view"
             >
-              <div className="text-2xl font-bold text-gray-600">
-                {isToday ? 'Today' : value}
+              {/* Top-right action buttons */}
+              <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/events?note=${event.id}`); }}
+                  className="p-1 text-gray-400 hover:text-blue-500 transition-colors rounded"
+                  title="Go to event"
+                >
+                  <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmUntrack(event.id); }}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
+                  title="Untrack"
+                >
+                  <XMarkIcon className="h-3.5 w-3.5" />
+                </button>
               </div>
-              {!isToday && (
-                <div className="text-sm text-gray-400">
-                  {unit} {isPast ? 'since' : 'until'}
+
+              {/* Inline untrack confirmation overlay */}
+              {isConfirming && (
+                <div
+                  className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center gap-2 z-10"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <span className="text-xs text-gray-600 font-medium">Untrack this event?</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleUntrack(event.id)}
+                      className="px-3 py-1 text-xs font-semibold bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                    >
+                      Untrack
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmUntrack(null); }}
+                      className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
-              <div
-                className="font-medium text-gray-900 w-full truncate mt-1"
-                title={event.title}
-              >
+
+              <div className="text-2xl font-bold text-gray-600">{big}</div>
+              {sub && <div className="text-sm text-gray-400">{sub}</div>}
+              <div className="font-medium text-gray-900 w-full truncate mt-1" title={event.title}>
                 {event.title}
               </div>
               {event.date && (

@@ -92,6 +92,10 @@ export default function NoteContent({
     const [multiMoveSelectedRows, setMultiMoveSelectedRows] = useState(new Set());
     const [multiMoveError, setMultiMoveError] = useState('');
     const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
+    const [showMoveToNotePopup, setShowMoveToNotePopup] = useState(false);
+    const [moveToNoteSearch, setMoveToNoteSearch] = useState('');
+    const [moveToNoteTarget, setMoveToNoteTarget] = useState(null); // selected target note
+    const [showMoveToNoteConfirm, setShowMoveToNoteConfirm] = useState(false);
 
     // Code block state
     const [codeBlockMode, setCodeBlockMode] = useState(false);
@@ -727,6 +731,46 @@ export default function NoteContent({
         // Exit multi-move mode
         setMultiMoveSelectedRows(new Set());
         setMultiMoveError('');
+        const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
+        document.dispatchEvent(event);
+    };
+
+    const handleMoveToNoteConfirmed = async () => {
+        if (!moveToNoteTarget || multiMoveSelectedRows.size === 0) return;
+
+        const sortedIndices = Array.from(multiMoveSelectedRows).sort((a, b) => a - b);
+        const lines = note.content.split('\n');
+        const extractedLines = sortedIndices.map(i => lines[i]);
+        const remainingLines = lines.filter((_, i) => !sortedIndices.includes(i));
+
+        // Append extracted lines to target note (before meta:: lines)
+        const targetNote = allNotes.find(n => n.id === moveToNoteTarget.id);
+        if (!targetNote) return;
+
+        const targetLines = targetNote.content.split('\n');
+        const lastNonMetaIdx = targetLines.reduce((last, l, i) =>
+            l.trim().startsWith('meta::') ? last : i, targetLines.length - 1);
+        const updatedTarget = [
+            ...targetLines.slice(0, lastNonMetaIdx + 1),
+            '',
+            ...extractedLines,
+            ...targetLines.slice(lastNonMetaIdx + 1),
+        ].join('\n').trim();
+
+        const updatedSource = reorderMetaTags(
+            remainingLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+        );
+
+        updateNote(targetNote.id, updatedTarget);
+        updateNote(note.id, updatedSource);
+
+        // Exit multi-move mode and close popups
+        setMultiMoveSelectedRows(new Set());
+        setMultiMoveError('');
+        setShowMoveToNoteConfirm(false);
+        setShowMoveToNotePopup(false);
+        setMoveToNoteTarget(null);
+        setMoveToNoteSearch('');
         const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
         document.dispatchEvent(event);
     };
@@ -1751,6 +1795,82 @@ export default function NoteContent({
                     </div>
                 )}
                 
+                {/* Move-to-note note picker popup */}
+                {showMoveToNotePopup && !showMoveToNoteConfirm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                                <span className="text-sm font-semibold text-gray-800">Move to note</span>
+                                <button onClick={() => setShowMoveToNotePopup(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                            </div>
+                            <div className="px-4 pt-3 pb-2">
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={moveToNoteSearch}
+                                    onChange={e => setMoveToNoteSearch(e.target.value)}
+                                    placeholder="Search notes…"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                />
+                            </div>
+                            <div className="overflow-y-auto max-h-64 px-2 pb-3">
+                                {allNotes
+                                    .filter(n => n.id !== note.id && n.content)
+                                    .filter(n => {
+                                        if (!moveToNoteSearch.trim()) return true;
+                                        return n.content.toLowerCase().includes(moveToNoteSearch.toLowerCase());
+                                    })
+                                    .slice(0, 30)
+                                    .map(n => {
+                                        const firstLine = n.content.split('\n').find(l => l.trim() && !l.trim().startsWith('meta::')) || '';
+                                        return (
+                                            <button
+                                                key={n.id}
+                                                onClick={() => { setMoveToNoteTarget(n); setShowMoveToNoteConfirm(true); }}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-800 transition-colors truncate"
+                                            >
+                                                {firstLine || '(empty note)'}
+                                            </button>
+                                        );
+                                    })
+                                }
+                                {allNotes.filter(n => n.id !== note.id && n.content && (!moveToNoteSearch.trim() || n.content.toLowerCase().includes(moveToNoteSearch.toLowerCase()))).length === 0 && (
+                                    <p className="text-center text-sm text-gray-400 py-4">No notes found</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Move-to-note confirmation */}
+                {showMoveToNoteConfirm && moveToNoteTarget && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-2">Confirm move</h3>
+                            <p className="text-sm text-gray-600 mb-1">
+                                Move <span className="font-semibold text-purple-700">{multiMoveSelectedRows.size} line{multiMoveSelectedRows.size !== 1 ? 's' : ''}</span> to:
+                            </p>
+                            <p className="text-sm font-medium text-gray-800 bg-gray-50 rounded-lg px-3 py-2 mb-4 truncate">
+                                {moveToNoteTarget.content.split('\n').find(l => l.trim() && !l.trim().startsWith('meta::')) || '(empty note)'}
+                            </p>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => { setShowMoveToNoteConfirm(false); }}
+                                    className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={handleMoveToNoteConfirmed}
+                                    className="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                                >
+                                    Move
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Code block error message */}
                 {codeBlockMode && codeBlockError && (
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1784,6 +1904,13 @@ export default function NoteContent({
                                     title="Extract selected lines into a new note and remove from this one"
                                 >
                                     ✦ New Note
+                                </button>
+                                <button
+                                    onClick={() => { setShowMoveToNotePopup(true); setMoveToNoteSearch(''); setMoveToNoteTarget(null); }}
+                                    className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-all duration-150 shadow-md hover:shadow-lg"
+                                    title="Move selected lines to an existing note"
+                                >
+                                    → Move to Note
                                 </button>
                                 <button
                                     draggable={true}

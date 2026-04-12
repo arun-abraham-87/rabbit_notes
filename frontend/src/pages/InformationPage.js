@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import EditEventModal from '../components/EditEventModal';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
@@ -85,7 +85,8 @@ const parseEventNotes = (notes) => {
         content,
         date,
         tags: tagsArray,
-        fullContent: note.content
+        fullContent: note.content,
+        tracked: note.content.includes('meta::info_tracked'),
       };
     });
 };
@@ -376,6 +377,17 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     setAllNotes(allNotes.filter(note => note.id !== eventId));
   };
 
+  const handleToggleTrack = async (event) => {
+    const note = allNotes.find(n => n.id === event.id);
+    if (!note) return;
+    const isTracked = note.content.includes('meta::info_tracked');
+    const updatedContent = isTracked
+      ? note.content.split('\n').filter(l => l.trim() !== 'meta::info_tracked').join('\n')
+      : note.content.trim() + '\nmeta::info_tracked';
+    await updateNoteById(note.id, updatedContent);
+    setAllNotes(allNotes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+  };
+
   // Handle cancel
   const handleCancel = () => {
     setEditingEvent(null);
@@ -547,6 +559,18 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                               title="Edit Tags"
                             >
                               <TagIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleTrack(event)}
+                              className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
+                                event.tracked
+                                  ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-600'
+                                  : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
+                              }`}
+                              title={event.tracked ? 'Untrack from dashboard' : 'Show on dashboard'}
+                            >
+                              {event.tracked ? <EyeIcon className="h-3 w-3" /> : <EyeSlashIcon className="h-3 w-3" />}
+                              {event.tracked ? 'Untrack' : 'Track it'}
                             </button>
                             <button
                               onClick={() => handleEditEvent(event)}

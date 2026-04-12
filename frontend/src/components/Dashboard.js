@@ -17,6 +17,7 @@ import Weather from './Weather.js';
 import EditEventModal from './EditEventModal.js';
 import WatchedTrackers from './WatchedTrackers.js';
 import TrackedEvents from './TrackedEvents.js';
+import TrackedInfoCards from './TrackedInfoCards.js';
 import Countdown from './Countdown.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
@@ -1142,6 +1143,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
 
             {/* Tracked Events Row */}
             <TrackedEvents notes={notes} setNotes={setNotes} />
+
+            {/* Tracked Info Cards */}
+            <TrackedInfoCards notes={notes} setNotes={setNotes} />
 
             {/* Upcoming Alerts Row */}
             <UpcomingAlertsRow notes={notes} setNotes={setNotes} />

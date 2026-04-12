@@ -111,6 +111,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [newEventDate, setNewEventDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(() => loadMainSearchQuery());
   const [searchTitlesOnly, setSearchTitlesOnly] = useState(() => loadSearchTitlesOnly());
+  const [highlightMatches, setHighlightMatches] = useState(true);
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
   // Ref to store newly created event note for immediate refresh
@@ -320,6 +321,19 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
     return text.replace(dollarRegex, (match) => {
       return `<span class="text-emerald-600 font-semibold">${match}</span>`;
+    });
+  };
+
+  // Wrap search query matches in yellow highlight spans.
+  // Uses <span> instead of <mark> to avoid browser/preflight resets.
+  // Splits on HTML tags so only text nodes are modified, not tag attributes.
+  const highlightSearchTerms = (html, query) => {
+    if (!highlightMatches || !query || !query.trim() || !html) return html;
+    const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const termRegex = new RegExp(`(${escaped})`, 'gi');
+    return String(html).replace(/(<[^>]*>)|([^<]+)/g, (match, tag, text) => {
+      if (tag) return tag; // leave HTML tags untouched
+      return text.replace(termRegex, '<span style="background-color:#fef08a;border-radius:2px;padding:0 1px;">$1</span>');
     });
   };
 
@@ -1933,6 +1947,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               />
               <span>Search only titles</span>
             </label>
+            {searchQuery.trim() && (
+              <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={highlightMatches}
+                  onChange={(e) => setHighlightMatches(e.target.checked)}
+                  className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-300 rounded"
+                />
+                <span>Highlight matches</span>
+              </label>
+            )}
           </div>
 
           {/* Filter Buttons */}
@@ -2136,9 +2161,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                     )}
                                   </div>
                                   <div className="flex-1">
-                                    <h2 className="text-xl font-semibold text-gray-900">
-                                      {timelineData.timeline || 'Untitled Timeline'}
-                                    </h2>
+                                    <h2 className="text-xl font-semibold text-gray-900" dangerouslySetInnerHTML={{
+                                      __html: highlightSearchTerms(timelineData.timeline || 'Untitled Timeline', searchQuery)
+                                    }} />
                                     {(() => {
                                       const eventsWithDates = timelineData.events
                                         .filter(event => event.date)
@@ -2578,9 +2603,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                             : 'text-blue-600'
                                                           }`}>
                                                           {event.isTotal || event.isDuration ? (
-                                                            <span title={event.event.length > 50 ? event.event : undefined}>
-                                                              {truncateText(event.event)}
-                                                            </span>
+                                                            <span title={event.event.length > 50 ? event.event : undefined}
+                                                              dangerouslySetInnerHTML={{ __html: highlightSearchTerms(truncateText(event.event), searchQuery) }}
+                                                            />
                                                           ) : (
                                                             (() => {
                                                               const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
@@ -2589,9 +2614,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                                 <span
                                                                   title={event.event.length > 50 ? event.event : undefined}
                                                                   dangerouslySetInnerHTML={{
-                                                                    __html: formatted.hasAmount
+                                                                    __html: highlightSearchTerms(formatted.hasAmount
                                                                       ? highlightDollarValues(displayText)
-                                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))), searchQuery)
                                                                   }}
                                                                 />
                                                               );
@@ -2606,16 +2631,16 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                             : 'text-indigo-600 font-semibold'
                                                           }`}>
                                                           {event.isTotal || event.isDuration ? (
-                                                            <span title={event.event.length > 50 ? event.event : undefined}>
-                                                              {truncateText(event.event)}
-                                                            </span>
+                                                            <span title={event.event.length > 50 ? event.event : undefined}
+                                                              dangerouslySetInnerHTML={{ __html: highlightSearchTerms(truncateText(event.event), searchQuery) }}
+                                                            />
                                                           ) : (
                                                             <span
                                                               title={event.event.length > 50 ? event.event : undefined}
                                                               dangerouslySetInnerHTML={{
-                                                                __html: highlightDollarValues(
+                                                                __html: highlightSearchTerms(highlightDollarValues(
                                                                   truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                                )
+                                                                ), searchQuery)
                                                               }}
                                                             />
                                                           )}
@@ -2708,9 +2733,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                                   : 'text-gray-900'
                                                           }`}>
                                                           {event.isTotal || event.isDuration ? (
-                                                            <span title={event.event.length > 50 ? event.event : undefined}>
-                                                              {truncateText(event.event)}
-                                                            </span>
+                                                            <span title={event.event.length > 50 ? event.event : undefined}
+                                                              dangerouslySetInnerHTML={{ __html: highlightSearchTerms(truncateText(event.event), searchQuery) }}
+                                                            />
                                                           ) : (
                                                             (() => {
                                                               const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
@@ -2719,9 +2744,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                                 <span
                                                                   title={event.event.length > 50 ? event.event : undefined}
                                                                   dangerouslySetInnerHTML={{
-                                                                    __html: formatted.hasAmount
+                                                                    __html: highlightSearchTerms(formatted.hasAmount
                                                                       ? highlightDollarValues(displayText)
-                                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))), searchQuery)
                                                                   }}
                                                                 />
                                                               );

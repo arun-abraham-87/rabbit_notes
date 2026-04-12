@@ -16,6 +16,7 @@ import Weather from './Weather.js';
 
 import EditEventModal from './EditEventModal.js';
 import WatchedTrackers from './WatchedTrackers.js';
+import TrackedEvents from './TrackedEvents.js';
 import Countdown from './Countdown.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
@@ -970,6 +971,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 <TodayEventsBar events={events} />
               </div>
             </div>
+          </div>
+
+          {/* Tracked Events Section */}
+          <div className="mb-8">
+            <TrackedEvents notes={notes} />
           </div>
 
           {/* Flagged Review Dues Section */}

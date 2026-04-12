@@ -19,6 +19,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
   const [isDeadline, setIsDeadline] = useState(isAddDeadline);
+  const [isTracked, setIsTracked] = useState(false);
   const [price, setPrice] = useState('');
   const [normalEditMode, setNormalEditMode] = useState(false);
   const [normalEditContent, setNormalEditContent] = useState('');
@@ -93,6 +94,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (tagsLine) {
       setTags(tagsLine.replace('event_tags:', '').trim());
     }
+
+    // Parse tracked state
+    setIsTracked(lines.some(line => line.trim() === 'meta::event_tracked'));
 
     // Parse notes - handle multi-line content
     const notesLineIndex = lines.findIndex(line => line.startsWith('event_notes:'));
@@ -566,6 +570,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     // For Information page, add meta::info:: tag
     if (isInformationPage) {
       content += `\nmeta::info::`;
+    }
+    if (isTracked) {
+      content += `\nmeta::event_tracked`;
     }
 
     // Save the event and get the result
@@ -1122,7 +1129,19 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                     </button>
                   )}
                   {!note && <div></div>}
-                  <div className="flex space-x-3">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsTracked(v => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isTracked
+                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={isTracked ? 'Stop tracking this event on dashboard' : 'Show this event on dashboard as a tracked card'}
+                    >
+                      {isTracked ? '📌 Tracked' : '📌 Track'}
+                    </button>
                     <button
                       onClick={handleSubmit}
                       disabled={!description.trim() || !eventDate}

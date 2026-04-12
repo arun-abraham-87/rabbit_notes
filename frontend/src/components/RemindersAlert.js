@@ -59,6 +59,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return saved ? saved : 'color'; // 'color', 'title', or 'cadence'
   });
   const [noteToRemove, setNoteToRemove] = useState(null);
+  const [showConfirmAll, setShowConfirmAll] = useState(false);
 
   // Function to get color for a specific reminder
   const getReminderColor = (noteId) => {
@@ -710,6 +711,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     }
   };
 
+  const handleConfirmAll = async () => {
+    setShowConfirmAll(false);
+    // Dismiss every active reminder in sequence
+    for (const reminder of reminderObjs) {
+      addCurrentDateToLocalStorage(reminder.note.id);
+    }
+    setReminderObjs([]);
+    setFocusedReminderIndex(-1);
+    Alerts.success('All reminders confirmed');
+  };
+
   const handleDismissAndMoveFocus = async (note) => {
     try {
       // Get current reminders before dismissing
@@ -1255,6 +1267,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   Clear All
                 </button>
               )}
+
+              <button
+                onClick={() => setShowConfirmAll(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-300 rounded hover:bg-green-100 transition-colors duration-150"
+                title="Confirm and dismiss all reminders"
+              >
+                <CheckIcon className="h-3 w-3" />
+                Confirm All
+              </button>
             </div>
 
             {/* Group By Buttons */}
@@ -1557,6 +1578,35 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   className="px-6 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-md hover:shadow-lg transition-all"
                 >
                   Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm All dialog */}
+        {showConfirmAll && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center gap-3 text-green-600 mb-4">
+                <CheckIcon className="h-6 w-6" />
+                <h3 className="text-lg font-semibold text-gray-900">Confirm All Reminders</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">
+                This will dismiss all {reminderObjs.length} active reminder{reminderObjs.length !== 1 ? 's' : ''}. Are you sure?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmAll(false)}
+                  className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAll}
+                  className="px-6 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-md hover:shadow-lg transition-all"
+                >
+                  Confirm All
                 </button>
               </div>
             </div>

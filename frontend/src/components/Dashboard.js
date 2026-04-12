@@ -971,11 +971,6 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             </div>
           </div>
 
-          {/* Watched Trackers Section */}
-          <div className="mb-8">
-            <WatchedTrackers notes={notes} setNotes={setNotes} />
-          </div>
-
           {/* Flagged Review Dues Section */}
           <div className="mb-8">
             <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
@@ -1251,6 +1246,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             >
               {/* Additional dashboard content can be added here */}
             </AlertsProvider>
+          </div>
+
+          {/* Watched Trackers Section */}
+          <div className="mb-8">
+            <WatchedTrackers notes={notes} setNotes={setNotes} />
           </div>
         </>
       )}

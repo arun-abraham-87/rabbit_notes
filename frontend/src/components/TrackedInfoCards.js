@@ -30,13 +30,18 @@ const TrackedInfoCards = ({ notes, setNotes }) => {
 
   const handleUntrack = async (e, id) => {
     e.stopPropagation();
-    const note = (notes || []).find(n => n.id === id);
-    if (!note) return;
-    const updatedContent = note.content.split('\n')
-      .filter(l => l.trim() !== 'meta::info_tracked')
-      .join('\n');
-    await updateNoteById(note.id, updatedContent);
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, content: updatedContent } : n));
+    try {
+      const note = (notes || []).find(n => n.id === id);
+      if (!note) return;
+      const updatedContent = note.content.split('\n')
+        .filter(l => l.trim() !== 'meta::info_tracked')
+        .join('\n');
+      await updateNoteById(note.id, updatedContent, note.tags);
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, content: updatedContent } : n));
+    } catch (error) {
+      console.error('Failed to untrack info:', error);
+      alert('Failed to untrack. Please try again.');
+    }
   };
 
   if (trackedInfo.length === 0) return null;

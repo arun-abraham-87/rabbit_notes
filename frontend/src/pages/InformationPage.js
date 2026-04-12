@@ -532,7 +532,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                       >
                         {/* Title with Edit and Pin Icons */}
                         <div className="flex items-start justify-between gap-2 mb-3">
-                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 flex-1">
                             {event.title || 'Untitled'}
                           </h3>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -646,7 +646,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
               >
                 {/* Title with Edit and Pin Icons */}
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 flex-1">
                     {event.title || 'Untitled'}
                   </h3>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -742,7 +742,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                   >
                     {/* Title with Edit and Pin Icons */}
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 flex-1">
                         {event.title || 'Untitled'}
                       </h3>
                       <div className="flex items-center gap-1 flex-shrink-0">

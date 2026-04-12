@@ -168,6 +168,7 @@ const TrackerListing = () => {
             tags: tagsStr ? tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
             overdueDays: overdueDays || undefined,
             createdAt: note.createdAt,
+            watched: lines.some(line => line.trim() === 'meta::tracker_watched'),
             completions: {} // Initialize completions
           };
         });
@@ -374,6 +375,26 @@ const TrackerListing = () => {
   const handleEditTracker = (tracker) => {
     setEditingTracker(tracker);
     setShowAddTracker(true);
+  };
+
+  const handleWatchToggle = async (tracker) => {
+    try {
+      const notes = await loadNotes();
+      const allNotes = Array.isArray(notes) ? notes : (notes?.notes || []);
+      const note = allNotes.find(n => n.id === tracker.id);
+      if (!note) return;
+      const lines = note.content.split('\n');
+      const isWatched = lines.some(l => l.trim() === 'meta::tracker_watched');
+      const updatedLines = isWatched
+        ? lines.filter(l => l.trim() !== 'meta::tracker_watched')
+        : [...lines, 'meta::tracker_watched'];
+      await updateNoteById(note.id, updatedLines.join('\n'));
+      setTrackers(prev => prev.map(t =>
+        t.id === tracker.id ? { ...t, watched: !isWatched } : t
+      ));
+    } catch (err) {
+      console.error('Error toggling tracker watch:', err);
+    }
   };
 
   const handleShowAnswers = (trackerId) => {
@@ -1179,6 +1200,7 @@ const TrackerListing = () => {
             onRefresh={loadTrackers}
             onTrackerConverted={handleTrackerConverted}
             onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
           />
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
@@ -1207,6 +1229,7 @@ const TrackerListing = () => {
                     onRefresh={loadTrackers}
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                   />
                 )}
               </div>
@@ -1235,6 +1258,7 @@ const TrackerListing = () => {
                     onRefresh={loadTrackers}
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                   />
                 )}
               </div>
@@ -1263,6 +1287,7 @@ const TrackerListing = () => {
                     onRefresh={loadTrackers}
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                   />
                 )}
               </div>
@@ -1291,6 +1316,7 @@ const TrackerListing = () => {
                     onRefresh={loadTrackers}
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                   />
                 ) : (
                   <TrackerTable
@@ -1298,6 +1324,7 @@ const TrackerListing = () => {
                     trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                     isFocusMode={isFocusMode}
                   />
                 ))}
@@ -1327,6 +1354,7 @@ const TrackerListing = () => {
                     onRefresh={loadTrackers}
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                   />
                 ) : (
                   <TrackerTable
@@ -1334,6 +1362,7 @@ const TrackerListing = () => {
                     trackerAnswers={trackerAnswers}
                     onEdit={handleEditTracker}
                     onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                     isFocusMode={isFocusMode}
                   />
                 ))}
@@ -1370,6 +1399,7 @@ const TrackerListing = () => {
                       onRefresh={loadTrackers}
                       onTrackerConverted={handleTrackerConverted}
                       onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                     />
                   ) : (
                     <TrackerTable
@@ -1377,6 +1407,7 @@ const TrackerListing = () => {
                       trackerAnswers={trackerAnswers}
                       onEdit={handleEditTracker}
                       onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
                       onToggleDay={handleToggleDay}
                       isFocusMode={isFocusMode}
                     />
@@ -1589,6 +1620,7 @@ const TrackerListing = () => {
               editingTracker={editingTracker}
               onCancel={() => { setShowAddTracker(false); setEditingTracker(null); }}
               onTrackerDeleted={handleTrackerDeleted}
+                    onWatch={handleWatchToggle}
               notes={allNotes}
             />
           </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById, getNoteById, addNewNoteCommon } from '../utils/ApiUtils';
 import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon, Cog6ToothIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon, Cog6ToothIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
@@ -75,7 +75,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch }) {
   const navigate = useNavigate();
 
   // Debug: Log answers received
@@ -1299,6 +1299,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 >
                   <PencilIcon className="h-4 w-4" />
                 </button>
+                {onWatch && (
+                  <button
+                    onClick={() => onWatch(tracker)}
+                    className={`p-1 transition-colors bg-white rounded ${tracker.watched ? 'text-blue-500 hover:text-blue-700' : 'text-gray-400 hover:text-blue-500'}`}
+                    title={tracker.watched ? 'Remove from dashboard watch' : 'Watch on dashboard'}
+                  >
+                    {tracker.watched ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowMonthlyModal(true)}
                   className="p-1 text-gray-500 hover:text-gray-700 transition-colors bg-white rounded"

@@ -43,24 +43,9 @@ import { deleteNoteById } from '../utils/ApiUtils';
 const Alerts = {
   success: (message) => {
     try {
-      // Clear all existing toasts first
-      toast.dismiss();
-      // Wait a bit before showing new toast
-      setTimeout(() => {
-        toast(
-          <div className="flex items-center">
-            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
-            <span>{message}</span>
-          </div>,
-          {
-            className: 'bg-green-50 text-green-800',
-            progressClassName: 'bg-green-500',
-            icon: false,
-            toastId: 'success',
-            autoClose: 1500,
-          }
-        );
-      }, 100);
+      const content = <div className="flex items-center"><CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" /><span>{message}</span></div>;
+      const opts = { className: 'bg-green-50 text-green-800', progressClassName: 'bg-green-500', icon: false, toastId: 'success', autoClose: 1500 };
+      toast.isActive('success') ? toast.update('success', { render: content, ...opts }) : toast(content, opts);
     } catch (error) {
       console.warn('Failed to show success toast:', error);
     }
@@ -68,24 +53,9 @@ const Alerts = {
 
   error: (message) => {
     try {
-      // Clear all existing toasts first
-      toast.dismiss();
-      // Wait a bit before showing new toast
-      setTimeout(() => {
-        toast(
-          <div className="flex items-center">
-            <XMarkIcon className="h-5 w-5 text-red-500 mr-2" />
-            <span>{message}</span>
-          </div>,
-          {
-            className: 'bg-red-50 text-red-800',
-            progressClassName: 'bg-red-500',
-            icon: false,
-            toastId: 'error',
-            autoClose: 1500,
-          }
-        );
-      }, 100);
+      const content = <div className="flex items-center"><XMarkIcon className="h-5 w-5 text-red-500 mr-2" /><span>{message}</span></div>;
+      const opts = { className: 'bg-red-50 text-red-800', progressClassName: 'bg-red-500', icon: false, toastId: 'error', autoClose: 1500 };
+      toast.isActive('error') ? toast.update('error', { render: content, ...opts }) : toast(content, opts);
     } catch (error) {
       console.warn('Failed to show error toast:', error);
     }
@@ -93,24 +63,9 @@ const Alerts = {
 
   warning: (message) => {
     try {
-      // Clear all existing toasts first
-      toast.dismiss();
-      // Wait a bit before showing new toast
-      setTimeout(() => {
-        toast(
-          <div className="flex items-center">
-            <ExclamationCircleIcon className="h-5 w-5 text-yellow-500 mr-2" />
-            <span>{message}</span>
-          </div>,
-          {
-            className: 'bg-yellow-50 text-yellow-800',
-            progressClassName: 'bg-yellow-500',
-            icon: false,
-            toastId: 'warning',
-            autoClose: 1500,
-          }
-        );
-      }, 100);
+      const content = <div className="flex items-center"><ExclamationCircleIcon className="h-5 w-5 text-yellow-500 mr-2" /><span>{message}</span></div>;
+      const opts = { className: 'bg-yellow-50 text-yellow-800', progressClassName: 'bg-yellow-500', icon: false, toastId: 'warning', autoClose: 1500 };
+      toast.isActive('warning') ? toast.update('warning', { render: content, ...opts }) : toast(content, opts);
     } catch (error) {
       console.warn('Failed to show warning toast:', error);
     }
@@ -118,24 +73,9 @@ const Alerts = {
 
   info: (message) => {
     try {
-      // Clear all existing toasts first
-      toast.dismiss();
-      // Wait a bit before showing new toast
-      setTimeout(() => {
-        toast(
-          <div className="flex items-center">
-            <InformationCircleIcon className="h-5 w-5 text-blue-500 mr-2" />
-            <span>{message}</span>
-          </div>,
-          {
-            className: 'bg-blue-50 text-blue-800',
-            progressClassName: 'bg-blue-500',
-            icon: false,
-            toastId: 'info',
-            autoClose: 1500,
-          }
-        );
-      }, 100);
+      const content = <div className="flex items-center"><InformationCircleIcon className="h-5 w-5 text-blue-500 mr-2" /><span>{message}</span></div>;
+      const opts = { className: 'bg-blue-50 text-blue-800', progressClassName: 'bg-blue-500', icon: false, toastId: 'info', autoClose: 1500 };
+      toast.isActive('info') ? toast.update('info', { render: content, ...opts }) : toast(content, opts);
     } catch (error) {
       console.warn('Failed to show info toast:', error);
     }

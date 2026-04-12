@@ -520,10 +520,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   const handleUnfollow = async (note) => {
     try {
-      // Remove the entire line containing meta::watch
+      // Remove meta::watch and meta::review_overdue_priority so the note
+      // disappears from both the watchlist and the flagged reviews section.
       const updatedContent = note.content
         .split('\n')
-        .filter(line => !line.trim().startsWith('meta::watch'))
+        .filter(line => !line.trim().startsWith('meta::watch') && !line.trim().startsWith('meta::review_overdue_priority'))
         .join('\n')
         .trim();
       

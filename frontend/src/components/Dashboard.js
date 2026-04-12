@@ -1117,6 +1117,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     type="eventNotes"
                     notes={notes}
                     setActivePage={setActivePage}
+                    setNotes={setNotes}
                     eventFilter={activeFilters}
                     eventTextFilter={eventTextFilter}
                     onEditEvent={(note) => {

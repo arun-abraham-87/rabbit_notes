@@ -3,6 +3,7 @@ import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, MagnifyingGlassIcon } from 
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
+import { updateNoteById } from '../utils/ApiUtils';
 
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
@@ -50,7 +51,7 @@ const matchesEventFilter = (note, eventFilter) => {
   });
 };
 
-const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
   const navigate = useNavigate();
 
   const [events, setEvents] = useState(() => {
@@ -752,6 +753,41 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     });
   };
 
+  // Toggle a tag (e.g. 'deadline', 'holiday') on an event note
+  const handleToggleTag = async (note, tag) => {
+    if (!notes || !setNotes) return;
+    const rawNote = notes.find(n => n.id === note.id);
+    if (!rawNote) return;
+
+    const lines = rawNote.content.split('\n');
+    const tagsLineIdx = lines.findIndex(l => l.startsWith('event_tags:'));
+    let currentTags = [];
+    if (tagsLineIdx !== -1) {
+      currentTags = lines[tagsLineIdx].replace('event_tags:', '').trim().split(',').map(t => t.trim()).filter(Boolean);
+    }
+
+    const hasTag = currentTags.some(t => t.toLowerCase() === tag.toLowerCase());
+    const updatedTags = hasTag
+      ? currentTags.filter(t => t.toLowerCase() !== tag.toLowerCase())
+      : [...currentTags, tag];
+
+    let updatedLines;
+    if (tagsLineIdx !== -1) {
+      updatedLines = [...lines];
+      if (updatedTags.length > 0) {
+        updatedLines[tagsLineIdx] = `event_tags:${updatedTags.join(',')}`;
+      } else {
+        updatedLines.splice(tagsLineIdx, 1);
+      }
+    } else {
+      updatedLines = [...lines, `event_tags:${updatedTags.join(',')}`];
+    }
+
+    const updatedContent = updatedLines.join('\n');
+    await updateNoteById(rawNote.id, updatedContent);
+    setNotes(prev => prev.map(n => n.id === rawNote.id ? { ...n, content: updatedContent } : n));
+  };
+
   const colorOptions = [
     '#ffffff', // white
     '#fef9c3', // yellow
@@ -1128,21 +1164,43 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   )}
                 </div>
 
-                {/* Pin indicator - always visible when pinned */}
-                {pinnedEvents.includes(note.id) && (
-                  <div className="absolute top-2 right-2">
+                {/* Top-right corner: pin + tag toggle stacked, well clear of hover controls */}
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                  {pinnedEvents.includes(note.id) && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePinEvent(note.id);
-                      }}
-                      className="text-yellow-600 hover:text-yellow-700 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
+                      className="text-yellow-500 hover:text-yellow-700 transition-colors"
                       title="Unpin Event"
                     >
-                      <MapPinIcon className="h-5 w-5" />
+                      <MapPinIcon className="h-4 w-4" />
                     </button>
-                  </div>
-                )}
+                  )}
+                  {(() => {
+                    const isDeadline = note.tags?.some(t => t.toLowerCase() === 'deadline');
+                    const isHoliday  = note.tags?.some(t => t.toLowerCase() === 'holiday');
+                    if (isDeadline) return null;
+                    if (isHoliday) {
+                      return (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleToggleTag(note, 'holiday'); }}
+                          className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-full bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition-colors"
+                          title="Remove Holiday tag"
+                        >
+                          <span>✓</span><span>Holiday</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleTag(note, 'deadline'); }}
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-full border border-dashed border-red-300 text-red-400 bg-white/80 hover:bg-red-50 hover:border-red-400 transition-colors"
+                        title="Mark as Deadline"
+                      >
+                        <span>+</span><span>Deadline</span>
+                      </button>
+                    );
+                  })()}
+                </div>
                 <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">
                   {/* Pin Button - always show in hover controls */}
                   <button

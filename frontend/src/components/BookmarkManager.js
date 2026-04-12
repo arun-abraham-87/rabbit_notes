@@ -1012,6 +1012,8 @@ const BookmarkManager = ({ allNotes, setAllNotes }) => {
   const [keySequence, setKeySequence] = useState('');
   const [isWaitingForS, setIsWaitingForS] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
+  const [sortCol, setSortCol] = useState('date');   // 'title' | 'website' | 'status' | 'date'
+  const [sortDir, setSortDir] = useState('desc');   // 'asc' | 'desc'
   const [numberBuffer, setNumberBuffer] = useState('');
   const [isWaitingForJump, setIsWaitingForJump] = useState(false);
 
@@ -1380,11 +1382,26 @@ const BookmarkManager = ({ allNotes, setAllNotes }) => {
       });
     }
 
-    // Sort by created date (newest first)
+    // Sort by selected column
     filtered.sort((a, b) => {
-      const dateA = a.dateAdded || new Date(a.created_datetime);
-      const dateB = b.dateAdded || new Date(b.created_datetime);
-      return dateB - dateA;
+      let valA, valB;
+      if (sortCol === 'title') {
+        valA = (a.title || '').toLowerCase();
+        valB = (b.title || '').toLowerCase();
+      } else if (sortCol === 'website') {
+        try { valA = new URL(a.url).hostname.replace('www.', ''); } catch { valA = a.url || ''; }
+        try { valB = new URL(b.url).hostname.replace('www.', ''); } catch { valB = b.url || ''; }
+      } else if (sortCol === 'status') {
+        valA = a.isHidden ? 'hidden' : 'visible';
+        valB = b.isHidden ? 'hidden' : 'visible';
+      } else {
+        // date (default)
+        valA = a.dateAdded || new Date(a.created_datetime) || new Date(0);
+        valB = b.dateAdded || new Date(b.created_datetime) || new Date(0);
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      }
+      const cmp = valA < valB ? -1 : valA > valB ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
     });
 
     // If no filters are applied, show only the first 100 bookmarks
@@ -1393,7 +1410,16 @@ const BookmarkManager = ({ allNotes, setAllNotes }) => {
     }
 
     return filtered;
-  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly, showHidden]);
+  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly, showHidden, sortCol, sortDir]);
+
+  const handleSortClick = (col) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
 
   // Calculate how many hidden bookmarks match the current search criteria
   const hiddenBookmarksCount = useMemo(() => {
@@ -2397,10 +2423,23 @@ const BookmarkManager = ({ allNotes, setAllNotes }) => {
                   />
                 </div>
                 <div className="col-span-1">Preview</div>
-                <div className="col-span-4">Description</div>
-                <div className="col-span-2">Website</div>
-                <div className="col-span-1">Status</div>
-                <div className="col-span-2">Date Added</div>
+                {[
+                  { col: 'title', label: 'Description', span: 4 },
+                  { col: 'website', label: 'Website', span: 2 },
+                  { col: 'status', label: 'Status', span: 1 },
+                  { col: 'date', label: 'Date Added', span: 2 },
+                ].map(({ col, label, span }) => (
+                  <div
+                    key={col}
+                    className={`col-span-${span} flex items-center gap-1 cursor-pointer select-none hover:text-gray-900 transition-colors`}
+                    onClick={() => handleSortClick(col)}
+                  >
+                    {label}
+                    <span className="text-gray-400">
+                      {sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                    </span>
+                  </div>
+                ))}
                 <div className="col-span-1">Actions</div>
               </div>
 

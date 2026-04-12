@@ -680,7 +680,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           )}
 
           {/* First Row: Date and Timezone Display (Full Width) */}
-          <div className={`mb-8 ${isPinned ? 'pt-8' : ''}`}>
+          <div className={`mb-4 ${isPinned ? 'pt-8' : ''}`}>
             <div className="flex flex-col items-center">
               {/* Last Login Info */}
               {lastLoginTime && (
@@ -974,9 +974,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           </div>
 
           {/* Flagged Review Dues Section */}
-          <div className="mb-8">
-            <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
-          </div>
+          <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
 
           {/* Second Row: Event Manager Cards */}
           <div className="mb-8">
@@ -1145,10 +1143,8 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             {/* Tracked Events Row */}
             <TrackedEvents notes={notes} setNotes={setNotes} />
 
-            {/* Upcoming Alerts Row - Moved from bottom to below timelines */}
-            <div className="mb-8">
-              <UpcomingAlertsRow notes={notes} setNotes={setNotes} />
-            </div>
+            {/* Upcoming Alerts Row */}
+            <UpcomingAlertsRow notes={notes} setNotes={setNotes} />
 
             {/* Notes Row */}
             <div className="flex items-center gap-2 mb-6">

@@ -1302,10 +1302,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {onWatch && (
                   <button
                     onClick={() => onWatch(tracker)}
-                    className={`p-1 transition-colors bg-white rounded ${tracker.watched ? 'text-blue-500 hover:text-blue-700' : 'text-gray-400 hover:text-blue-500'}`}
-                    title={tracker.watched ? 'Remove from dashboard watch' : 'Watch on dashboard'}
+                    className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
+                      tracker.watched
+                        ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-600'
+                        : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
+                    }`}
+                    title={tracker.watched ? 'Remove from dashboard' : 'Show on dashboard'}
                   >
-                    {tracker.watched ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+                    {tracker.watched ? <EyeIcon className="h-3 w-3" /> : <EyeSlashIcon className="h-3 w-3" />}
+                    {tracker.watched ? 'Untrack' : 'Track it'}
                   </button>
                 )}
                 <button

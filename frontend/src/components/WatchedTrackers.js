@@ -109,8 +109,9 @@ const WatchedTrackers = ({ notes, setNotes }) => {
     }
   }, [notes, setNotes, watched, overdue]);
 
-  const handleUnwatch = useCallback(async (trackerId) => {
-    const note = (notes || []).find(n => n.id === trackerId);
+  const handleUnwatch = useCallback(async (trackerOrId) => {
+    const id = trackerOrId && typeof trackerOrId === 'object' ? trackerOrId.id : trackerOrId;
+    const note = (notes || []).find(n => n.id === id);
     if (!note) return;
     const updatedContent = note.content.split('\n')
       .filter(l => l.trim() !== 'meta::tracker_watched')

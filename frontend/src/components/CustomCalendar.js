@@ -147,27 +147,33 @@ const CustomCalendar = ({ allNotes }) => {
 
         const parsedEvents = eventNotes.map(note => {
           const lines = note.content.split('\n');
+
           const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
-          const originalDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
-          const eventDate = originalDate ? new Date(originalDate) : null;
-          
-          const title = lines[0].trim().replace('event_description:', '').trim();
-          
+          const rawDateStr = eventDateLine?.replace('event_date:', '').trim().split('T')[0];
+          const originalDate = rawDateStr ? new Date(rawDateStr) : null;
+          let eventDate = originalDate ? new Date(originalDate) : null;
+
+          // Title from event_description: line
+          const descLine = lines.find(l => l.startsWith('event_description:'));
+          const title = descLine ? descLine.replace('event_description:', '').trim() : lines[0].trim();
+
+          // Tags for colour coding
+          const tagsLine = lines.find(l => l.startsWith('event_tags:'));
+          const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(t => t.trim().toLowerCase()) : [];
+
           if (eventDate && showAnniversary) {
             eventDate.setFullYear(currentYear);
           }
-          
+
           return {
             id: note.id,
             title,
             date: eventDate,
-            originalDate: originalDate,
-            content: note.content
+            originalDate,
+            tags,
+            content: note.content,
           };
-        }).filter(event => {
-          if (!event.date) return false;
-          return showAnniversary ? true : event.date.getFullYear() === currentYear;
-        });
+        }).filter(event => event.date !== null);
 
         setEvents(parsedEvents);
       } catch (error) {
@@ -328,24 +334,29 @@ const CustomCalendar = ({ allNotes }) => {
             {day}
             {isCurrentDay && <span className="ml-1 text-xs text-blue-500">Today</span>}
           </div>
-          <div className="mt-1 space-y-1">
-            {dayEvents.map(event => {
-              const originalDate = new Date(event.originalDate);
-              const today = new Date();
-              const age = today.getFullYear() - originalDate.getFullYear();
-              const diffTime = Math.abs(today - originalDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+          <div className="mt-1 space-y-0.5 overflow-hidden">
+            {dayEvents.slice(0, 3).map(event => {
+              const isDeadline = event.tags?.includes('deadline');
+              const isHoliday  = event.tags?.includes('holiday');
+              const chipClass  = isDeadline
+                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                : isHoliday
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200';
               return (
                 <div
                   key={event.id}
                   onClick={(e) => handleEventClick(e, event)}
-                  className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate cursor-pointer hover:bg-blue-200"
+                  className={`text-xs px-1.5 py-0.5 rounded truncate cursor-pointer ${chipClass}`}
+                  title={event.title}
                 >
                   {event.title}
                 </div>
               );
             })}
+            {dayEvents.length > 3 && (
+              <div className="text-xs text-gray-400 px-1">+{dayEvents.length - 3} more</div>
+            )}
           </div>
         </div>
       );

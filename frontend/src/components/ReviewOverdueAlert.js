@@ -601,6 +601,36 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     }
   };
 
+  const handleSetTimer = async (note, cadenceType, cadenceValue) => {
+    try {
+      // Remove any existing timer cadence, then add new one
+      let updatedContent = note.content
+        .split('\n')
+        .filter(l => !l.trim().startsWith('meta::timer_cadence::'))
+        .join('\n');
+      updatedContent = updatedContent.trim() + `\nmeta::timer_cadence::${cadenceType}::${cadenceValue}`;
+      await updateNoteById(note.id, updatedContent);
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      Alerts.success('Timer set');
+    } catch (error) {
+      Alerts.error('Failed to set timer');
+    }
+  };
+
+  const handleRemoveTimer = async (note) => {
+    try {
+      const updatedContent = note.content
+        .split('\n')
+        .filter(l => !l.trim().startsWith('meta::timer_cadence::'))
+        .join('\n');
+      await updateNoteById(note.id, updatedContent);
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      Alerts.success('Timer removed');
+    } catch (error) {
+      Alerts.error('Failed to remove timer');
+    }
+  };
+
   const formatContent = (content, note) => {
     // Split content into lines, trim each line, and filter out empty lines
     const lines = content
@@ -1251,6 +1281,55 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                           <span className="text-xs">Unwatch</span>
                         </button>
                         
+                        {/* Timer button */}
+                        {(() => {
+                          const timerLine = note.content.split('\n').find(l => l.trim().startsWith('meta::timer_cadence::'));
+                          const hasTimer = !!timerLine;
+                          return hasTimer ? (
+                            <button
+                              onClick={() => handleRemoveTimer(note)}
+                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-150"
+                              title="Remove timer"
+                              style={{ minWidth: 48, minHeight: 48 }}
+                            >
+                              <span className="text-base leading-none">⏱</span>
+                              <span className="text-xs">Timer</span>
+                            </button>
+                          ) : (
+                            <div className="relative group/timer">
+                              <button
+                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-50 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150"
+                                title="Set timer"
+                                style={{ minWidth: 48, minHeight: 48 }}
+                              >
+                                <span className="text-base leading-none">⏱</span>
+                                <span className="text-xs">Timer</span>
+                              </button>
+                              {/* Dropdown cadence picker */}
+                              <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 hidden group-hover/timer:block min-w-[140px]">
+                                <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Monthly on day</div>
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {[1,5,10,15,20,25,28].map(d => (
+                                    <button key={d} onClick={() => handleSetTimer(note, 'monthly', d)}
+                                      className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
+                                      {d}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Weekly on</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) => (
+                                    <button key={d} onClick={() => handleSetTimer(note, 'weekly', i + 1)}
+                                      className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
+                                      {d}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* Flag button - when note has priority */}
                         {note.content.includes('meta::review_overdue_priority') && (
                           <button

@@ -60,18 +60,28 @@ function parseTrackerData(notes) {
 
   const watched = trackerNotes.filter(t => t.watched);
 
-  // Determine overdue trackers (all trackers, not just watched)
   const overdue = trackerNotes.filter(tracker => {
     const trackerAnswers = answersByTracker[String(tracker.id)] || [];
     if (trackerAnswers.length === 0) return false;
     const sorted = [...trackerAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
-    const lastDate = moment(sorted[0].date);
-    const daysSince = moment().diff(lastDate, 'days');
+    const daysSince = moment().diff(moment(sorted[0].date), 'days');
     const threshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
     return daysSince > threshold;
   });
 
   return { watched, answersByTracker, overdue };
+}
+
+// Find all answer notes in `notes` that belong to a given tracker+date.
+function findAnswerNotes(notes, tid, dateStr) {
+  return (notes || []).filter(note => {
+    if (!note?.content) return false;
+    const lines = note.content.split('\n');
+    if (!lines.some(l => l.trim() === 'meta::tracker_answer')) return false;
+    const link = lines.find(l => l.startsWith('meta::link:'))?.slice('meta::link:'.length).trim();
+    const d = lines.find(l => l.startsWith('Date:'))?.slice('Date:'.length).trim();
+    return String(link) === String(tid) && d === dateStr;
+  });
 }
 
 const WatchedTrackers = ({ notes, setNotes }) => {
@@ -86,53 +96,68 @@ const WatchedTrackers = ({ notes, setNotes }) => {
   const handleToggleDay = useCallback(async (trackerId, dateStr, value = null) => {
     const tid = String(trackerId);
     const isRemoval = value === null;
+    const existingAnswerNotes = findAnswerNotes(notes, tid, dateStr);
 
     if (isRemoval) {
-      // Find the answer notes to remove
-      const toDelete = (notes || []).filter(note => {
-        if (!note?.content) return false;
-        const lines = note.content.split('\n');
-        if (!lines.some(l => l.trim() === 'meta::tracker_answer')) return false;
-        const link = lines.find(l => l.startsWith('meta::link:'))?.slice('meta::link:'.length).trim();
-        const d = lines.find(l => l.startsWith('Date:'))?.slice('Date:'.length).trim();
-        return String(link) === tid && d === dateStr;
-      });
-
-      // Optimistically update state immediately so the button reflects the new
-      // state without waiting for a server round-trip.
-      if (toDelete.length > 0) {
-        const deleteIds = new Set(toDelete.map(n => n.id));
+      // Optimistically remove all answer notes for this tracker+date immediately.
+      const deleteIds = new Set(existingAnswerNotes.map(n => n.id));
+      if (deleteIds.size > 0) {
         setNotes(prev => prev.filter(n => !deleteIds.has(n.id)));
       }
-
-      // TrackerCard may have already deleted the note; catch 404s silently.
-      await Promise.all(toDelete.map(n => deleteNoteById(n.id).catch(() => {})));
+      // TrackerCard may have already deleted the note — catch 404s silently.
+      await Promise.all(existingAnswerNotes.map(n => deleteNoteById(n.id).catch(() => {})));
     } else {
-      // Create new answer note and add it to state immediately
-      const allTrackers = [...watched, ...overdue];
-      const tracker = allTrackers.find(t => String(t.id) === tid);
-      const content = `Answer: ${value}\nDate: ${dateStr}\nrecorded_on_date: ${dateStr}\nmeta::link:${tid}\nmeta::tracker_answer\nanswer for ${tracker?.title || ''}`;
-      const newNote = await createNote(content);
-      setNotes(prev => [...prev, newNote]);
+      if (existingAnswerNotes.length > 0) {
+        // UPDATE the first existing note; delete duplicates.
+        const [first, ...rest] = existingAnswerNotes;
+        const updatedContent = first.content
+          .split('\n')
+          .map(l => l.startsWith('Answer:') ? `Answer: ${value}` : l)
+          .join('\n');
+
+        const restIds = new Set(rest.map(n => n.id));
+        setNotes(prev =>
+          prev
+            .filter(n => !restIds.has(n.id))
+            .map(n => n.id === first.id ? { ...n, content: updatedContent } : n)
+        );
+
+        await updateNoteById(first.id, updatedContent).catch(() => {});
+        await Promise.all(rest.map(n => deleteNoteById(n.id).catch(() => {})));
+      } else {
+        // CREATE a new answer note.
+        const allTrackers = [...watched, ...overdue];
+        const tracker = allTrackers.find(t => String(t.id) === tid);
+        const content = [
+          `Answer: ${value}`,
+          `Date: ${dateStr}`,
+          `recorded_on_date: ${dateStr}`,
+          `meta::link:${tid}`,
+          `meta::tracker_answer`,
+          `answer for ${tracker?.title || ''}`,
+        ].join('\n');
+        const newNote = await createNote(content);
+        setNotes(prev => [...prev, newNote]);
+      }
     }
   }, [notes, setNotes, watched, overdue]);
 
   const handleUnwatch = useCallback(async (trackerOrId) => {
     const id = trackerOrId && typeof trackerOrId === 'object' ? trackerOrId.id : trackerOrId;
-    const note = (notes || []).find(n => n.id === id);
+    const note = (notes || []).find(n => String(n.id) === String(id));
     if (!note) return;
     const updatedContent = note.content.split('\n')
       .filter(l => l.trim() !== 'meta::tracker_watched')
       .join('\n');
-    await updateNoteById(note.id, updatedContent);
-    setNotes(prev => prev.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+    // Optimistically update state first, then persist.
+    setNotes(prev => prev.map(n => String(n.id) === String(id) ? { ...n, content: updatedContent } : n));
+    await updateNoteById(note.id, updatedContent).catch(() => {});
   }, [notes, setNotes]);
 
   if (watched.length === 0 && overdue.length === 0) return null;
 
-  // When showing overdue, deduplicate: watched trackers that are also overdue show once
   const overdueOnly = showOverdue
-    ? overdue.filter(t => !watched.some(w => w.id === t.id))
+    ? overdue.filter(t => !watched.some(w => String(w.id) === String(t.id)))
     : [];
 
   return (

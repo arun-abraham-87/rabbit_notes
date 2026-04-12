@@ -46,7 +46,7 @@ ChartJS.register(
   ArcElement
 );
 
-const TrackerListing = () => {
+const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
   const navigate = useNavigate();
   const [trackers, setTrackers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -379,19 +379,25 @@ const TrackerListing = () => {
 
   const handleWatchToggle = async (tracker) => {
     try {
-      const notes = await loadNotes();
-      const allNotes = Array.isArray(notes) ? notes : (notes?.notes || []);
-      const note = allNotes.find(n => n.id === tracker.id);
+      const freshNotes = await loadNotes();
+      const allNotesList = Array.isArray(freshNotes) ? freshNotes : (freshNotes?.notes || []);
+      const note = allNotesList.find(n => String(n.id) === String(tracker.id));
       if (!note) return;
       const lines = note.content.split('\n');
       const isWatched = lines.some(l => l.trim() === 'meta::tracker_watched');
-      const updatedLines = isWatched
-        ? lines.filter(l => l.trim() !== 'meta::tracker_watched')
-        : [...lines, 'meta::tracker_watched'];
-      await updateNoteById(note.id, updatedLines.join('\n'));
+      const updatedContent = isWatched
+        ? lines.filter(l => l.trim() !== 'meta::tracker_watched').join('\n')
+        : [...lines, 'meta::tracker_watched'].join('\n');
+      await updateNoteById(note.id, updatedContent);
       setTrackers(prev => prev.map(t =>
-        t.id === tracker.id ? { ...t, watched: !isWatched } : t
+        String(t.id) === String(tracker.id) ? { ...t, watched: !isWatched } : t
       ));
+      // Keep global notes state in sync so dashboard reflects the change immediately.
+      if (setGlobalNotes) {
+        setGlobalNotes(prev => prev.map(n =>
+          String(n.id) === String(note.id) ? { ...n, content: updatedContent } : n
+        ));
+      }
     } catch (err) {
       console.error('Error toggling tracker watch:', err);
     }

@@ -974,7 +974,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           </div>
 
           {/* Flagged Review Dues Section */}
-          <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
+          <FlaggedReviewDues notes={notes} setNotes={setNotes} setActivePage={setActivePage} />
 
           {/* Second Row: Event Manager Cards */}
           <div className="mb-8">

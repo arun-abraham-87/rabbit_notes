@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  MiniMap, 
-  useNodesState, 
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
   useEdgesState,
+  useReactFlow,
   MarkerType,
   Position,
   Handle
@@ -354,6 +355,21 @@ function PersonNode({ data }) {
   );
 }
 
+// Helper component to fit view to selected nodes
+const FitViewHelper = ({ shouldFit }) => {
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    if (shouldFit) {
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 400 });
+      }, 100);
+    }
+  }, [shouldFit, fitView]);
+
+  return null;
+};
+
 const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [selectedPersonId, setSelectedPersonId] = useState(null);
   const [hoveredPersonId, setHoveredPersonId] = useState(null);
@@ -369,6 +385,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
+  const [shouldFitView, setShouldFitView] = useState(false);
   const lastExpandedTreeIdRef = useRef(null);
 
   // Get all family tree notes
@@ -633,6 +650,13 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 
     return visibleIds.size > 0 ? visibleIds : null;
   }, [searchQuery, buildFamilyTree]);
+
+  // Trigger fit view when search results change
+  useEffect(() => {
+    if (searchQuery && visiblePeopleIdsForSearch) {
+      setShouldFitView(true);
+    }
+  }, [searchQuery, visiblePeopleIdsForSearch]);
 
   // Helper function to format relationship type to readable label
   const formatRelationshipLabel = (relationshipType) => {
@@ -1718,6 +1742,13 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           >
             {isCompactLayout ? 'Expanded' : 'Compact'}
           </button>
+          <button
+            onClick={() => setShouldFitView(true)}
+            className="px-4 py-3 text-sm font-medium rounded-lg bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-all"
+            title="Fit tree to view"
+          >
+            Fit View
+          </button>
         </div>
       )}
 
@@ -1795,6 +1826,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             >
               <Background color="#e5e7eb" gap={16} />
               <Controls />
+              <FitViewHelper shouldFit={shouldFitView && nodes.length > 0} />
               <MiniMap 
                 nodeColor={(node) => {
                   return '#3b82f6';

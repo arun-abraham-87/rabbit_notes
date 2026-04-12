@@ -1225,7 +1225,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         if (timelineNotes.length === 0) return null;
 
         return (
-          <div className="flex flex-row gap-2 flex-wrap mt-4">
+          <div className="mt-4">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Ongoing Timelines</h3>
+          <div className="flex flex-row gap-2 flex-wrap">
             {timelineNotes.map(timeline => {
               const { timeUnit, displayText } = calculateTimelineDisplayText(timeline.daysSince);
 
@@ -1280,6 +1282,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 </div>
               );
             })}
+          </div>
           </div>
         );
       })()}

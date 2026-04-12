@@ -368,6 +368,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [isCompactLayout, setIsCompactLayout] = useState(false);
   const lastExpandedTreeIdRef = useRef(null);
 
   // Get all family tree notes
@@ -724,10 +725,10 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     const flowEdges = [];
     const processedNodes = new Set();
     let edgeIndex = 0; // Track edge index for unique colors
-    const ySpacing = 300; // Vertical spacing (top to bottom) - increased to prevent edge overlap and give edges room to curve
+    const ySpacing = isCompactLayout ? 150 : 300; // Vertical spacing (top to bottom)
     const nodeWidth = 220; // Approximate node width (min-w-[180px] + padding + border)
     const nodeHeight = 120; // Approximate node height (to account for edge routing)
-    const xSpacing = nodeWidth + 300; // Horizontal spacing: node width + larger gap (520px total) - increased to prevent edge overlap
+    const xSpacing = isCompactLayout ? nodeWidth + 100 : nodeWidth + 300; // Horizontal spacing
     const rootStartY = 400; // Start root person in the middle of the canvas
 
     // Helper function to check and adjust for horizontal overlaps
@@ -1352,7 +1353,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 
     setNodes(nodesToDisplay);
     setEdges(edgesToDisplay);
-  }, [buildFamilyTree, expandedNodes, selectedTree, visiblePeopleIdsForSearch]);
+  }, [buildFamilyTree, expandedNodes, selectedTree, visiblePeopleIdsForSearch, isCompactLayout]);
 
   // Update nodes and edges with selection/hover state
   useEffect(() => {
@@ -1691,7 +1692,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         </div>
       </div>
 
-      {/* Search for People */}
+      {/* Search for People & Compact Layout Button */}
       {selectedTree && (
         <div className="flex gap-4 items-center">
           <div className="relative flex-1">
@@ -1706,6 +1707,17 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               className="block w-full pl-10 pr-8 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
+          <button
+            onClick={() => setIsCompactLayout(!isCompactLayout)}
+            className={`px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+              isCompactLayout
+                ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+            }`}
+            title={isCompactLayout ? 'Switch to expanded layout' : 'Switch to compact layout'}
+          >
+            {isCompactLayout ? 'Expanded' : 'Compact'}
+          </button>
         </div>
       )}
 

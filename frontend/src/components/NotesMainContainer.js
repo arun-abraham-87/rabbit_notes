@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
 import { useLocation } from 'react-router-dom';
-import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
@@ -49,6 +49,7 @@ const NotesMainContainer = ({
     });
     const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
     const [saveSearchName, setSaveSearchName] = useState('');
+    const [combinedView, setCombinedView] = useState(false);
     const [resetTrigger, setResetTrigger] = useState(0);
     const [focusMode, setFocusMode] = useState(() => {
         // Load focus mode state from localStorage on component mount
@@ -809,7 +810,7 @@ const NotesMainContainer = ({
         searchQuery,
         excludeEvents, excludeMeetings, excludeEventNotes, excludeBackupNotes,
         excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive,
-        excludeTrackers, showDeadlinePassedFilter,
+        excludeTrackers, showDeadlinePassedFilter, combinedView,
     });
 
     const handleSaveSearch = () => {
@@ -837,6 +838,7 @@ const NotesMainContainer = ({
         setExcludeSensitive(f.excludeSensitive ?? true);
         setExcludeTrackers(f.excludeTrackers ?? true);
         setShowDeadlinePassedFilter(f.showDeadlinePassedFilter ?? false);
+        setCombinedView(f.combinedView ?? false);
     };
 
     const handleDeleteSavedSearch = (name) => {
@@ -1066,20 +1068,82 @@ const NotesMainContainer = ({
                                         }`}
                                     title={popularMode ? 'Exit popular mode' : 'Enter popular mode'}
                                 >
-                                    {popularMode ? (
-                                        <>
-                                            <FireIcon className="h-4 w-4" />
-                                            Popular Mode
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FireIcon className="h-4 w-4" />
-                                            Popular Mode
-                                        </>
-                                    )}
+                                    <FireIcon className="h-4 w-4" />
+                                    Popular Mode
+                                </button>
+                                <button
+                                    onClick={() => setCombinedView(v => !v)}
+                                    className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${combinedView
+                                        ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    title={combinedView ? 'Exit combined view' : 'Show all notes as one document'}
+                                >
+                                    <DocumentTextIcon className="h-4 w-4" />
+                                    Combined
                                 </button>
                             </div>
                         </div>
+
+                        {/* Combined view — all filtered notes as one document */}
+                        {combinedView ? (
+                            <div className="mt-2 bg-white border border-orange-200 rounded-lg shadow-sm overflow-hidden">
+                                <div className="flex items-center justify-between px-4 py-2 bg-orange-50 border-b border-orange-100">
+                                    <span className="text-xs font-medium text-orange-700">
+                                        Combined view — {filteredNotes.length} note{filteredNotes.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <button onClick={() => setCombinedView(false)} className="text-orange-400 hover:text-orange-700 text-xs">✕ Close</button>
+                                </div>
+                                <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
+                                    {filteredNotes.map((note, idx) => {
+                                        const displayLines = (note.content || '')
+                                            .split('\n')
+                                            .filter(l => !l.trim().startsWith('meta::'));
+                                        // Render links as <a> tags.
+                                        // Supports normal URLs, reversed URLs (ending with ptth),
+                                        // and markdown [label](url) with either URL form.
+                                        const rev = (s) => s.split('').reverse().join('');
+                                        const renderWithLinks = (text) => {
+                                            const isReversed = note.content.includes('meta::url_reversed');
+                                            return text
+                                                // Markdown links: [label](url) — normal or reversed URL
+                                                .replace(/\[([^\]]*)\]\(([^)]+)\)/g, (_, label, url) => {
+                                                    const isRevUrl = /[^\s]+\/\/[^\s]+ptth/.test(url);
+                                                    const href = (isRevUrl || isReversed) && isRevUrl ? rev(url) : url;
+                                                    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${label || href}</a>`;
+                                                })
+                                                // Bare normal URLs
+                                                .replace(/(^|[\s>])(https?:\/\/[^\s<")\]]+)/g,
+                                                    (_, pre, url) => `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${url}</a>`)
+                                                // Bare reversed URLs (end with ptth or sptth)
+                                                .replace(/(^|[\s>])([^\s<"(]+(?:sptth|ptth))/g, (_, pre, rurl) => {
+                                                    try {
+                                                        const href = rev(rurl);
+                                                        new URL(href); // validate
+                                                        const host = new URL(href).hostname.replace(/^www\./, '');
+                                                        return `${pre}<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${host}</a>`;
+                                                    } catch { return _ ; }
+                                                });
+                                        };
+                                        const html = renderWithLinks(displayLines.join('\n').trim());
+                                        return (
+                                            <div key={note.id} className="px-5 py-4 hover:bg-gray-50 transition-colors">
+                                                <div className="text-[10px] text-gray-400 mb-1 font-mono">
+                                                    #{idx + 1} · {note.created_datetime || ''}
+                                                </div>
+                                                <div
+                                                    className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed"
+                                                    dangerouslySetInnerHTML={{ __html: html }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                    {filteredNotes.length === 0 && (
+                                        <div className="px-5 py-8 text-center text-gray-400 text-sm">No notes match the current filters.</div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
                         <NotesList
                             objList={mergedObjList}
                             allNotes={filteredNotes}
@@ -1113,6 +1177,7 @@ const NotesMainContainer = ({
 
                             }}
                         />
+                        )} {/* end combinedView ternary */}
                     </div>
                 </div>
             </div>

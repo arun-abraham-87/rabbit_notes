@@ -1626,16 +1626,23 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           return false;
         }
 
-        // For event search, we'd need to check cached events
-        // This is a simplified version - full event search should be done server-side
-        return false;
+        // Search in cached event names for this timeline
+        const cachedData = timelineEventsCache[note.id];
+        if (cachedData && cachedData.events) {
+          return cachedData.events.some(event =>
+            event.event && typeof event.event === 'string' && event.event.toLowerCase().includes(query)
+          );
+        }
+
+        // Events not cached yet — keep the timeline visible so it loads and can be matched
+        return true;
       })
       .sort((a, b) => {
         const aName = a.timeline || 'Untitled Timeline';
         const bName = b.timeline || 'Untitled Timeline';
         return aName.localeCompare(bName);
       });
-  }, [timelineNotes, searchQuery, searchTitlesOnly]);
+  }, [timelineNotes, searchQuery, searchTitlesOnly, timelineEventsCache]);
 
   // Load timeline events when timelines are expanded
   useEffect(() => {

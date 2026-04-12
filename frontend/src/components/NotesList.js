@@ -311,28 +311,23 @@ const NotesList = ({
     };
   }, [focusedNoteIndex, safeNotes, bulkDeleteMode, bulkDeleteNoteId]);
 
-  // Handle multi-move mode toggle from keyboard
+  // Handle multi-move mode toggle from keyboard or button click
   useEffect(() => {
-    const handleToggleMultiMoveMode = () => {
-
-
-
-
+    const handleToggleMultiMoveMode = (e) => {
+      // If dispatched from the button in NoteContent, e.detail.noteId is set
+      const noteId = e?.detail?.noteId;
+      if (noteId) {
+        setMultiMoveNoteId(prev => prev === noteId ? null : noteId);
+        return;
+      }
+      // Fallback: use keyboard-focused note
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-
-
         if (multiMoveNoteId === focusedNote.id) {
-          // Exit multi-move mode for this note
-
           setMultiMoveNoteId(null);
         } else {
-          // Enter multi-move mode for this note
-
           setMultiMoveNoteId(focusedNote.id);
         }
-      } else {
-
       }
     };
 

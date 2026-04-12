@@ -692,8 +692,9 @@ export default function NoteContent({
 
     // Multi-move functions
     const toggleMultiMoveMode = () => {
-        // This function is now handled by the parent component via keyboard events
-        // The multi-move mode is controlled by the multiMoveNoteId prop
+        // Dispatch with noteId so NotesList sets multiMoveNoteId for the right note
+        const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
+        document.dispatchEvent(event);
         setMultiMoveSelectedRows(new Set());
         setMultiMoveError('');
     };
@@ -974,8 +975,6 @@ export default function NoteContent({
     };
 
     const handleMultiMoveDrop = (e, targetLineIndex) => {
-        if (!isDraggingMultiMove) return;
-        
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
             if (data.type !== 'multi-move') return;
@@ -1253,13 +1252,13 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode && !multiMoveMode}
-                    onDragStart={(e) => handleDragStart(e, idx)}
+                    draggable={!focusMode && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
+                    onDragStart={(e) => multiMoveMode ? handleMultiMoveDragStart(e) : handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, idx)}
-                    onDragEnd={handleDragEnd}
+                    onDragEnd={multiMoveMode ? handleMultiMoveDragEnd : handleDragEnd}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`${shouldIndent ? 'pl-8 ' : ''}
                         group cursor-text flex items-center ${
@@ -1272,6 +1271,8 @@ export default function NoteContent({
                             dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
                         } ${
                             !focusMode ? 'hover:bg-gray-50' : ''
+                        } ${
+                            multiMoveMode && multiMoveSelectedRows.has(idx) ? 'bg-blue-50 border-l-2 border-blue-400 cursor-grab' : ''
                         }`}
                     style={getCodeBlockContainerStyle(idx)}
                 >
@@ -1357,13 +1358,13 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode && !multiMoveMode}
-                    onDragStart={(e) => handleDragStart(e, idx)}
+                    draggable={!focusMode && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
+                    onDragStart={(e) => multiMoveMode ? handleMultiMoveDragStart(e) : handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, idx)}
-                    onDragEnd={handleDragEnd}
+                    onDragEnd={multiMoveMode ? handleMultiMoveDragEnd : handleDragEnd}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`cursor-text ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''

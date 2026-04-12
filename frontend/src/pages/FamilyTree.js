@@ -1276,9 +1276,20 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     console.log(`[FLOW BUILD SUMMARY] Expanded Nodes:`, Array.from(expandedNodes));
     console.log(`[FLOW BUILD SUMMARY] ========================================`);
 
-    setNodes(flowNodes);
-    setEdges(validEdges);
-  }, [buildFamilyTree, expandedNodes, selectedTree]);
+    // Filter nodes and edges if searching
+    let nodesToDisplay = flowNodes;
+    let edgesToDisplay = validEdges;
+
+    if (visiblePeopleIdsForSearch) {
+      nodesToDisplay = flowNodes.filter(node => visiblePeopleIdsForSearch.has(node.id));
+      edgesToDisplay = validEdges.filter(edge =>
+        visiblePeopleIdsForSearch.has(edge.source) && visiblePeopleIdsForSearch.has(edge.target)
+      );
+    }
+
+    setNodes(nodesToDisplay);
+    setEdges(edgesToDisplay);
+  }, [buildFamilyTree, expandedNodes, selectedTree, visiblePeopleIdsForSearch]);
 
   // Update nodes and edges with selection/hover state
   useEffect(() => {
@@ -1365,6 +1376,69 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     });
   }, [peopleNotes, searchQuery]);
 
+  // Collect visible people IDs when searching
+  const visiblePeopleIdsForSearch = useMemo(() => {
+    if (!searchQuery || !buildFamilyTree) return null;
+
+    const visibleIds = new Set();
+
+    // Recursively find all descendants
+    const collectDescendants = (node) => {
+      visibleIds.add(node.id);
+      if (node.spouse) {
+        visibleIds.add(node.spouse.id);
+      }
+      if (node.children) {
+        node.children.forEach(child => collectDescendants(child));
+      }
+    };
+
+    // Recursively find all ancestors
+    const collectAncestors = (node) => {
+      visibleIds.add(node.id);
+      if (node.parents) {
+        node.parents.forEach(parent => collectAncestors(parent));
+      }
+    };
+
+    // Find the searched person in the tree
+    const findPersonInTree = (node, personName) => {
+      if (node.name.toLowerCase().includes(personName.toLowerCase())) {
+        return node;
+      }
+
+      if (node.children) {
+        for (const child of node.children) {
+          const found = findPersonInTree(child, personName);
+          if (found) return found;
+        }
+      }
+
+      if (node.parents) {
+        for (const parent of node.parents) {
+          const found = findPersonInTree(parent, personName);
+          if (found) return found;
+        }
+      }
+
+      if (node.spouse) {
+        const found = findPersonInTree(node.spouse, personName);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    const searchedPerson = findPersonInTree(buildFamilyTree, searchQuery);
+    if (searchedPerson) {
+      // Collect the person, all descendants, and all ancestors
+      collectDescendants(searchedPerson);
+      collectAncestors(searchedPerson);
+    }
+
+    return visibleIds.size > 0 ? visibleIds : null;
+  }, [searchQuery, buildFamilyTree]);
+
   // Set selected tree on mount if not set and expand all nodes
   useEffect(() => {
     if (!selectedTreeId && familyTreeNotes.length > 0) {
@@ -1436,6 +1510,17 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       setDeleteTreeModal({ open: false, treeId: null, treeName: '' });
     } catch (error) {
       console.error('Error deleting family tree:', error);
+    }
+  };
+
+  // Handle deleting a person
+  const handleDeletePerson = async (personId) => {
+    try {
+      await deleteNoteById(personId);
+      setAllNotes(allNotes.filter(note => note.id !== personId));
+      setEditPersonModal({ open: false, personNote: null });
+    } catch (error) {
+      console.error('Error deleting person:', error);
     }
   };
 
@@ -1876,6 +1961,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           onClose={() => setAddPersonModal({ open: false })}
           allNotes={allNotes}
           onAdd={handleAddPerson}
+          onDelete={handleDeletePerson}
           setAllNotes={setAllNotes}
         />
       )}
@@ -1887,6 +1973,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           onClose={() => setEditPersonModal({ open: false, personNote: null })}
           allNotes={allNotes}
           onEdit={handleEditPerson}
+          onDelete={handleDeletePerson}
           personNote={editPersonModal.personNote}
           setAllNotes={setAllNotes}
         />

@@ -1373,6 +1373,33 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       edgesToDisplay = validEdges.filter(edge =>
         visiblePeopleIdsForSearch.has(edge.source) && visiblePeopleIdsForSearch.has(edge.target)
       );
+
+      // Recenter and compact filtered nodes to prevent spread layout
+      if (nodesToDisplay.length > 0) {
+        // Find bounding box
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        nodesToDisplay.forEach(node => {
+          minX = Math.min(minX, node.position.x);
+          maxX = Math.max(maxX, node.position.x);
+          minY = Math.min(minY, node.position.y);
+          maxY = Math.max(maxY, node.position.y);
+        });
+
+        // Calculate center offset
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const offsetX = -centerX;
+        const offsetY = -centerY;
+
+        // Reposition nodes to center them
+        nodesToDisplay = nodesToDisplay.map(node => ({
+          ...node,
+          position: {
+            x: node.position.x + offsetX,
+            y: node.position.y + offsetY
+          }
+        }));
+      }
     }
 
     setNodes(nodesToDisplay);

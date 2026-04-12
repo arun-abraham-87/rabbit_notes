@@ -89,6 +89,7 @@ function findAnswerNotes(notes, tid, dateStr) {
 const WatchedTrackers = ({ notes, setNotes }) => {
   const navigate = useNavigate();
   const [showOverdue, setShowOverdue] = useState(false);
+  const [selectedTag, setSelectedTag] = useState(null);
 
   const { watched, answersByTracker, overdue, allTags } = useMemo(
     () => parseTrackerData(notes || []),
@@ -181,6 +182,12 @@ const WatchedTrackers = ({ notes, setNotes }) => {
     ? overdue.filter(t => !watched.some(w => String(w.id) === String(t.id)))
     : [];
 
+  const filterByTag = (trackers) =>
+    selectedTag ? trackers.filter(t => t.tags?.includes(selectedTag)) : trackers;
+
+  const visibleWatched = filterByTag(watched);
+  const visibleOverdue = filterByTag(overdueOnly);
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -210,8 +217,37 @@ const WatchedTrackers = ({ notes, setNotes }) => {
         </button>
       </div>
 
+      {/* Tag filter bar — shows all tags from watched+overdue trackers */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          <button
+            onClick={() => setSelectedTag(null)}
+            className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+              selectedTag === null
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All
+          </button>
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+              className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+                selectedTag === tag
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {watched.map(tracker => (
+        {visibleWatched.map(tracker => (
           <TrackerCard
             key={tracker.id}
             tracker={tracker}
@@ -225,7 +261,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             onSaveTags={handleSaveTags}
           />
         ))}
-        {overdueOnly.map(tracker => (
+        {visibleOverdue.map(tracker => (
           <TrackerCard
             key={`overdue-${tracker.id}`}
             tracker={tracker}

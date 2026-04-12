@@ -252,16 +252,20 @@ const NotesMainContainer = ({
         if (location.state?.searchQuery) {
             setSearchQuery(location.state.searchQuery);
             setLocalSearchQuery(location.state.searchQuery);
-            // Clear all filters when showing a specific note
+            // Disable all exclude filters so the target note is always visible
             setExcludeEvents(false);
             setExcludeMeetings(false);
             setExcludeEventNotes(false);
             setExcludeBackupNotes(false);
             setExcludeWatchEvents(false);
+            setExcludeSensitive(false);
+            setExcludeTrackers(false);
+            setExcludeBookmarks(false);
+            setExcludeExpenses(false);
             setShowDeadlinePassedFilter(false);
-            // Trigger UI filter reset
-            setResetTrigger(Date.now());
-            // Clear the state to prevent it from persisting
+            // NOTE: do NOT call setResetTrigger here — NoteFilters reacts to it by
+            // calling setSearchQuery(''), which would immediately wipe the search we just set.
+            // Clear the state to prevent it from persisting on back-navigation
             window.history.replaceState({}, document.title);
         }
     }, [location.state, setSearchQuery]);

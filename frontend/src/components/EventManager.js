@@ -1242,7 +1242,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/notes?note=${timeline.id}`);
+                      navigate('/notes', { state: { searchQuery: `id:${timeline.id}` } });
                     }}
                     className="absolute top-1 right-1 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
                     title="View note"

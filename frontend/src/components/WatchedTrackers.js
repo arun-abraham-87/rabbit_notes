@@ -69,7 +69,9 @@ function parseTrackerData(notes) {
     return daysSince > threshold;
   });
 
-  return { watched, answersByTracker, overdue };
+  const allTags = [...new Set(trackerNotes.flatMap(t => Array.isArray(t.tags) ? t.tags.filter(Boolean) : []))].sort();
+
+  return { watched, answersByTracker, overdue, allTags };
 }
 
 // Find all answer notes in `notes` that belong to a given tracker+date.
@@ -88,7 +90,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
   const navigate = useNavigate();
   const [showOverdue, setShowOverdue] = useState(false);
 
-  const { watched, answersByTracker, overdue } = useMemo(
+  const { watched, answersByTracker, overdue, allTags } = useMemo(
     () => parseTrackerData(notes || []),
     [notes]
   );
@@ -200,6 +202,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             isFocusMode={false}
             isDevMode={false}
             onWatch={handleUnwatch}
+            allTags={allTags}
           />
         ))}
         {overdueOnly.map(tracker => (
@@ -212,6 +215,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             isFocusMode={false}
             isDevMode={false}
             onWatch={handleUnwatch}
+            allTags={allTags}
           />
         ))}
       </div>

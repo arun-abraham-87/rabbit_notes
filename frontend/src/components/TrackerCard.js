@@ -75,7 +75,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch, allTags = [] }) {
   const navigate = useNavigate();
 
   // Debug: Log answers received
@@ -1345,16 +1345,46 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 </span>
               ))}
               {showTagInput ? (
-                <form onSubmit={handleAddTag} className="flex items-center gap-1">
+                <form onSubmit={handleAddTag} className="relative flex items-center gap-1">
                   <input
                     autoFocus
                     value={tagInput}
                     onChange={e => setTagInput(e.target.value)}
-                    onBlur={() => { if (!tagInput.trim()) setShowTagInput(false); }}
+                    onBlur={() => { setTimeout(() => { if (!tagInput.trim()) setShowTagInput(false); }, 150); }}
                     onKeyDown={e => { if (e.key === 'Escape') { setTagInput(''); setShowTagInput(false); } }}
                     className="text-xs border border-blue-300 rounded px-1.5 py-0.5 w-24 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     placeholder="Tag name…"
                   />
+                  {/* Suggestion dropdown */}
+                  {(() => {
+                    const q = tagInput.toLowerCase();
+                    const suggestions = allTags.filter(t =>
+                      !localTags.includes(t) &&
+                      (q === '' || t.toLowerCase().includes(q))
+                    );
+                    if (suggestions.length === 0) return null;
+                    return (
+                      <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded shadow-md z-50 min-w-[120px] max-h-40 overflow-y-auto">
+                        {suggestions.map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); setTagInput(t); }}
+                            onClick={async () => {
+                              const newTags = [...localTags, t];
+                              setLocalTags(newTags);
+                              setTagInput('');
+                              setShowTagInput(false);
+                              await persistTags(newTags);
+                            }}
+                            className="block w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </form>
               ) : (
                 <button

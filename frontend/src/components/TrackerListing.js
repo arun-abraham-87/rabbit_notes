@@ -1077,6 +1077,9 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
   // Show all trackers in one unified section - removed pending/completed separation
 
   // Helper to group trackers by cadence
+  // Collect all unique tags used across all trackers for suggestions
+  const allTags = [...new Set(trackers.flatMap(t => Array.isArray(t.tags) ? t.tags.filter(Boolean) : []))].sort();
+
   const groupByCadence = (trackers) => {
     const groups = { yearly: [], monthly: [], weekly: [], daily: [], custom: [] };
     trackers.forEach(tracker => {
@@ -1207,6 +1210,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
             onTrackerConverted={handleTrackerConverted}
             onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
           />
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
@@ -1236,6 +1240,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                   />
                 )}
               </div>
@@ -1265,6 +1270,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                   />
                 )}
               </div>
@@ -1294,6 +1300,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                   />
                 )}
               </div>
@@ -1323,6 +1330,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                   />
                 ) : (
                   <TrackerTable
@@ -1331,6 +1339,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onEdit={handleEditTracker}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                     isFocusMode={isFocusMode}
                   />
                 ))}
@@ -1361,6 +1370,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onTrackerConverted={handleTrackerConverted}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                   />
                 ) : (
                   <TrackerTable
@@ -1369,6 +1379,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     onEdit={handleEditTracker}
                     onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                     isFocusMode={isFocusMode}
                   />
                 ))}
@@ -1406,6 +1417,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                       onTrackerConverted={handleTrackerConverted}
                       onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                     />
                   ) : (
                     <TrackerTable
@@ -1414,6 +1426,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                       onEdit={handleEditTracker}
                       onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
                       onToggleDay={handleToggleDay}
                       isFocusMode={isFocusMode}
                     />
@@ -1627,6 +1640,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
               onCancel={() => { setShowAddTracker(false); setEditingTracker(null); }}
               onTrackerDeleted={handleTrackerDeleted}
                     onWatch={handleWatchToggle}
+                    allTags={allTags}
               notes={allNotes}
             />
           </div>

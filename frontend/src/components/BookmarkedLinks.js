@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BookmarkIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, createNote } from '../utils/ApiUtils';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const BookmarkEditModal = ({ isOpen, onClose, bookmark, onSave }) => {
   const [customText, setCustomText] = useState(bookmark?.label || '');
@@ -190,19 +191,26 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
   const [editingBookmark, setEditingBookmark] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const dragIndexRef = React.useRef(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // Collect all pinned bookmarks from notes, sorted by their saved order.
+  // A bookmark note must have both meta::bookmark and meta::bookmark_pinned tags to appear here.
+  // meta::bookmark_order::N controls display position; notes without it sort to the end.
   const bookmarkedUrls = useMemo(() => {
-    //
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
       if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
-        // Only include bookmarks that are pinned
-        const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
-        //
+        const lines = note.content.split('\n');
+        const isPinned = lines.some(line => line.trim().startsWith('meta::bookmark_pinned'));
         if (!isPinned) return;
-        
+
+        const orderLine = lines.find(line => line.trim().startsWith('meta::bookmark_order::'));
+        const order = orderLine ? parseInt(orderLine.trim().replace('meta::bookmark_order::', ''), 10) : Infinity;
+
         linkRegex.lastIndex = 0;
         let match;
         while ((match = linkRegex.exec(note.content)) !== null) {
@@ -211,15 +219,62 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
           const key = `${url}|${label}`;
           if (!seen.has(key)) {
             seen.add(key);
-            list.push({ url, label, noteId: note.id });
-            //
+            list.push({ url, label, noteId: note.id, order });
           }
         }
       }
     });
-    //
+    list.sort((a, b) => a.order - b.order);
     return list;
   }, [notes]);
+
+  const handleDragStart = (index) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (e, dropIndex) => {
+    e.preventDefault();
+    const dragIndex = dragIndexRef.current;
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragOverIndex(null);
+      dragIndexRef.current = null;
+      return;
+    }
+
+    // Compute new order by moving the dragged item to the drop position
+    const reordered = [...bookmarkedUrls];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+
+    // Write meta::bookmark_order::N into every bookmark note to persist the new order.
+    // We strip any existing order tag first, then append the new index.
+    const updatedNotes = [...notes];
+    for (let i = 0; i < reordered.length; i++) {
+      const bookmark = reordered[i];
+      const noteIndex = updatedNotes.findIndex(n => n.id === bookmark.noteId);
+      if (noteIndex === -1) continue;
+      const note = updatedNotes[noteIndex];
+      const lines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::bookmark_order::'));
+      lines.push(`meta::bookmark_order::${i}`);
+      const updatedContent = lines.join('\n');
+      updatedNotes[noteIndex] = { ...note, content: updatedContent };
+      await updateNoteById(note.id, updatedContent);
+    }
+    setNotes(updatedNotes);
+
+    setDragOverIndex(null);
+    dragIndexRef.current = null;
+  };
+
+  const handleDragEnd = () => {
+    setDragOverIndex(null);
+    dragIndexRef.current = null;
+  };
 
   // Add keyboard event listener for number keys
   React.useEffect(() => {
@@ -298,9 +353,9 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
   const handleAddBookmark = async (customText, url) => {
     try {
       // Create a new note with the bookmark
-      const bookmarkContent = customText 
-        ? `[${customText}](${url})\nmeta::bookmark`
-        : `${url}\nmeta::bookmark`;
+      const bookmarkContent = customText
+        ? `[${customText}](${url})\nmeta::bookmark\nmeta::bookmark_pinned`
+        : `${url}\nmeta::bookmark\nmeta::bookmark_pinned`;
       
       const newNote = await createNote(bookmarkContent);
       
@@ -312,27 +367,27 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
     }
   };
 
-  const handleRemoveBookmark = async (bookmark) => {
+  const handleRemoveBookmark = (bookmark) => {
+    setConfirmDelete(bookmark);
+  };
+
+  const confirmRemoveBookmark = async () => {
+    const bookmark = confirmDelete;
+    setConfirmDelete(null);
     try {
-      // Find the note containing this bookmark
       const note = notes.find(n => n.id === bookmark.noteId);
       if (!note) return;
 
-      // Split content into lines
-      const lines = note.content.split('\n');
-      
-      // Remove the meta::bookmark tag
-      const updatedLines = lines.filter(line => line.trim() !== 'meta::bookmark');
-      
-      // Join lines back together
+      // Strip all bookmark meta tags (meta::bookmark, meta::bookmark_pinned, meta::bookmark_order::N)
+      // so the note stays but no longer appears in the bookmark bar.
+      const updatedLines = note.content.split('\n').filter(line => {
+        const t = line.trim();
+        return !t.startsWith('meta::bookmark');
+      });
       const updatedContent = updatedLines.join('\n');
-      
-      // Update the note
+
       await updateNoteById(note.id, updatedContent);
-      
-      // Update the notes state
       setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
-      
     } catch (error) {
       console.error('Error removing bookmark:', error);
     }
@@ -347,18 +402,26 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
           <BookmarkIcon className="h-5 w-5" />
         </div>
         <div className="flex items-center gap-3 overflow-x-auto flex-1">
-          {bookmarkedUrls.map(({ url, label }, index) => {
+          {bookmarkedUrls.map(({ url, label, noteId }, index) => {
             const displayText = label || (() => {
               try { return new URL(url).hostname.replace(/^www\./, ''); }
               catch { return url; }
             })();
             const bookmarkNumber = index + 1;
+            const isDragOver = dragOverIndex === index;
             return (
               <React.Fragment key={url}>
                 {index > 0 && (
-                  <div className="h-4 w-px bg-gray-300" />
+                  <div className={`h-4 w-px ${isDragOver ? 'bg-blue-400 w-0.5' : 'bg-gray-300'}`} />
                 )}
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 rounded px-1 transition-colors ${isDragOver ? 'bg-blue-50 outline outline-1 outline-blue-300' : ''} ${editMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  draggable={editMode}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                >
                   <span className="text-xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                     {bookmarkNumber}
                   </span>
@@ -367,20 +430,21 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap hover:underline"
+                    draggable={false}
                   >
                     {displayText}
                   </a>
                   {editMode && (
                     <>
                       <button
-                        onClick={() => handleEditBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
+                        onClick={() => handleEditBookmark({ url, label, noteId })}
                         className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                         title="Edit bookmark"
                       >
                         <PencilIcon className="h-3 w-3" />
                       </button>
                       <button
-                        onClick={() => handleRemoveBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
+                        onClick={() => handleRemoveBookmark({ url, label, noteId })}
                         className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                         title="Remove from bookmarks"
                       >
@@ -426,6 +490,15 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={handleAddBookmark}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={confirmRemoveBookmark}
+        title="Delete Bookmark"
+        message={`Remove "${confirmDelete?.label || confirmDelete?.url}" from bookmarks?`}
+        confirmButtonText="Delete"
       />
     </>
   );

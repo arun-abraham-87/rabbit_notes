@@ -570,6 +570,69 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     return buildNode(selectedTree.rootPersonId);
   }, [peopleNotes, selectedTree]);
 
+  // Collect visible people IDs when searching
+  const visiblePeopleIdsForSearch = useMemo(() => {
+    if (!searchQuery || !buildFamilyTree) return null;
+
+    const visibleIds = new Set();
+
+    // Recursively find all descendants
+    const collectDescendants = (node) => {
+      visibleIds.add(node.id);
+      if (node.spouse) {
+        visibleIds.add(node.spouse.id);
+      }
+      if (node.children) {
+        node.children.forEach(child => collectDescendants(child));
+      }
+    };
+
+    // Recursively find all ancestors
+    const collectAncestors = (node) => {
+      visibleIds.add(node.id);
+      if (node.parents) {
+        node.parents.forEach(parent => collectAncestors(parent));
+      }
+    };
+
+    // Find the searched person in the tree
+    const findPersonInTree = (node, personName) => {
+      if (node.name.toLowerCase().includes(personName.toLowerCase())) {
+        return node;
+      }
+
+      if (node.children) {
+        for (const child of node.children) {
+          const found = findPersonInTree(child, personName);
+          if (found) return found;
+        }
+      }
+
+      if (node.parents) {
+        for (const parent of node.parents) {
+          const found = findPersonInTree(parent, personName);
+          if (found) return found;
+        }
+      }
+
+      if (node.spouse) {
+        const found = findPersonInTree(node.spouse, personName);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    const searchedPerson = findPersonInTree(buildFamilyTree, searchQuery);
+    if (searchedPerson) {
+      // Collect the person, all descendants, and all ancestors
+      collectDescendants(searchedPerson);
+      collectAncestors(searchedPerson);
+    }
+
+    return visibleIds.size > 0 ? visibleIds : null;
+  }, [searchQuery, buildFamilyTree]);
+
   // Helper function to format relationship type to readable label
   const formatRelationshipLabel = (relationshipType) => {
     const labels = {
@@ -1375,69 +1438,6 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       return info.name.toLowerCase().includes(query);
     });
   }, [peopleNotes, searchQuery]);
-
-  // Collect visible people IDs when searching
-  const visiblePeopleIdsForSearch = useMemo(() => {
-    if (!searchQuery || !buildFamilyTree) return null;
-
-    const visibleIds = new Set();
-
-    // Recursively find all descendants
-    const collectDescendants = (node) => {
-      visibleIds.add(node.id);
-      if (node.spouse) {
-        visibleIds.add(node.spouse.id);
-      }
-      if (node.children) {
-        node.children.forEach(child => collectDescendants(child));
-      }
-    };
-
-    // Recursively find all ancestors
-    const collectAncestors = (node) => {
-      visibleIds.add(node.id);
-      if (node.parents) {
-        node.parents.forEach(parent => collectAncestors(parent));
-      }
-    };
-
-    // Find the searched person in the tree
-    const findPersonInTree = (node, personName) => {
-      if (node.name.toLowerCase().includes(personName.toLowerCase())) {
-        return node;
-      }
-
-      if (node.children) {
-        for (const child of node.children) {
-          const found = findPersonInTree(child, personName);
-          if (found) return found;
-        }
-      }
-
-      if (node.parents) {
-        for (const parent of node.parents) {
-          const found = findPersonInTree(parent, personName);
-          if (found) return found;
-        }
-      }
-
-      if (node.spouse) {
-        const found = findPersonInTree(node.spouse, personName);
-        if (found) return found;
-      }
-
-      return null;
-    };
-
-    const searchedPerson = findPersonInTree(buildFamilyTree, searchQuery);
-    if (searchedPerson) {
-      // Collect the person, all descendants, and all ancestors
-      collectDescendants(searchedPerson);
-      collectAncestors(searchedPerson);
-    }
-
-    return visibleIds.size > 0 ? visibleIds : null;
-  }, [searchQuery, buildFamilyTree]);
 
   // Set selected tree on mount if not set and expand all nodes
   useEffect(() => {

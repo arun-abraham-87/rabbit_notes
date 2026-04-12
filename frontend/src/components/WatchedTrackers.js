@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { EyeIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { updateNoteById, deleteNoteById, createNote, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import TrackerCard from './TrackerCard';
 import moment from 'moment';
@@ -88,6 +88,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
     const isRemoval = value === null;
 
     if (isRemoval) {
+      // Find the answer notes to remove
       const toDelete = (notes || []).filter(note => {
         if (!note?.content) return false;
         const lines = note.content.split('\n');
@@ -96,11 +97,18 @@ const WatchedTrackers = ({ notes, setNotes }) => {
         const d = lines.find(l => l.startsWith('Date:'))?.slice('Date:'.length).trim();
         return String(link) === tid && d === dateStr;
       });
-      await Promise.all(toDelete.map(n => deleteNoteById(n.id)));
-      const fresh = await loadNotes();
-      setNotes(Array.isArray(fresh) ? fresh : (fresh?.notes || []));
+
+      // Optimistically update state immediately so the button reflects the new
+      // state without waiting for a server round-trip.
+      if (toDelete.length > 0) {
+        const deleteIds = new Set(toDelete.map(n => n.id));
+        setNotes(prev => prev.filter(n => !deleteIds.has(n.id)));
+      }
+
+      // TrackerCard may have already deleted the note; catch 404s silently.
+      await Promise.all(toDelete.map(n => deleteNoteById(n.id).catch(() => {})));
     } else {
-      // Find tracker title from either watched or overdue list
+      // Create new answer note and add it to state immediately
       const allTrackers = [...watched, ...overdue];
       const tracker = allTrackers.find(t => String(t.id) === tid);
       const content = `Answer: ${value}\nDate: ${dateStr}\nrecorded_on_date: ${dateStr}\nmeta::link:${tid}\nmeta::tracker_answer\nanswer for ${tracker?.title || ''}`;

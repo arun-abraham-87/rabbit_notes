@@ -144,6 +144,25 @@ const WatchedTrackers = ({ notes, setNotes }) => {
     }
   }, [notes, setNotes, watched, overdue]);
 
+  const handleSaveTags = useCallback(async (trackerId, newTags) => {
+    const note = (notes || []).find(n => String(n.id) === String(trackerId));
+    if (!note) return;
+    const lines = note.content.split('\n');
+    const tagsLineIdx = lines.findIndex(l => l.startsWith('Tags:'));
+    let updated;
+    if (newTags.length === 0) {
+      updated = tagsLineIdx !== -1 ? lines.filter((_, i) => i !== tagsLineIdx) : lines;
+    } else {
+      const newTagsLine = `Tags: ${newTags.join(', ')}`;
+      updated = tagsLineIdx !== -1
+        ? lines.map((l, i) => i === tagsLineIdx ? newTagsLine : l)
+        : [...lines, newTagsLine];
+    }
+    const updatedContent = updated.join('\n');
+    await updateNoteById(note.id, updatedContent);
+    setNotes(prev => prev.map(n => String(n.id) === String(note.id) ? { ...n, content: updatedContent } : n));
+  }, [notes, setNotes]);
+
   const handleUnwatch = useCallback(async (trackerOrId) => {
     const id = trackerOrId && typeof trackerOrId === 'object' ? trackerOrId.id : trackerOrId;
     const note = (notes || []).find(n => String(n.id) === String(id));
@@ -203,6 +222,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             isDevMode={false}
             onWatch={handleUnwatch}
             allTags={allTags}
+            onSaveTags={handleSaveTags}
           />
         ))}
         {overdueOnly.map(tracker => (
@@ -216,6 +236,7 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             isDevMode={false}
             onWatch={handleUnwatch}
             allTags={allTags}
+            onSaveTags={handleSaveTags}
           />
         ))}
       </div>

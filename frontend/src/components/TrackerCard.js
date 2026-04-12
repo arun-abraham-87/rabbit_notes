@@ -75,7 +75,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch, allTags = [] }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch, allTags = [], onSaveTags }) {
   const navigate = useNavigate();
 
   // Debug: Log answers received
@@ -147,6 +147,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [localTags, setLocalTags] = useState(Array.isArray(tracker.tags) ? tracker.tags : []);
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInput, setTagInput] = useState('');
+
+  // Keep localTags in sync when parent refreshes tracker data
+  React.useEffect(() => {
+    setLocalTags(Array.isArray(tracker.tags) ? tracker.tags : []);
+  }, [JSON.stringify(tracker.tags)]); // eslint-disable-line react-hooks/exhaustive-deps
   // State for monthly modal pending changes (date -> answer value: 'yes', 'no', string value, or null for remove)
   const [monthlyModalPendingChanges, setMonthlyModalPendingChanges] = useState({});
   // State for value input popup in monthly modal
@@ -165,28 +170,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [editingAdhocAnswer, setEditingAdhocAnswer] = useState(null);
   const [showConvertMenu, setShowConvertMenu] = useState(false);
 
-  // Persist updated tags to the note content
+  // Delegate tag persistence to the parent via onSaveTags
   const persistTags = async (newTags) => {
-    try {
-      const note = await getNoteById(tracker.id);
-      if (!note || !note.content) return;
-      const lines = note.content.split('\n');
-      const tagsLineIdx = lines.findIndex(l => l.startsWith('Tags:'));
-      let updated;
-      if (newTags.length === 0) {
-        updated = tagsLineIdx !== -1 ? lines.filter((_, i) => i !== tagsLineIdx) : lines;
-      } else {
-        const newTagsLine = `Tags: ${newTags.join(', ')}`;
-        if (tagsLineIdx !== -1) {
-          updated = lines.map((l, i) => i === tagsLineIdx ? newTagsLine : l);
-        } else {
-          updated = [...lines, newTagsLine];
-        }
-      }
-      await updateNoteById(tracker.id, updated.join('\n'));
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Error updating tags:', err);
+    if (onSaveTags) {
+      await onSaveTags(tracker.id, newTags);
     }
   };
 

@@ -4,6 +4,7 @@ import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import { updateNoteById } from '../utils/ApiUtils';
+import { getEventDetails } from '../utils/EventUtils';
 
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
@@ -79,7 +80,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState(null);
   const modalRef = useRef(null);
 
@@ -109,35 +109,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     type: 'event', // Add type field with default value 'event'
     bgColor: '#ffffff' // Default background color
   });
-
-  // Helper function to extract event details from note content
-  const getEventDetails = (content) => {
-    const lines = content.split('\n');
-
-    // Find the description
-    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
-    const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
-
-    // Find the event date
-    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
-    const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
-
-    // Find tags
-    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-    const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
-
-    // Check if it's a deadline
-    const isDeadline = tags.some(tag => tag.toLowerCase() === 'deadline') ||
-      content.includes('meta::event_deadline') ||
-      content.includes('meta::deadline');
-
-    return {
-      description,
-      dateTime,
-      tags,
-      isDeadline
-    };
-  };
 
   // Helper function to calculate next occurrence for recurring events
   const calculateNextOccurrence = (originalDate, isDeadline = false) => {
@@ -661,7 +632,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   };
 
   const handleDeleteEvent = (id) => {
-    setPendingDeleteId(id);
+    const updatedEvents = events.filter(event => event.id !== id);
+    setEvents(updatedEvents);
+    localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
   };
 
   const handleDeleteNote = (noteId) => {
@@ -669,20 +642,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   };
 
   const confirmDelete = () => {
-    // Handle deleting temp events
-    if (pendingDeleteId) {
-      setEvents(prev => {
-        const updatedEvents = prev.filter(ev => ev.id !== pendingDeleteId);
-        try {
-          localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
-        } catch (error) {
-          console.error('Error saving events to localStorage:', error);
-        }
-        return updatedEvents;
-      });
-      setPendingDeleteId(null);
-    }
-
     // Handle deleting notes
     if (pendingDeleteNoteId && onDeleteNote) {
       onDeleteNote(pendingDeleteNoteId);
@@ -691,7 +650,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   };
 
   const cancelDelete = () => {
-    setPendingDeleteId(null);
     setPendingDeleteNoteId(null);
   };
 
@@ -1474,11 +1432,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
       {/* Delete Confirmation Modal */}
       {
-        (pendingDeleteId || pendingDeleteNoteId) && (
+        pendingDeleteNoteId && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-xs shadow-lg flex flex-col items-center">
               <div className="text-lg font-semibold mb-4 text-center">
-                Are you sure you want to delete this {pendingDeleteNoteId ? 'note' : 'item'}?
+                Are you sure you want to delete this note?
               </div>
               <div className="flex gap-4 mt-2">
                 <button

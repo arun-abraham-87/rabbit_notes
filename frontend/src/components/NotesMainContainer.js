@@ -655,35 +655,19 @@ const NotesMainContainer = ({
 
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
+        const passesExclusionFilters = (note) => {
+            if (excludeEventNotes && note.content && note.content.includes('meta::event::')) return false;
+            if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) return false;
+            if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) return false;
+            if (excludeBookmarks && note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))) return false;
+            if (excludeExpenses && note.content && note.content.includes('meta::expense')) return false;
+            if (excludeSensitive && note.content && note.content.includes('meta::sensitive::')) return false;
+            if (excludeTrackers && note.content && note.content.includes('meta::tracker')) return false;
+            return true;
+        };
+
         let filtered = allNotes.filter(note => {
-            // Exclude event notes if the filter is enabled
-            if (excludeEventNotes && note.content && note.content.includes('meta::event::')) {
-                return false;
-            }
-            // Exclude backup notes if the filter is enabled
-            if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) {
-                return false;
-            }
-            // Exclude watch events if the filter is enabled
-            if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) {
-                return false;
-            }
-            // Exclude bookmarks if the filter is enabled
-            if (excludeBookmarks && note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))) {
-                return false;
-            }
-            // Exclude expenses if the filter is enabled
-            if (excludeExpenses && note.content && note.content.includes('meta::expense')) {
-                return false;
-            }
-            // Exclude sensitive notes if the filter is enabled
-            if (excludeSensitive && note.content && note.content.includes('meta::sensitive::')) {
-                return false;
-            }
-            // Exclude tracker notes if the filter is enabled
-            if (excludeTrackers && note.content && note.content.includes('meta::tracker')) {
-                return false;
-            }
+            if (!passesExclusionFilters(note)) return false;
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
 
@@ -693,31 +677,7 @@ const NotesMainContainer = ({
                 const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
 
                 // In popular mode, consider all notes from allNotes, not just filtered ones
-                let allNotesForPopular = allNotes.filter(note => {
-                    // Apply the same exclusion filters
-                    if (excludeEventNotes && note.content && note.content.includes('meta::event::')) {
-                        return false;
-                    }
-                    if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) {
-                        return false;
-                    }
-                    if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) {
-                        return false;
-                    }
-                    if (excludeBookmarks && note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))) {
-                        return false;
-                    }
-                    if (excludeExpenses && note.content && note.content.includes('meta::expense')) {
-                        return false;
-                    }
-                    if (excludeSensitive && note.content && note.content.includes('meta::sensitive::')) {
-                        return false;
-                    }
-                    if (excludeTrackers && note.content && note.content.includes('meta::tracker')) {
-                        return false;
-                    }
-                    return true;
-                });
+                let allNotesForPopular = allNotes.filter(note => passesExclusionFilters(note));
 
                 // Get today's notes (regardless of click count)
                 const todaysNotes = allNotesForPopular.filter(note =>

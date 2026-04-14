@@ -1211,7 +1211,20 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 }}
               >
                 <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
+                  <EventManager
+                    type="notes"
+                    notes={notes}
+                    setActivePage={setActivePage}
+                    onDeleteNote={async (noteId) => {
+                      try {
+                        await deleteNoteById(noteId);
+                        setNotes(prevNotes => prevNotes.filter(n => n.id !== noteId));
+                      } catch (error) {
+                        console.error('Error deleting:', error);
+                        alert('Failed to delete: ' + error.message);
+                      }
+                    }}
+                  />
                 </div>
               </div>
 

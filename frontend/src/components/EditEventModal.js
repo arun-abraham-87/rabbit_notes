@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllUniqueTags } from '../utils/EventUtils';
 import { deleteNoteById, updateNoteById, getNoteById } from '../utils/ApiUtils';
-import ConfirmationModal from './ConfirmationModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
-// Module-level refs that persist across component unmounts/remounts
-// This ensures timeline data persists when modal closes and reopens
-const persistentTimelinesRef = { current: [] };
-const persistentTimelineLinkQueues = { current: new Map() };
 
 const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false, isInformationPage = false }) => {
   const [description, setDescription] = useState('');
@@ -27,9 +23,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [timelines, setTimelines] = useState([]);
   const [validationErrors, setValidationErrors] = useState({ description: false, eventDate: false });
 
-  // Use module-level refs that persist across component lifecycle
-  const timelineLinkQueues = persistentTimelineLinkQueues;
-  const timelinesRef = persistentTimelinesRef;
+  const timelineLinkQueues = useRef(new Map());
+  const timelinesRef = useRef([]);
 
   // Ref for the notes textarea to enable auto-focus
   const notesTextareaRef = useRef(null);
@@ -1145,10 +1140,12 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
             )}
           </div>
 
-          <ConfirmationModal
+          <DeleteConfirmationModal
             isOpen={showDeleteConfirm}
             onClose={() => setShowDeleteConfirm(false)}
             onConfirm={handleDelete}
+            title="Confirm Deletion"
+            message="Are you sure you want to delete this event? This action cannot be undone."
           />
         </div>
       )}

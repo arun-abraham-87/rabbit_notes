@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Alerts } from './Alerts';
 
 
-import ConfirmationModal from './ConfirmationModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { updateNoteById, deleteNoteById, deleteNoteWithImages, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
 import { findDuplicatedUrls } from '../utils/genUtils';
 
@@ -1751,7 +1751,7 @@ const NotesList = ({
         </>
       )}
 
-      <ConfirmationModal isOpen={isModalOpen} onClose={closeModal} onConfirm={confirmDelete} />
+      <DeleteConfirmationModal isOpen={isModalOpen} onClose={closeModal} onConfirm={confirmDelete} title="Confirm Deletion" message="Are you sure you want to delete this note? This action cannot be undone." />
 
       <TagSelectionPopup visible={isPopupVisible} position={popupPosition} selectedText={selectedText} onConvert={handleConvertToTag} onSearch={handleSearch} onCancel={handleCancelPopup} />
 

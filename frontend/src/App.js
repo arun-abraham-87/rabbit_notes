@@ -177,15 +177,6 @@ const MainContentArea = ({
               </div>
             </div>
           } />
-          <Route path="/dashboard" element={
-            <div className="h-full overflow-y-auto">
-              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <div className="min-h-screen bg-gray-50">
-                  <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => navigate(`/${page}`)} />
-                </div>
-              </div>
-            </div>
-          } />
           <Route path="/expense" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
@@ -221,7 +212,7 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="min-h-screen bg-gray-50 p-4">
-                  <CustomCalendar notes={allNotes} setNotes={setAllNotes} />
+                  <CustomCalendar allNotes={allNotes} />
                 </div>
               </div>
             </div>

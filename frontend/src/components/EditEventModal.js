@@ -703,38 +703,22 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     }
 
     const eventId = note.id;
-    console.log('[EditEventModal] Deleting event with ID:', eventId, 'Type:', typeof eventId);
+    console.log('[EditEventModal] Deleting event with ID:', eventId);
 
-    try {
-      // Call the backend API to delete the note
-      await deleteNoteById(eventId);
-      console.log('[EditEventModal] Delete successful from backend');
-    } catch (error) {
-      console.error('[EditEventModal] Error deleting from backend:', error);
-      // If it's a 404, the note might already be deleted - continue anyway
-      if (error.message && !error.message.includes('404')) {
-        // Only stop if it's not a 404 (already deleted)
-        return;
-      }
-      console.log('[EditEventModal] Continuing with state update despite backend error');
-    }
-
-    // Always update state, even if backend delete failed (note might already be deleted)
-    console.log('[EditEventModal] Updating state via onDelete callback');
     if (onDelete && typeof onDelete === 'function') {
       try {
-        console.log('[EditEventModal] Calling onDelete with eventId:', eventId);
-        onDelete(eventId);
-        console.log('[EditEventModal] onDelete callback completed');
-      } catch (callbackError) {
-        console.error('[EditEventModal] Error in onDelete callback:', callbackError);
+        console.log('[EditEventModal] Calling onDelete callback');
+        await onDelete(eventId);
+        console.log('[EditEventModal] onDelete callback completed successfully');
+        setShowDeleteConfirm(false);
+        onCancel();
+      } catch (error) {
+        console.error('[EditEventModal] Error in onDelete callback:', error);
+        alert('Failed to delete event: ' + (error.message || 'Unknown error'));
       }
     } else {
-      console.error('[EditEventModal] onDelete is not a function:', typeof onDelete, onDelete);
+      console.error('[EditEventModal] onDelete is not a function');
     }
-
-    setShowDeleteConfirm(false);
-    onCancel();
   };
 
   // Close modal when clicking outside

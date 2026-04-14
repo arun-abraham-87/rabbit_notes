@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { AlertsProvider, UpcomingAlertsRow, TodayEventsBar } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
-import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils.js';
+import { loadAllNotes, createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils.js';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
@@ -1124,6 +1124,21 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                       setEditingEvent(note);
                       setShowEditEventModal(true);
                     }}
+                    onDeleteNote={async (noteId) => {
+                      console.log('[Dashboard EventManager] onDeleteNote called with:', noteId);
+                      try {
+                        await deleteNoteById(noteId);
+                        console.log('[Dashboard EventManager] Backend delete successful');
+                        setNotes(prevNotes => {
+                          const updated = prevNotes.filter(n => n.id !== noteId);
+                          console.log('[Dashboard EventManager] State updated, remaining notes:', updated.length);
+                          return updated;
+                        });
+                      } catch (error) {
+                        console.error('[Dashboard EventManager] Error:', error);
+                        alert('Failed to delete: ' + error.message);
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -1291,18 +1306,28 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             setIsAddingHoliday(false);
           }}
           onDelete={async (noteId) => {
+            console.log('[Dashboard] onDelete called with noteId:', noteId);
             try {
+              // Delete from backend
+              console.log('[Dashboard] Calling deleteNoteById...');
+              await deleteNoteById(noteId);
+              console.log('[Dashboard] Backend delete successful');
+
               // Update notes state by filtering out the deleted note
               setNotes(prevNotes => {
+                console.log('[Dashboard] Updating notes state');
                 const updatedNotes = prevNotes.filter(n => n.id !== noteId);
                 // Also update events state since events are derived from notes
                 const eventNotes = updatedNotes.filter(note => note && note.content && note.content.includes('meta::event::'));
+                console.log('[Dashboard] New events count:', eventNotes.length);
                 setEvents(eventNotes);
                 return updatedNotes;
               });
             } catch (error) {
-              console.error('Error updating state after delete:', error);
+              console.error('[Dashboard] Error deleting event:', error);
+              alert('Failed to delete event: ' + error.message);
             }
+            console.log('[Dashboard] Closing modal');
             setShowEditEventModal(false);
             setEditingEvent(null);
             setIsAddingDeadline(false);

@@ -1,28 +1,47 @@
 import ReactDOM from 'react-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 function ConfirmationModal({ isOpen, onClose, onConfirm }) {
+    const [isLoading, setIsLoading] = useState(false);
+
+    console.log('[ConfirmationModal] Rendering - isOpen:', isOpen, 'onConfirm type:', typeof onConfirm);
+
     // Handle Escape key to close modal
     useEffect(() => {
         if (!isOpen) return;
-        
+
         const handleEscape = (e) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && !isLoading) {
                 onClose();
             }
         };
 
         document.addEventListener('keydown', handleEscape);
         return () => document.removeEventListener('keydown', handleEscape);
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, isLoading]);
 
     if (!isOpen) return null;
 
     // Close modal when clicking outside the modal content
     const handleBackdropClick = (e) => {
-        if (e.target === e.currentTarget) {
-             // Debugging
+        if (e.target === e.currentTarget && !isLoading) {
             onClose(); // Trigger the onClose function passed from parent
+        }
+    };
+
+    // Handle delete confirmation with proper async handling
+    const handleConfirm = async () => {
+        console.log('[ConfirmationModal] Delete button clicked');
+        setIsLoading(true);
+        try {
+            console.log('[ConfirmationModal] Calling onConfirm...');
+            await onConfirm();
+            console.log('[ConfirmationModal] onConfirm completed');
+        } catch (error) {
+            console.error('[ConfirmationModal] Error in onConfirm:', error);
+            alert('Error: ' + error.message);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -33,22 +52,22 @@ function ConfirmationModal({ isOpen, onClose, onConfirm }) {
                 <p className="mb-4">Are you sure you want to delete this note? This action cannot be undone.</p>
                 <div className="flex justify-end gap-4">
                     <button
-                        className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                        onClick={() => {
-                             // Debugging
-                            onClose(); // Trigger the onClose function to close modal
-                        }}
+                        className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={onClose}
+                        disabled={isLoading}
                     >
                         Cancel
                     </button>
                     <button
-                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                        onClick={() => {
-                             // Debugging
-                            onConfirm(); // Trigger the onClose function to close modal
+                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={(e) => {
+                            console.log('[ConfirmationModal] Button onClick fired');
+                            e.stopPropagation();
+                            handleConfirm();
                         }}
+                        disabled={isLoading}
                     >
-                        Delete
+                        {isLoading ? 'Deleting...' : 'Delete'}
                     </button>
                 </div>
             </div>

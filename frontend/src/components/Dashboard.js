@@ -1009,6 +1009,31 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Tags Filter Section */}
+                <div className="flex flex-wrap gap-1 items-center border-l border-gray-300 pl-4">
+                  {[
+                    { f: 'birthday', label: '🎂 Birthday', active: 'bg-pink-500 text-white' },
+                    { f: 'wedding',  label: '💍 Wedding',  active: 'bg-rose-500 text-white' },
+                    { f: 'death',    label: '🕊️ Death',    active: 'bg-slate-500 text-white' },
+                  ].map(({ f, label, active }) => {
+                    const isActive = activeFilters.includes(f);
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => {
+                          setActiveFilters(prev => {
+                            const without = prev.filter(x => x !== 'all' && x !== f);
+                            return prev.includes(f) ? (without.length ? without : ['all']) : [...without, f];
+                          });
+                        }}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${isActive ? active : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
 
                   {/* Set as Default button */}
                   <button

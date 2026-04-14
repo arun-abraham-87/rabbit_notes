@@ -1140,7 +1140,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                   {isToday ? '' : (shouldShowAnniversary ? 'anniversary' : 'until')}
                 </div>
                 <div
-                  className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`}
+                  className={`font-medium w-full truncate flex-shrink-0 ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`}
                   title={note.description}
                   dangerouslySetInnerHTML={{ __html: parseLinks(note.description) }}
                 />
@@ -1151,6 +1151,32 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                     dangerouslySetInnerHTML={{ __html: parseLinks(note.notes) }}
                   />
                 )}
+
+                {/* Tags */}
+                {(() => {
+                  const lines = note.content.split('\n');
+                  const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+                  const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+                  return tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 mt-2 w-full">
+                      {tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full cursor-pointer hover:bg-indigo-200 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Filter by this tag
+                            // You can implement tag filter logic here
+                          }}
+                          title={`Filter by ${tag}`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
                 <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
                   {shouldShowAnniversary ? (
                     (() => {

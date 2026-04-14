@@ -7,7 +7,7 @@ import NotesList from './NotesList.js';
 import WatchList from './WatchList';
 import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
-import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
+import { searchInNote } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
 import { Alerts } from './Alerts';
 
@@ -67,13 +67,6 @@ const NotesMainContainer = ({
     const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
     const searchInputRef = useRef(null);
     const hasParsedInitialUrl = useRef(false);
-
-    // Add suggestion state
-    const [showPopup, setShowPopup] = useState(false);
-    const [filteredTags, setFilteredTags] = useState([]);
-    const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
-    const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
-    const throttleRef = useRef(null);
 
     // Image handling state
     const [pastedImage, setPastedImage] = useState(null);
@@ -454,13 +447,6 @@ const NotesMainContainer = ({
         };
     }, []);
 
-    // Debug: Log objList
-    useEffect(() => {
-
-
-
-    }, [objList]);
-
     // Save focus mode state to localStorage whenever it changes
     useEffect(() => {
         localStorage.setItem('focusMode', JSON.stringify(focusMode));
@@ -479,170 +465,39 @@ const NotesMainContainer = ({
         []
     );
 
-    // Get cursor coordinates for popup positioning
-    const getCursorCoordinates = (event) => {
-        const textarea = event.target;
-        const rect = textarea.getBoundingClientRect();
-
-        // Get cursor position within the textarea
-        const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
-        const lines = textBeforeCursor.split('\n');
-        const currentLine = lines[lines.length - 1];
-
-        // Create a temporary element to measure text width
-        const temp = document.createElement('span');
-        temp.style.font = window.getComputedStyle(textarea).font;
-        temp.style.whiteSpace = 'pre';
-        temp.style.position = 'absolute';
-        temp.style.visibility = 'hidden';
-        temp.textContent = currentLine;
-        document.body.appendChild(temp);
-
-        const charWidth = temp.offsetWidth / currentLine.length;
-        const cursorX = rect.left + (currentLine.length * charWidth) + 10; // Add some padding
-        const cursorY = rect.bottom + 5; // Position below the textarea
-
-        document.body.removeChild(temp);
-
-        return { x: cursorX, y: cursorY };
-    };
-
     // Update local search query immediately, but debounce the actual search
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setLocalSearchQuery(query);
         debouncedSetSearchQuery(query);
-
-        // Add suggestion logic
-        const match = query.match(/(\S+)$/); // Match the last word
-        if (match) {
-            const filterText = match[1].toLowerCase();
-            let filtered = [];
-
-            // Throttle logic
-            if (filterText !== "") {
-                clearTimeout(throttleRef.current); // Clear the existing timeout
-                throttleRef.current = setTimeout(() => {
-                    // Filter based on the text property of each object
-                    filtered = mergedObjList.filter((tag) => {
-                        if (!tag || !tag.text) return false;
-                        return tag.text.toLowerCase().includes(filterText);
-                    });
-
-
-
-
-
-
-
-                    // Debug: Check if any tags contain the filter text
-                    const debugMatches = mergedObjList.filter(tag => {
-                        if (!tag || !tag.text) return false;
-                        const contains = tag.text.toLowerCase().includes(filterText);
-                        if (contains) {
-
-                        }
-                        return contains;
-                    });
-
-
-                    setFilteredTags(filtered);
-
-                    if (filtered.length > 0) {
-                        const { x, y } = getCursorCoordinates(e);
-
-
-                        setCursorPosition({ x, y });
-                        setShowPopup(true);
-                    } else {
-
-                        setShowPopup(false);
-                    }
-                }, 300); // 300ms delay for throttling
-            }
-        } else {
-            setShowPopup(false);
-        }
-    };
-
-    // Handle tag selection
-    const handleSelectTag = (tag) => {
-        const lastSpaceIndex = localSearchQuery.lastIndexOf(" ");
-        const updatedText =
-            (lastSpaceIndex === -1 ? "" : localSearchQuery.slice(0, lastSpaceIndex + 1)) +
-            `${tag.text} `;
-        setLocalSearchQuery(updatedText);
-        setSearchQuery(updatedText);
-        setShowPopup(false);
-        setSelectedTagIndex(-1);
-
-        // Focus back to textarea
-        if (searchInputRef.current) {
-            searchInputRef.current.focus();
-        }
     };
 
     // Handle keyboard shortcuts
     const handleKeyDown = (e) => {
-        // Handle suggestion navigation
-        if (showPopup) {
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setSelectedTagIndex((prev) =>
-                    prev < filteredTags.length - 1 ? prev + 1 : 0
-                );
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setSelectedTagIndex((prev) =>
-                    prev > 0 ? prev - 1 : filteredTags.length - 1
-                );
-            } else if (e.key === "Enter") {
-                e.preventDefault();
-                if (selectedTagIndex >= 0) {
-                    handleSelectTag(filteredTags[selectedTagIndex]);
-                } else if (filteredTags.length > 0) {
-                    handleSelectTag(filteredTags[0]);
-                } else {
-                    // Create note if no suggestions
-                    if (localSearchQuery.trim() || pastedImage) {
-                        handleCreateNote();
-                    }
-                }
-            } else if (e.key === "Tab") {
-                e.preventDefault();
-                if (filteredTags.length > 0) {
-                    handleSelectTag(filteredTags[0]);
-                }
-            } else if (e.key === "Escape") {
-                setShowPopup(false);
-            }
-        } else {
-            // Handle Escape key to remove focus from search bar and clear text
-            if (e.key === "Escape") {
-                e.preventDefault();
-                setLocalSearchQuery('');
-                setSearchQuery('');
-                setShowPopup(false);
-                searchInputRef.current?.blur();
-                return;
-            }
+        // Handle Escape key to remove focus from search bar and clear text
+        if (e.key === "Escape") {
+            e.preventDefault();
+            setLocalSearchQuery('');
+            setSearchQuery('');
+            searchInputRef.current?.blur();
+            return;
+        }
 
-            // Handle down arrow to move to first note when search bar is focused
-            if (e.key === "ArrowDown" && filteredNotes.length > 0) {
-                e.preventDefault();
-                // Remove focus from search bar
-                searchInputRef.current?.blur();
-                // Trigger focus to first note by dispatching a custom event
-                const focusFirstNoteEvent = new CustomEvent('focusFirstNote');
-                document.dispatchEvent(focusFirstNoteEvent);
-                return;
-            }
+        // Handle down arrow to move to first note when search bar is focused
+        if (e.key === "ArrowDown" && filteredNotes.length > 0) {
+            e.preventDefault();
+            // Remove focus from search bar
+            searchInputRef.current?.blur();
+            // Trigger focus to first note by dispatching a custom event
+            const focusFirstNoteEvent = new CustomEvent('focusFirstNote');
+            document.dispatchEvent(focusFirstNoteEvent);
+            return;
+        }
 
-            // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                handleCreateNote();
-            }
+        // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleCreateNote();
         }
     };
 
@@ -753,19 +608,6 @@ const NotesMainContainer = ({
         }
     };
 
-    // Build suggestions from allNotes
-    const mergedObjList = useMemo(() =>
-        buildSuggestionsFromNotes(allNotes, objList),
-        [allNotes, objList]
-    );
-
-    // Debug: Log mergedObjList
-    useEffect(() => {
-
-
-
-    }, [mergedObjList]);
-
     const getCurrentFilterState = () => ({
         searchQuery,
         excludeEvents, excludeMeetings, excludeEventNotes, excludeBackupNotes,
@@ -871,7 +713,6 @@ const NotesMainContainer = ({
                                     onClick={() => {
                                         setLocalSearchQuery('');
                                         setSearchQuery('');
-                                        setShowPopup(false);
 
                                         // Clear image state too
                                         setPastedImage(null);
@@ -932,46 +773,6 @@ const NotesMainContainer = ({
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Suggestion popup */}
-                        {showPopup && (
-                            <div
-                                className="absolute bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
-                                style={{
-                                    left: cursorPosition.x,
-                                    top: cursorPosition.y,
-                                    minHeight: '40px'
-                                }}
-                            >
-                                {console.log('Rendering popup with', filteredTags.length, 'tags:', filteredTags)}
-                                {filteredTags.length === 0 ? (
-                                    <div className="p-2 text-gray-500">No matching tags</div>
-                                ) : (
-                                    filteredTags.map((tag, index) => {
-                                        // Determine type indicator
-                                        let typeIndicator = '';
-                                        if (tag.type === 'person') {
-                                            typeIndicator = ' (P)';
-                                        } else if (tag.type === 'workstream') {
-                                            typeIndicator = ' (W)';
-                                        } else {
-                                            typeIndicator = ' (T)'; // Default to tag
-                                        }
-
-                                        return (
-                                            <div
-                                                key={tag.id || tag.text}
-                                                onClick={() => handleSelectTag(tag)}
-                                                className={`p-2 cursor-pointer hover:bg-purple-100 ${selectedTagIndex === index ? "bg-purple-200" : ""
-                                                    }`}
-                                            >
-                                                {tag.text}{typeIndicator}
-                                            </div>
-                                        );
-                                    })
-                                )}
                             </div>
                         )}
 
@@ -1105,7 +906,7 @@ const NotesMainContainer = ({
                             </div>
                         ) : (
                         <NotesList
-                            objList={mergedObjList}
+                            objList={objList}
                             allNotes={filteredNotes}
                             fullNotesList={allNotes}
                             addNotes={addNote}

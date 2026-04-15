@@ -341,11 +341,45 @@ export default function NoteContent({
         setRightClickPos({ x: e.clientX, y: e.clientY });
     };
 
+    // Strip formatting metadata from a raw line for clean inline editing
+    const stripLineFormatting = (line) => {
+        let clean = line;
+        // Remove color markers: @$%^#HEX@$%^ or @$%^colorname@$%^
+        clean = clean.replace(/@\$%\^[^@]+@\$%\^/g, '');
+        // Remove H1 markers: ###text###
+        clean = clean.replace(/^###(.+?)###$/, '$1');
+        // Remove H2 markers: ##text##
+        clean = clean.replace(/^##(.+?)##$/, '$1');
+        // Remove bullet prefix
+        clean = clean.replace(/^- /, '');
+        return clean;
+    };
+
+    // Extract formatting metadata from a raw line
+    const extractLineFormatting = (line) => {
+        const formatting = {};
+        const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
+        if (colorMatch) formatting.color = colorMatch[0];
+        if (/^###.+###$/.test(line.replace(/@\$%\^[^@]+@\$%\^/g, '').trim())) formatting.isH1 = true;
+        else if (/^##.+##$/.test(line.replace(/@\$%\^[^@]+@\$%\^/g, '').trim())) formatting.isH2 = true;
+        if (line.startsWith('- ')) formatting.isBullet = true;
+        return formatting;
+    };
+
+    // Restore formatting metadata to edited text
+    const restoreLineFormatting = (text, formatting) => {
+        let result = text;
+        if (formatting.isH1) result = `###${result}###`;
+        else if (formatting.isH2) result = `##${result}##`;
+        if (formatting.isBullet) result = `- ${result}`;
+        if (formatting.color) result = `${result}${formatting.color}`;
+        return result;
+    };
+
     const handleTextClick = (idx) => {
         // Save note to history when inline editing starts
         saveNoteToHistory(note);
-        console.log(`[NoteContent] Saved note ${note.id} to history before inline editing`);
-        
+
         // Get the original line content for editing
         const rawLines = getRawLines(note.content);
         const originalLine = rawLines[idx];
@@ -354,25 +388,23 @@ export default function NoteContent({
         // Check if the line contains only a URL (with or without custom text)
         const urlRegex = /^(https?:\/\/[^\s]+)$/;
         const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
-        
+
         // If the line is just a URL or markdown link, don't open inline editing
         if (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim())) {
             return; // Let the normal URL behavior handle it
         }
 
-        setEditingLine({ noteId: note.id, lineIndex: idx });
-        setEditedLineContent(originalLine);
+        setEditingLine({ noteId: note.id, lineIndex: idx, formatting: extractLineFormatting(originalLine) });
+        setEditedLineContent(stripLineFormatting(originalLine));
     };
 
     const handleSaveEdit = async (newText, idx, isH1, isH2) => {
         const lines = note.content.split('\n');
-        if (isH1) {
-            lines[idx] = `###${newText}###`;
-        } else if (isH2) {
-            lines[idx] = `##${newText}##`;
-        } else {
-            lines[idx] = newText;
-        }
+        // Restore formatting metadata that was stripped for editing
+        const formatting = editingLine?.formatting || {};
+        if (isH1) formatting.isH1 = true;
+        if (isH2) formatting.isH2 = true;
+        lines[idx] = restoreLineFormatting(newText, formatting);
         const updatedContent = lines.join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
         
@@ -1382,6 +1414,10 @@ export default function NoteContent({
                         const originalLine = rawLines[idx];
                         const isBlank = !originalLine || originalLine.trim() === '';
                         if (isBlank) return null;
+                        // Don't add bullet if the line is already a bullet element from wrapInContainer
+                        const isBulletElement = (line.key && line.key.startsWith('bullet-')) ||
+                          (originalLine && originalLine.trim().startsWith('- '));
+                        if (isBulletElement) return null;
                         return <span className="mr-2 text-3xl self-start leading-none">•</span>;
                     })()}
                     <div className="flex items-center gap-2">

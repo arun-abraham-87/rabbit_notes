@@ -197,6 +197,17 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
       type = 'heading2';
     } else if (trimmed.startsWith('- ')) {
       type = 'bullet';
+      // Strip the leading "- " from formatted content so the bullet marker isn't duplicated
+      formattedContent = parseInlineFormatting({
+        content: line.replace(/^(\s*)- /, '$1'),
+        searchTerm,
+        lineIndex,
+        onAddText,
+        onEditText,
+        noteContent: content,
+        allNotes,
+        onNavigateToNote
+      });
     }
 
     // Step 3: Determine if this is the first or last line of a code block

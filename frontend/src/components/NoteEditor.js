@@ -622,14 +622,25 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      const cursorPos = e.target.selectionStart;
+      let cursorPos = e.target.selectionStart;
       const newLines = [...lines];
       const currentLine = newLines[index];
+      const isBullet = currentLine.text.startsWith('- ');
+      // Adjust cursor position since bullet textarea doesn't show the "- " prefix
+      if (isBullet) cursorPos += 2;
       const before = currentLine.text.slice(0, cursorPos);
       const after = currentLine.text.slice(cursorPos);
 
       // Continue list items if prefixed with "- "
       const listMatch = before.match(/^(-\s+)/);
+
+      // If bullet line is empty (just "- "), remove the bullet instead of continuing
+      if (isBullet && before.trim() === '-' && !after) {
+        currentLine.text = '';
+        setLines(newLines);
+        return;
+      }
+
       currentLine.text = before;
       const newLineText = listMatch ? listMatch[1] + after : after;
 
@@ -648,7 +659,9 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
         const nextTextarea = textareasRef.current[index + 1];
         if (nextTextarea) {
           nextTextarea.focus();
-          nextTextarea.selectionStart = nextTextarea.selectionEnd = newLineText.length;
+          // Adjust cursor for bullet lines since "- " prefix is hidden in textarea
+          const displayLength = newLineText.startsWith('- ') ? newLineText.length - 2 : newLineText.length;
+          nextTextarea.selectionStart = nextTextarea.selectionEnd = displayLength;
         }
       }, 0);
 
@@ -1255,30 +1268,48 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                         </button>
                       </div>
                     ) : (
-                      <textarea
-                        ref={(el) => (textareasRef.current[originalIndex] = el)}
-                        value={line.text}
-                        onFocus={() => {
-                          setFocusedLineIndex(originalIndex);
-                        }}
-                        onChange={(e) => {
-                          handleTextChange(originalIndex, e.target.value);
-                        }}
-                        onKeyDown={(e) => handleKeyDown(e, originalIndex)}
-                        onPaste={(e) => handlePaste(e, originalIndex)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setContextMenu({
-                            visible: true,
-                            x: e.clientX,
-                            y: e.clientY,
-                            index: originalIndex
-                          });
-                        }}
-                        className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
-                          }`}
-                        rows={1}
-                      />
+                      <div className="flex items-start w-full">
+                        {line.text.startsWith('- ') && (
+                          <span className="text-gray-400 mt-1.5 ml-4 mr-0 flex-shrink-0 text-sm select-none">•</span>
+                        )}
+                        <textarea
+                          ref={(el) => (textareasRef.current[originalIndex] = el)}
+                          value={line.text.startsWith('- ') ? line.text.slice(2) : line.text}
+                          onFocus={() => {
+                            setFocusedLineIndex(originalIndex);
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (line.text.startsWith('- ')) {
+                              handleTextChange(originalIndex, '- ' + val);
+                            } else {
+                              handleTextChange(originalIndex, val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            // If bullet line and backspace at position 0, remove the bullet prefix
+                            if (line.text.startsWith('- ') && e.key === 'Backspace' && e.target.selectionStart === 0 && e.target.selectionEnd === 0) {
+                              e.preventDefault();
+                              handleTextChange(originalIndex, line.text.slice(2));
+                              return;
+                            }
+                            handleKeyDown(e, originalIndex);
+                          }}
+                          onPaste={(e) => handlePaste(e, originalIndex)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenu({
+                              visible: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              index: originalIndex
+                            });
+                          }}
+                          className={`w-full ${line.text.startsWith('- ') ? 'pl-1' : 'pl-6'} pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                            }`}
+                          rows={1}
+                        />
+                      </div>
                     )}
                     {!isTextMode && (
                       <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
@@ -82,6 +82,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   const [isEditMode, setIsEditMode] = useState(false);
   const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState(null);
   const modalRef = useRef(null);
+
+  // Refs for event card elements (for scroll-to-card)
+  const eventCardRefs = useRef({});
 
   // State for pinned events
   const [pinnedEvents, setPinnedEvents] = useState(() => {
@@ -693,6 +696,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     }
   };
 
+  // Scroll to an event card in the events panel
+  const scrollToEventCard = (eventId) => {
+    const el = eventCardRefs.current[eventId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  };
+
   // Function to handle pinning/unpinning events
   const handlePinEvent = (eventId) => {
     setPinnedEvents(prev => {
@@ -854,16 +865,26 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
               return (
                 <div
                   key={`pinned-${note.id}`}
-                  className="group border-2 border-yellow-400 bg-yellow-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow cursor-pointer"
+                  className="group border-2 border-yellow-400 bg-yellow-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow cursor-pointer flex items-center gap-2"
                   style={{ minWidth: '120px' }}
-                  title={note.description}
+                  title={`Click to scroll to ${note.description}`}
+                  onClick={() => scrollToEventCard(note.id)}
                 >
-                  <div className="text-xs font-medium text-gray-700">
-                    {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-gray-700">
+                      {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
+                    </div>
+                    <div className="text-sm font-semibold text-gray-900 truncate">
+                      {note.description}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold text-gray-900 truncate">
-                    {note.description}
-                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
+                    className="text-yellow-500 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                    title="Unpin Event"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
                 </div>
               );
             })}
@@ -1078,7 +1099,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
             return (
               <div
                 key={note.id}
-                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} relative overflow-hidden`}
+                ref={(el) => { eventCardRefs.current[note.id] = el; }}
+                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} ${pinnedEvents.includes(note.id) ? 'ring-2 ring-yellow-400' : ''} relative`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
@@ -1148,17 +1170,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                   )}
                 </div>
 
-                {/* Top-right corner: pin + tag toggle stacked, well clear of hover controls */}
-                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                  {pinnedEvents.includes(note.id) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
-                      className="text-yellow-500 hover:text-yellow-700 transition-colors"
-                      title="Unpin Event"
-                    >
-                      <MapPinIcon className="h-4 w-4" />
-                    </button>
-                  )}
+                {/* Top-right corner: pin/unpin only */}
+                <div className="absolute top-2 right-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
+                    className={`p-1 rounded-full transition-colors ${pinnedEvents.includes(note.id) ? 'text-yellow-600 hover:text-red-500 bg-yellow-100' : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'}`}
+                    title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
+                  >
+                    <MapPinIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">
+                  {/* Deadline/Holiday tag toggle */}
                   {(() => {
                     const isDeadline = note.tags?.some(t => t.toLowerCase() === 'deadline');
                     const isHoliday  = note.tags?.some(t => t.toLowerCase() === 'holiday');
@@ -1184,20 +1207,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                       </button>
                     );
                   })()}
-                </div>
-                <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">
-                  {/* Pin Button - always show in hover controls */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePinEvent(note.id);
-                    }}
-                    className={`p-1 transition-colors flex-shrink-0 ${pinnedEvents.includes(note.id) ? 'text-yellow-600' : 'text-gray-400 hover:text-yellow-600'}`}
-                    title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
-                  >
-                    <MapPinIcon className="h-4 w-4" />
-                  </button>
-
                   {/* Color Options */}
                   <div className="flex gap-0.5 flex-wrap">
                     {colorOptions.map(color => (

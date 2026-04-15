@@ -111,6 +111,20 @@ const Weather = ({ forceExpanded = false }) => {
       };
 
       setWeatherData(processedData);
+
+      // Cache basic weather info for Dashboard summary
+      try {
+        localStorage.setItem('weatherData', JSON.stringify({
+          temperature: processedData.current.temperature_2m,
+          apparentTemperature: processedData.current.apparent_temperature,
+          rain: processedData.current.rain,
+          precipitation: processedData.current.precipitation,
+          humidity: processedData.current.relative_humidity_2m,
+          wind: processedData.current.wind_speed_10m,
+          todayMax: processedData.daily.temperature_2m_max?.[0],
+          todayMin: processedData.daily.temperature_2m_min?.[0],
+        }));
+      } catch (e) { }
     } catch (err) {
       console.error('Error fetching weather:', err);
       setError('Failed to fetch weather data');

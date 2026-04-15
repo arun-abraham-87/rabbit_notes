@@ -951,9 +951,15 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           <div className="text-sm font-semibold text-gray-900 mb-1">Weather</div>
                           <div className="text-xs text-gray-600">
                             {(() => {
-                              // Weather data is fetched by the component, so we'll show a simple indicator
-                              // The component will show full data on hover
-                              return 'Hover for details';
+                              try {
+                                const cachedData = localStorage.getItem('weatherData');
+                                if (cachedData) {
+                                  const w = JSON.parse(cachedData);
+                                  const condition = (w.rain > 0 || w.precipitation > 0) ? 'Showers' : w.temperature > 25 ? 'Sunny' : 'Partly Cloudy';
+                                  return `${w.temperature?.toFixed(1)}°C (feels ${w.apparentTemperature?.toFixed(1)}°C) · ${condition} · ${w.todayMax?.toFixed(0)}°/${w.todayMin?.toFixed(0)}°`;
+                                }
+                              } catch (e) { }
+                              return 'Loading...';
                             })()}
                           </div>
                         </button>

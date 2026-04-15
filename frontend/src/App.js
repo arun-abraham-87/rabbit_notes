@@ -71,6 +71,11 @@ const MainContentArea = ({
               <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => navigate(`/${page}`)} />
             </NotesProvider>
           } />
+          <Route path="/dashboard" element={
+            <NotesProvider>
+              <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => navigate(`/${page}`)} />
+            </NotesProvider>
+          } />
           <Route path="/notes" element={
             <NotesProvider>
               <NotesMainContainer

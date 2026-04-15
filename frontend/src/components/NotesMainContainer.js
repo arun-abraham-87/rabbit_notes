@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
 import { useLocation } from 'react-router-dom';
-import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, EyeIcon, EyeSlashIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
@@ -54,12 +54,6 @@ const NotesMainContainer = ({
     const [focusMode, setFocusMode] = useState(() => {
         // Load focus mode state from localStorage on component mount
         const saved = localStorage.getItem('focusMode');
-        return saved ? JSON.parse(saved) : false;
-    });
-
-    const [popularMode, setPopularMode] = useState(() => {
-        // Load popular mode state from localStorage on component mount
-        const saved = localStorage.getItem('popularMode');
         return saved ? JSON.parse(saved) : false;
     });
 
@@ -452,11 +446,6 @@ const NotesMainContainer = ({
         localStorage.setItem('focusMode', JSON.stringify(focusMode));
     }, [focusMode]);
 
-    // Save popular mode state to localStorage whenever it changes
-    useEffect(() => {
-        localStorage.setItem('popularMode', JSON.stringify(popularMode));
-    }, [popularMode]);
-
     // Debounced search function
     const debouncedSetSearchQuery = useCallback(
         debounce((query) => {
@@ -526,51 +515,9 @@ const NotesMainContainer = ({
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
 
-        // Apply popular mode filtering when enabled and no search query
-        if (popularMode && !searchQuery) {
-            try {
-                const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
-
-                // In popular mode, consider all notes from allNotes, not just filtered ones
-                let allNotesForPopular = allNotes.filter(note => passesExclusionFilters(note));
-
-                // Get today's notes (regardless of click count)
-                const todaysNotes = allNotesForPopular.filter(note =>
-                    isSameAsTodaysDate(note.created_datetime)
-                );
-
-                // Get popular notes (click count > 0, sorted by click count)
-                const popularNotes = allNotesForPopular
-                    .map(note => ({
-                        ...note,
-                        clickCount: clickCounts[note.id] || 0
-                    }))
-                    .filter(note => note.clickCount > 0)
-                    .sort((a, b) => b.clickCount - a.clickCount)
-                    .slice(0, 50)
-                    .map(note => {
-                        // Remove the clickCount property we added for sorting
-                        const { clickCount, ...noteWithoutClickCount } = note;
-                        return noteWithoutClickCount;
-                    });
-
-                // Combine popular notes first, then today's notes, removing duplicates
-                const combinedNotes = [...popularNotes];
-                todaysNotes.forEach(todayNote => {
-                    if (!combinedNotes.some(popularNote => popularNote.id === todayNote.id)) {
-                        combinedNotes.push(todayNote);
-                    }
-                });
-
-                filtered = combinedNotes;
-            } catch (error) {
-                console.error('Error applying popular mode filter:', error);
-            }
-        }
-
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive, excludeTrackers, popularMode]);
+    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive, excludeTrackers]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -820,17 +767,6 @@ const NotesMainContainer = ({
                                             Focus Mode
                                         </>
                                     )}
-                                </button>
-                                <button
-                                    onClick={() => setPopularMode(!popularMode)}
-                                    className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${popularMode
-                                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                    title={popularMode ? 'Exit popular mode' : 'Enter popular mode'}
-                                >
-                                    <FireIcon className="h-4 w-4" />
-                                    Popular Mode
                                 </button>
                                 <button
                                     onClick={() => setCombinedView(v => !v)}

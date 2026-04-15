@@ -893,15 +893,16 @@ export default function NoteContent({
         }
         sections.push(currentSection); // Add the last section
         
-        // Create meta tags for each section
+        // Create meta tags for each section, preserving existing code block tags
+        const existingCodeBlockTags = lines.filter(line => line.trim().startsWith('meta::code_block::'));
         const existingLines = lines.filter(line => !line.trim().startsWith('meta::code_block::'));
         const newMetaTags = sections.map(section => {
             const startLine = Math.min(...section) + 1; // Convert to 1-based
             const endLine = Math.max(...section) + 1; // Convert to 1-based
             return `meta::code_block::${startLine}_${endLine}`;
         });
-        
-        const updatedContent = [...existingLines, ...newMetaTags].join('\n');
+
+        const updatedContent = [...existingLines, ...existingCodeBlockTags, ...newMetaTags].join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
         
         updateNote(note.id, reorderedContent);
@@ -1350,7 +1351,8 @@ export default function NoteContent({
             }
             
             // Apply indentation to React elements (h1, h2, etc.)
-            const shouldIndent = indentFlags[idx];
+            const indentLevel = indentFlags[idx] || 0;
+            const shouldIndent = indentLevel > 0;
             const elementType = line.type;
             const isH1 = elementType === 'h1';
             const isH2 = elementType === 'h2';
@@ -1368,7 +1370,7 @@ export default function NoteContent({
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={multiMoveMode ? handleMultiMoveDragEnd : handleDragEnd}
                     onContextMenu={(e) => handleRightClick(e, idx)}
-                    className={`${shouldIndent ? 'pl-8 ' : ''}
+                    className={`${indentLevel === 2 ? 'pl-16 ' : indentLevel === 1 ? 'pl-8 ' : ''}
                         group cursor-text flex items-center ${
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         } ${
@@ -1507,7 +1509,7 @@ export default function NoteContent({
                 onDrop={(e) => handleDrop(e, idx)}
                 onDragEnd={handleDragEnd}
                 onContextMenu={(e) => handleRightClick(e, idx)}
-                className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}
+                className={`${(() => { const lvl = indentFlags[idx] || 0; const li = isListItem ? 1 : 0; const level = Math.max(lvl, li); return level >= 2 ? 'pl-16 ' : level >= 1 ? 'pl-8 ' : ''; })()}
                     group cursor-text flex items-center ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                     } ${
@@ -1552,7 +1554,7 @@ export default function NoteContent({
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>
-                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && lineContent.trim() !== '' && (
+                        {((indentFlags[idx] || 0) > 0 || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && lineContent.trim() !== '' && (
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
                         <div className="flex items-center gap-2">

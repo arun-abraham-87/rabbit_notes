@@ -561,58 +561,54 @@ export const getIndentFlags = (contentLines) => {
   if (!Array.isArray(contentLines) || contentLines.length === 0) {
     return [];
   }
-  let flag = false;
-  let h1Flag = false; // New flag for h1 headers
-  
+  let h1Flag = false;
+  let h2Flag = false;
+
   return contentLines.map((line, index) => {
-    // Handle React elements (h1, h2, etc.)
+    // Determine element type
+    let isH1 = false;
+    let isH2 = false;
+    let isEmpty = false;
+
     if (React.isValidElement(line)) {
       const elementType = line.type;
-      if (elementType === 'h1') {
-        h1Flag = true;
-        flag = false; // Reset h2 flag when we encounter h1
-        return false;
+      if (elementType === 'h1') isH1 = true;
+      else if (elementType === 'h2') isH2 = true;
+      else {
+        const children = line.props?.children;
+        if (!children || (typeof children === 'string' && children.trim() === '')) {
+          isEmpty = true;
+        }
       }
-      if (elementType === 'h2') {
-        flag = true;
-        h1Flag = false; // Reset h1 flag when we encounter h2
-        return false;
-      }
-      // For other React elements, check if they're empty
-      const children = line.props?.children;
-      if (!children || (typeof children === 'string' && children.trim() === '')) {
-        flag = false;
-        h1Flag = false; // Reset both flags on empty line
-        return false;
+    } else {
+      const lineContent = typeof line === 'string' ? line : (line?.props?.children || '');
+      if (typeof lineContent === 'string') {
+        if (lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) isH1 = true;
+        else if (lineContent.startsWith('<h2>') || lineContent.startsWith('##')) isH2 = true;
+        else if (lineContent.trim() === '') isEmpty = true;
       }
     }
-    
-    // Handle string content
-    const lineContent = typeof line === 'string' ? line : (line?.props?.children || '');
-    
-    // Check for h1 tag in string content (###text###)
-    if (typeof lineContent === 'string' && lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) {
+
+    if (isH1) {
       h1Flag = true;
-      flag = false; // Reset h2 flag when we encounter h1
-      return false;
+      h2Flag = false;
+      return 0; // No indent for H1
     }
-    
-    // Check for h2 tag in string content (##text##)
-    if (typeof lineContent === 'string' && (lineContent.startsWith('<h2>') || lineContent.startsWith('##'))) {
-      flag = true;
-      h1Flag = false; // Reset h1 flag when we encounter h2
-      return false;
+    if (isH2) {
+      h2Flag = true;
+      // Indent H2 one level if under H1
+      return h1Flag ? 1 : 0;
     }
-    
-    // Check for empty line
-    if (typeof lineContent === 'string' && lineContent.trim() === '') {
-      flag = false;
-      h1Flag = false; // Reset both flags on empty line
-      return false;
+    if (isEmpty) {
+      h2Flag = false;
+      h1Flag = false;
+      return 0;
     }
-    
-    // Return true if either h1 or h2 flag is active
-    return flag || h1Flag;
+
+    // Content lines: indent based on context
+    if (h2Flag) return h1Flag ? 2 : 1; // Under H2 (and possibly H1)
+    if (h1Flag) return 1; // Under H1 only
+    return 0;
   });
 };
 

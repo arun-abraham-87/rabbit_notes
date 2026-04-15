@@ -22,6 +22,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [selectedTimeline, setSelectedTimeline] = useState('');
   const [timelines, setTimelines] = useState([]);
   const [validationErrors, setValidationErrors] = useState({ description: false, eventDate: false });
+  const [infoTags, setInfoTags] = useState('');
+  const [infoTagInput, setInfoTagInput] = useState('');
 
   const timelineLinkQueues = useRef(new Map());
   const timelinesRef = useRef([]);
@@ -91,7 +93,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     }
 
     // Parse tracked state
-    setIsTracked(lines.some(line => line.trim() === 'meta::event_tracked'));
+    setIsTracked(lines.some(line => line.trim() === 'meta::event_tracked' || line.trim() === 'meta::info_tracked'));
+
+    // Parse info tags (for information page)
+    const infoTagsLine = lines.find(line => line.startsWith('event_info_tags:'));
+    if (infoTagsLine) {
+      setInfoTags(infoTagsLine.replace('event_info_tags:', '').trim());
+    } else {
+      setInfoTags('');
+    }
 
     // Parse notes - handle multi-line content
     const notesLineIndex = lines.findIndex(line => line.startsWith('event_notes:'));
@@ -562,12 +572,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (isDeadline) {
       content += `\nmeta::event_deadline:true`;
     }
-    // For Information page, add meta::info:: tag
+    // For Information page, add meta::info:: tag and info tags
     if (isInformationPage) {
       content += `\nmeta::info::`;
+      if (infoTags.trim()) {
+        content += `\nevent_info_tags:${infoTags.trim()}`;
+      }
     }
     if (isTracked) {
-      content += `\nmeta::event_tracked`;
+      content += `\nmeta::info_tracked`;
     }
 
     // Save the event and get the result
@@ -1033,6 +1046,98 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                       rows="3"
                     />
                   </div>
+
+                  {/* Info Tags section for Information page */}
+                  {isInformationPage && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Info Tags
+                      </label>
+                      {/* Existing info tags as removable pills */}
+                      {infoTags && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {infoTags.split(',').map(t => t.trim()).filter(Boolean).map((tag, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = infoTags.split(',').map(t => t.trim()).filter(t => t && t !== tag).join(',');
+                                  setInfoTags(updated);
+                                }}
+                                className="ml-0.5 text-purple-500 hover:text-red-500"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {/* All existing info tags from other notes to pick from */}
+                      {(() => {
+                        const currentTagsArr = infoTags ? infoTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+                        const allInfoTags = new Set();
+                        (notes || []).forEach(n => {
+                          if (!n.content) return;
+                          const line = n.content.split('\n').find(l => l.startsWith('event_info_tags:'));
+                          if (line) {
+                            line.replace('event_info_tags:', '').trim().split(',').map(t => t.trim()).filter(Boolean).forEach(t => allInfoTags.add(t));
+                          }
+                        });
+                        const available = [...allInfoTags].filter(t => !currentTagsArr.includes(t)).sort();
+                        if (available.length === 0) return null;
+                        return (
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-500 mb-1">Click to add:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {available.map(tag => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => setInfoTags(infoTags ? `${infoTags},${tag}` : tag)}
+                                  className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={infoTagInput}
+                          onChange={(e) => setInfoTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = infoTagInput.trim();
+                              if (val) {
+                                setInfoTags(infoTags ? `${infoTags},${val}` : val);
+                                setInfoTagInput('');
+                              }
+                            }
+                          }}
+                          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="New tag..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = infoTagInput.trim();
+                            if (val) {
+                              setInfoTags(infoTags ? `${infoTags},${val}` : val);
+                              setInfoTagInput('');
+                            }
+                          }}
+                          className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {!(isInformationPage) && (
                     <div>

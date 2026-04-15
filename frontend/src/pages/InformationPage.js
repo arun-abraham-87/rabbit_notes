@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon, EyeIcon, EyeSlashIcon, HashtagIcon } from '@heroicons/react/24/outline';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import EditEventModal from '../components/EditEventModal';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
@@ -157,7 +157,6 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingTags, setEditingTags] = useState({ eventId: null, tags: '' });
   const [groupByTag, setGroupByTag] = useState(true);
   const [pinnedCards, setPinnedCards] = useState(() => {
     try {
@@ -249,47 +248,6 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     return Array.from(tagSet).sort();
   }, [allEvents]);
 
-  // Handle adding a tag to an event
-  const handleAddTagToEvent = async (eventId, tagToAdd) => {
-    try {
-      const eventNote = notes.find(n => n.id === eventId);
-      if (!eventNote) {
-        alert('Event not found');
-        return;
-      }
-
-      const lines = eventNote.content.split('\n');
-      const tagsLineIndex = lines.findIndex(line => line.startsWith('event_info_tags:'));
-
-      let updatedContent;
-      if (tagsLineIndex !== -1) {
-        // Update existing tags line
-        const tagLine = lines[tagsLineIndex];
-        const existingTags = tagLine.replace('event_info_tags:', '').trim();
-        const tagsArray = existingTags ? existingTags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-
-        // Add new tag if not already present
-        if (!tagsArray.includes(tagToAdd)) {
-          tagsArray.push(tagToAdd);
-          lines[tagsLineIndex] = `event_info_tags:${tagsArray.join(',')}`;
-        }
-        updatedContent = lines.join('\n');
-      } else {
-        // Add new tags line
-        updatedContent = eventNote.content.trim() + '\nevent_info_tags:' + tagToAdd;
-      }
-
-      // Update the note
-      await updateNoteById(eventId, updatedContent);
-
-      // Update the notes array
-      const updatedNote = { ...eventNote, content: updatedContent };
-      setAllNotes(allNotes.map(note => note.id === eventId ? updatedNote : note));
-    } catch (error) {
-      console.error('Error adding tag to event:', error);
-      alert('Failed to add tag. Please try again.');
-    }
-  };
 
   // Separate pinned and unpinned events (only when not grouping by tag)
   const pinnedEvents = groupByTag ? [] : filteredEvents.filter(event => isCardPinned(event.id));
@@ -394,431 +352,232 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     setIsAddModalOpen(false);
   };
 
-  // Handle open tag editor
-  const handleOpenTagEditor = (event) => {
-    const currentTags = event.tags ? event.tags.join(', ') : '';
-    setEditingTags({ eventId: event.id, tags: currentTags });
-  };
 
-  // Handle save tags
-  const handleSaveTags = async () => {
-    if (!editingTags.eventId) return;
+  // Assign consistent colors to tags
+  const tagColors = useMemo(() => {
+    const palette = [
+      { bg: 'bg-indigo-50', border: 'border-indigo-200', accent: 'bg-indigo-500', text: 'text-indigo-700', pill: 'bg-indigo-100 text-indigo-700', hover: 'hover:bg-indigo-100' },
+      { bg: 'bg-emerald-50', border: 'border-emerald-200', accent: 'bg-emerald-500', text: 'text-emerald-700', pill: 'bg-emerald-100 text-emerald-700', hover: 'hover:bg-emerald-100' },
+      { bg: 'bg-amber-50', border: 'border-amber-200', accent: 'bg-amber-500', text: 'text-amber-700', pill: 'bg-amber-100 text-amber-700', hover: 'hover:bg-amber-100' },
+      { bg: 'bg-rose-50', border: 'border-rose-200', accent: 'bg-rose-500', text: 'text-rose-700', pill: 'bg-rose-100 text-rose-700', hover: 'hover:bg-rose-100' },
+      { bg: 'bg-cyan-50', border: 'border-cyan-200', accent: 'bg-cyan-500', text: 'text-cyan-700', pill: 'bg-cyan-100 text-cyan-700', hover: 'hover:bg-cyan-100' },
+      { bg: 'bg-violet-50', border: 'border-violet-200', accent: 'bg-violet-500', text: 'text-violet-700', pill: 'bg-violet-100 text-violet-700', hover: 'hover:bg-violet-100' },
+      { bg: 'bg-orange-50', border: 'border-orange-200', accent: 'bg-orange-500', text: 'text-orange-700', pill: 'bg-orange-100 text-orange-700', hover: 'hover:bg-orange-100' },
+      { bg: 'bg-teal-50', border: 'border-teal-200', accent: 'bg-teal-500', text: 'text-teal-700', pill: 'bg-teal-100 text-teal-700', hover: 'hover:bg-teal-100' },
+    ];
+    const map = {};
+    allTags.forEach((tag, i) => {
+      map[tag] = palette[i % palette.length];
+    });
+    map['Untagged'] = { bg: 'bg-gray-50', border: 'border-gray-200', accent: 'bg-gray-400', text: 'text-gray-600', pill: 'bg-gray-100 text-gray-600', hover: 'hover:bg-gray-100' };
+    return map;
+  }, [allTags]);
 
-    try {
-      const eventNote = notes.find(n => n.id === editingTags.eventId);
-      if (!eventNote) {
-        alert('Event not found');
-        return;
-      }
+  const getTagColor = (tag) => tagColors[tag] || tagColors['Untagged'];
 
-      const lines = eventNote.content.split('\n');
-      const tagsLineIndex = lines.findIndex(line => line.startsWith('event_info_tags:'));
+  // Render a single info card
+  const renderCard = (event, accentColor) => {
+    const isPinned = isCardPinned(event.id);
+    const color = accentColor || getTagColor(event.tags?.[0] || 'Untagged');
 
-      // Clean and format tags (remove empty tags, trim spaces)
-      const tagsArray = editingTags.tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag);
-      const tagsString = tagsArray.join(',');
+    return (
+      <div
+        key={event.id}
+        className={`group/card relative bg-white rounded-xl border ${isPinned ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 flex flex-col overflow-hidden`}
+      >
+        {/* Accent bar */}
+        <div className={`h-1 ${color.accent} w-full`} />
 
-      let updatedContent;
-      if (tagsLineIndex !== -1) {
-        // Update existing tags line
-        if (tagsString) {
-          lines[tagsLineIndex] = `event_info_tags:${tagsString}`;
-        } else {
-          // Remove tags line if empty
-          lines.splice(tagsLineIndex, 1);
-        }
-        updatedContent = lines.join('\n');
-      } else {
-        // Add new tags line
-        if (tagsString) {
-          updatedContent = eventNote.content.trim() + '\nevent_info_tags:' + tagsString;
-        } else {
-          updatedContent = eventNote.content;
-        }
-      }
-
-      // Update the note
-      await updateNoteById(editingTags.eventId, updatedContent);
-
-      // Update the notes array
-      const updatedNote = { ...eventNote, content: updatedContent };
-      setAllNotes(allNotes.map(note => note.id === editingTags.eventId ? updatedNote : note));
-
-      // Close tag editor
-      setEditingTags({ eventId: null, tags: '' });
-    } catch (error) {
-      console.error('Error saving tags:', error);
-      alert('Failed to save tags. Please try again.');
-    }
-  };
-
-  // Handle cancel tag editing
-  const handleCancelTagEditing = () => {
-    setEditingTags({ eventId: null, tags: '' });
-  };
-
-  return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Information</h1>
-        <button
-          onClick={handleAddEvent}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Add Information
-        </button>
-      </div>
-
-      {/* Search Bar and Filters */}
-      <div className="mb-6">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative max-w-md flex-1 min-w-[200px]">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search information (fuzzy search)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            {searchQuery && (
+        <div className="p-5 flex flex-col flex-1">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <h3 className="text-base font-semibold text-gray-900 leading-snug flex-1">
+              {event.title || 'Untitled'}
+            </h3>
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* Pin - always visible */}
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => togglePinCard(event.id)}
+                className={`p-1 rounded-md transition-colors ${isPinned
+                  ? 'text-blue-600 hover:text-red-500'
+                  : 'text-gray-300 hover:text-blue-600'
+                }`}
+                title={isPinned ? 'Unpin' : 'Pin'}
               >
-                <XMarkIcon className="h-5 w-5" />
+                <MapPinIcon className="h-4 w-4" />
               </button>
-            )}
-          </div>
-          <button
-            onClick={() => setGroupByTag(!groupByTag)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${groupByTag
-              ? 'bg-purple-600 text-white hover:bg-purple-700'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            title="Group events by tags"
-          >
-            <TagIcon className="h-5 w-5" />
-            <span className="text-sm font-medium">Group by Tag</span>
-          </button>
-        </div>
-        {searchQuery && (
-          <p className="mt-2 text-sm text-gray-600">
-            Showing {filteredEvents.length} of {allEvents.length} events
-          </p>
-        )}
-      </div>
-
-      {/* Grouped by Tag Section */}
-      {groupByTag && (
-        <>
-          {groupedEventsByTag && groupedEventsByTag.length > 0 ? (
-            <div className="mb-8">
-              {groupedEventsByTag.map((group) => (
-                <div key={group.tag} className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4 text-purple-600 flex items-center gap-2">
-                    <TagIcon className="h-5 w-5" />
-                    {group.tag} ({group.events.length})
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {group.events.map((event) => (
-                      <div
-                        key={event.id}
-                        className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
-                      >
-                        {/* Title with Edit and Pin Icons */}
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                            {event.title || 'Untitled'}
-                          </h3>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={() => togglePinCard(event.id)}
-                              className={`p-1.5 rounded transition-colors ${isCardPinned(event.id)
-                                ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                                }`}
-                              title={isCardPinned(event.id) ? 'Unpin' : 'Pin'}
-                            >
-                              <MapPinIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDuplicateEvent(event)}
-                              className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
-                              title="Duplicate Event"
-                            >
-                              <DocumentDuplicateIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleOpenTagEditor(event)}
-                              className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
-                              title="Edit Tags"
-                            >
-                              <TagIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleToggleTrack(event)}
-                              className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
-                                event.tracked
-                                  ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-600'
-                                  : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
-                              }`}
-                              title={event.tracked ? 'Untrack from dashboard' : 'Show on dashboard'}
-                            >
-                              {event.tracked ? <EyeIcon className="h-3 w-3" /> : <EyeSlashIcon className="h-3 w-3" />}
-                              {event.tracked ? 'Untrack' : 'Track it'}
-                            </button>
-                            <button
-                              onClick={() => handleEditEvent(event)}
-                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                              title="Edit Event"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
-                          {event.content ? (
-                            <div className="whitespace-pre-wrap break-words">
-                              {event.content.split('\n').map((line, lineIndex) => (
-                                <div key={lineIndex} className="mb-1">
-                                  {renderTextWithLinks(line)}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-gray-400 italic">No content</div>
-                          )}
-                        </div>
-
-                        {/* Tags Footer */}
-                        <div className="mt-auto pt-3 border-t border-gray-200">
-                          {event.tags && event.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {event.tags.map((tag, index) => (
-                                <button
-                                  key={index}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenTagEditor(event);
-                                  }}
-                                  className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
-                                  title="Click to edit tags"
-                                >
-                                  {tag}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Pinned Cards Section */}
-      {!groupByTag && pinnedEvents.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-blue-600 flex items-center gap-2">
-            <MapPinIcon className="h-5 w-5" />
-            Pinned Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {pinnedEvents.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col border-2 border-blue-200"
+              {/* Track toggle */}
+              <button
+                onClick={() => handleToggleTrack(event)}
+                className={`p-1 rounded-md transition-colors ${
+                  event.tracked
+                    ? 'text-blue-600 hover:text-red-500'
+                    : 'text-gray-300 hover:text-blue-600'
+                }`}
+                title={event.tracked ? 'Untrack from dashboard' : 'Show on dashboard'}
               >
-                {/* Title with Edit and Pin Icons */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                    {event.title || 'Untitled'}
-                  </h3>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => togglePinCard(event.id)}
-                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                      title="Unpin"
-                    >
-                      <MapPinIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDuplicateEvent(event)}
-                      className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
-                      title="Duplicate Event"
-                    >
-                      <DocumentDuplicateIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenTagEditor(event)}
-                      className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
-                      title="Edit Tags"
-                    >
-                      <TagIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEditEvent(event)}
-                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      title="Edit Event"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
-                  {event.content ? (
-                    <div className="whitespace-pre-wrap break-words">
-                      {event.content.split('\n').map((line, lineIndex) => (
-                        <div key={lineIndex} className="mb-1">
-                          {renderTextWithLinks(line)}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-400 italic">No content</div>
-                  )}
-                </div>
-
-                {/* Tags Footer */}
-                <div className="mt-auto pt-3 border-t border-gray-200">
-                  {event.tags && event.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {event.tags.map((tag, index) => (
-                        <button
-                          key={index}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenTagEditor(event);
-                          }}
-                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
-                          title="Click to edit tags"
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Unpinned Cards Section */}
-      {!groupByTag && (
-        <>
-          {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
+                {event.tracked ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+              </button>
             </div>
-          ) : unpinnedEvents.length > 0 && (
-            <div>
-              {pinnedEvents.length > 0 && (
-                <h2 className="text-xl font-semibold mb-4 text-gray-700">All Information</h2>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {unpinnedEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
-                  >
-                    {/* Title with Edit and Pin Icons */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                        {event.title || 'Untitled'}
-                      </h3>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => togglePinCard(event.id)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Pin"
-                        >
-                          <MapPinIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicateEvent(event)}
-                          className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
-                          title="Duplicate Event"
-                        >
-                          <DocumentDuplicateIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenTagEditor(event)}
-                          className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
-                          title="Edit Tags"
-                        >
-                          <TagIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditEvent(event)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Edit Event"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+          </div>
 
-                    {/* Content */}
-                    <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
-                      {event.content ? (
-                        <div className="whitespace-pre-wrap break-words">
-                          {event.content.split('\n').map((line, lineIndex) => (
-                            <div key={lineIndex} className="mb-1">
-                              {renderTextWithLinks(line)}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-gray-400 italic">No content</div>
-                      )}
-                    </div>
-
-                    {/* Tags Footer */}
-                    <div className="mt-auto pt-3 border-t border-gray-200">
-                      {event.tags && event.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {event.tags.map((tag, index) => (
-                            <button
-                              key={index}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenTagEditor(event);
-                              }}
-                              className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
-                              title="Click to edit tags"
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+          {/* Content */}
+          <div className="flex-1 mb-4 text-gray-600 text-sm leading-relaxed overflow-hidden" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+            {event.content ? (
+              <div className="whitespace-pre-wrap break-words">
+                {event.content.split('\n').map((line, lineIndex) => (
+                  <div key={lineIndex} className={line.trim() ? 'mb-0.5' : 'mb-2'}>
+                    {renderTextWithLinks(line)}
                   </div>
                 ))}
               </div>
+            ) : (
+              <div className="text-gray-300 italic text-xs">No content</div>
+            )}
+          </div>
+
+          {/* Footer: tags + hover actions */}
+          <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1 min-h-[24px] flex-1">
+              {event.tags && event.tags.length > 0 && event.tags.map((tag, index) => {
+                const tc = getTagColor(tag);
+                return (
+                  <span
+                    key={index}
+                    className={`px-2 py-0.5 text-[11px] font-medium ${tc.pill} rounded-full`}
+                  >
+                    {tag}
+                  </span>
+                );
+              })}
             </div>
+            {/* Action buttons - visible on hover */}
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity flex-shrink-0">
+              <button onClick={() => handleEditEvent(event)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors" title="Edit">
+                <PencilIcon className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => handleDuplicateEvent(event)} className="p-1.5 text-gray-400 hover:text-green-600 rounded-md transition-colors" title="Duplicate">
+                <DocumentDuplicateIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Events to display
+  const eventsToShow = groupByTag ? [] : filteredEvents;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-bold text-gray-900">Information</h1>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="px-2 py-0.5 bg-gray-100 rounded-full">{allEvents.length} items</span>
+                <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full">{allTags.length} tags</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Search */}
+              <div className="relative w-72">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {/* Group toggle */}
+              <button
+                onClick={() => setGroupByTag(!groupByTag)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors ${groupByTag
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <HashtagIcon className="h-4 w-4" />
+                Groups
+              </button>
+              {/* Add */}
+              <button
+                onClick={handleAddEvent}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add
+              </button>
+            </div>
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-xs text-gray-500">
+              {filteredEvents.length} of {allEvents.length} items
+            </p>
           )}
-        </>
-      )}
+        </div>
+      </div>
+
+      <div className="px-8 py-6">
+        {/* Grouped by Tag View */}
+        {groupByTag && (
+          <>
+            {groupedEventsByTag && groupedEventsByTag.length > 0 ? (
+              <div className="space-y-8">
+                {groupedEventsByTag.map((group) => {
+                  const color = getTagColor(group.tag);
+                  return (
+                    <div key={group.tag}>
+                      {/* Group header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-3 h-3 rounded-full ${color.accent}`} />
+                        <h2 className={`text-lg font-semibold ${color.text}`}>{group.tag}</h2>
+                        <span className="text-xs text-gray-400">{group.events.length}</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      {/* Cards grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {group.events.map((event) => renderCard(event, color))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <TagIcon className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm">{searchQuery ? 'No matches found.' : 'No information yet. Click Add to get started.'}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Flat view (ungrouped) */}
+        {!groupByTag && (
+          <>
+            {eventsToShow.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {eventsToShow.map((event) => renderCard(event))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <TagIcon className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm">{searchQuery ? 'No matches found.' : 'No information yet. Click Add to get started.'}</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Edit/Add Event Modal */}
       {(editingEvent || isAddModalOpen) && (
@@ -834,129 +593,6 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
         />
       )}
 
-      {/* Tag Editing Modal */}
-      {editingTags.eventId && (() => {
-        // Get current event to check existing tags
-        const currentEvent = allEvents.find(e => e.id === editingTags.eventId);
-        const currentTagsArray = editingTags.tags
-          ? editingTags.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
-          : [];
-
-        // Get tags from other cards (exclude current card's tags)
-        const otherTags = allTags.filter(tag => !currentTagsArray.includes(tag));
-
-        // Function to add tag to current tags
-        const handleAddTag = (tagToAdd) => {
-          if (!currentTagsArray.includes(tagToAdd)) {
-            const updatedTags = currentTagsArray.length > 0
-              ? [...currentTagsArray, tagToAdd].join(', ')
-              : tagToAdd;
-            setEditingTags({ ...editingTags, tags: updatedTags });
-          }
-        };
-
-        // Function to remove tag from current tags
-        const handleRemoveTag = (tagToRemove) => {
-          const updatedTagsArray = currentTagsArray.filter(tag => tag !== tagToRemove);
-          const updatedTags = updatedTagsArray.join(', ');
-          setEditingTags({ ...editingTags, tags: updatedTags });
-        };
-
-        return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Edit Tags</h3>
-                <button
-                  onClick={handleCancelTagEditing}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={editingTags.tags}
-                  onChange={(e) => setEditingTags({ ...editingTags, tags: e.target.value })}
-                  placeholder="e.g., tag1, tag2, tag3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400"
-                  autoFocus
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  Enter tags separated by commas. Tags will be saved as <code className="bg-gray-100 px-1 rounded">event_info_tags:tag1,tag2,tag3</code>
-                </p>
-              </div>
-
-              {/* Current Tags */}
-              {currentTagsArray.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Tags
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {currentTagsArray.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 rounded-full"
-                      >
-                        {tag}
-                        <button
-                          onClick={() => handleRemoveTag(tag)}
-                          className="ml-1 text-purple-700 hover:text-red-600 hover:bg-purple-200 rounded-full p-0.5 transition-colors"
-                          title={`Remove "${tag}"`}
-                        >
-                          <XMarkIcon className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Tags from Other Cards */}
-              {otherTags.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tags from Other Cards (click to add)
-                  </label>
-                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
-                    {otherTags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleAddTag(tag)}
-                        className="px-3 py-1 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-full hover:bg-purple-50 hover:border-purple-400 hover:text-purple-700 transition-colors cursor-pointer"
-                        title={`Click to add "${tag}"`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={handleCancelTagEditing}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveTags}
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Save Tags
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }

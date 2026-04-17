@@ -22,6 +22,13 @@ const getEventDetails = (content) => {
   return { description, dateTime, recurrence };
 };
 
+const formatDateKey = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
   const [isExpanded, setIsExpanded] = useState(true);
@@ -32,23 +39,21 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
     setAcknowledgedEvents(new Set());
   }, [events]);
 
-  // Function to check if an event is acknowledged for a specific year
-  const isAcknowledged = (event, year) => {
-    const metaTag = `meta::acknowledged::${year}`;
-    return event.content.includes(metaTag) || acknowledgedEvents.has(`${event.id}-${year}`);
+  // Function to check if a specific occurrence is acknowledged
+  const isAcknowledged = (event, dateKey) => {
+    const metaTag = `meta::acknowledged::${dateKey}`;
+    return event.content.includes(metaTag) || acknowledgedEvents.has(`${event.id}-${dateKey}`);
   };
 
   // Function to check if an event needs acknowledgment
   const needsAcknowledgment = (event, occurrenceDate) => {
     const april2025 = new Date('2025-04-01');
     const now = new Date();
-    const year = occurrenceDate.getFullYear();
+    const dateKey = formatDateKey(occurrenceDate);
 
     // Check if the occurrence is after April 1st, 2025 and on or before current date
     if (occurrenceDate >= april2025 && occurrenceDate <= now) {
-      // If it's today's date, always needs acknowledgment
-     
-      return !isAcknowledged(event, year);
+      return !isAcknowledged(event, dateKey);
     }
     return false;
   };
@@ -92,29 +97,29 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
     }).filter(occurrence => needsAcknowledgment(occurrence.event, occurrence.date));
   };
 
-  const handleAcknowledge = async (eventId, year) => {
+  const handleAcknowledge = async (eventId, dateKey) => {
     try {
       const event = events.find(e => e.id === eventId);
       if (!event) return;
-      
-      const metaTag = `meta::acknowledged::${year}`;
+
+      const metaTag = `meta::acknowledged::${dateKey}`;
       if (event.content.includes(metaTag)) {
         return; // Already acknowledged
       }
-      
+
       const updatedContent = event.content.trim() + `\n${metaTag}`;
       await updateNoteById(eventId, updatedContent);
-      
+
       // Update local state to reflect acknowledgment
       setAcknowledgedEvents(prev => {
         const newSet = new Set(prev);
-        newSet.add(`${eventId}-${year}`);
+        newSet.add(`${eventId}-${dateKey}`);
         return newSet;
       });
-      
+
       // Call the callback if provided
       if (onAcknowledgeEvent) {
-        onAcknowledgeEvent(eventId, year);
+        onAcknowledgeEvent(eventId, dateKey);
       }
     } catch (error) {
       console.error('Error in handleAcknowledge:', error);
@@ -134,53 +139,57 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
 
   const handleAcknowledgeAll = async () => {
     if (unacknowledgedOccurrences.length === 0) return;
-    
+
     setIsAcknowledgingAll(true);
     try {
-      // Group occurrences by event ID and year to avoid duplicates
-      const acknowledgmentMap = new Map();
+      // Group occurrences by event ID so we do one write per event,
+      // but track each specific date so other occurrences are not affected.
+      const updatesByEvent = new Map();
+      const acknowledgedKeys = new Set();
+
       unacknowledgedOccurrences.forEach(occurrence => {
         const eventId = occurrence.event.id;
-        const year = occurrence.date.getFullYear();
-        const key = `${eventId}-${year}`;
-        if (!acknowledgmentMap.has(key)) {
-          acknowledgmentMap.set(key, { eventId, year, event: occurrence.event });
+        const dateKey = formatDateKey(occurrence.date);
+        const stateKey = `${eventId}-${dateKey}`;
+        if (acknowledgedKeys.has(stateKey)) return;
+        acknowledgedKeys.add(stateKey);
+
+        if (!updatesByEvent.has(eventId)) {
+          updatesByEvent.set(eventId, []);
         }
+        updatesByEvent.get(eventId).push(dateKey);
       });
 
-      const acknowledgedKeys = new Set();
-      
       // Process acknowledgments sequentially to avoid race conditions
-      for (const { eventId, year, event } of acknowledgmentMap.values()) {
+      for (const [eventId, dateKeys] of updatesByEvent) {
         try {
-          const metaTag = `meta::acknowledged::${year}`;
-          
-          // Get the latest event content (in case it was updated)
           const currentEvent = events.find(e => e.id === eventId);
           if (!currentEvent) continue;
-          
-          // Check if already acknowledged
-          if (currentEvent.content.includes(metaTag)) {
-            acknowledgedKeys.add(`${eventId}-${year}`);
-            continue;
+
+          let content = currentEvent.content.trim();
+          let changed = false;
+          for (const dateKey of dateKeys) {
+            const metaTag = `meta::acknowledged::${dateKey}`;
+            if (!content.includes(metaTag)) {
+              content = `${content}\n${metaTag}`;
+              changed = true;
+            }
           }
-          
-          // Update the note with acknowledgment
-          const updatedContent = currentEvent.content.trim() + `\n${metaTag}`;
-          await updateNoteById(eventId, updatedContent);
-          
-          // Track this acknowledgment
-          acknowledgedKeys.add(`${eventId}-${year}`);
-          
-          // Call the callback if provided
+
+          if (changed) {
+            await updateNoteById(eventId, content);
+          }
+
           if (onAcknowledgeEvent) {
-            onAcknowledgeEvent(eventId, year);
+            for (const dateKey of dateKeys) {
+              onAcknowledgeEvent(eventId, dateKey);
+            }
           }
         } catch (error) {
-          console.error(`Error acknowledging event ${eventId} for year ${year}:`, error);
+          console.error(`Error acknowledging event ${eventId}:`, error);
         }
       }
-      
+
       // Update local state once with all acknowledgments
       setAcknowledgedEvents(prev => {
         const newSet = new Set(prev);
@@ -269,7 +278,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
+                    onClick={() => handleAcknowledge(occurrence.event.id, formatDateKey(occurrence.date))}
                     className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                   >
                     <CheckCircleIcon className="w-5 h-5" />

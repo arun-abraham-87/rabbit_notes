@@ -499,10 +499,11 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   };
 
   const handleAddExistingTag = (tag) => {
+    const cleanTag = tag.startsWith('#') ? tag.slice(1) : tag;
     if (!tags) {
-      setTags(tag);
-    } else if (!tags.split(',').includes(tag)) {
-      setTags(`${tags},${tag}`);
+      setTags(cleanTag);
+    } else if (!tags.split(',').map(t => t.trim()).includes(cleanTag)) {
+      setTags(`${tags},${cleanTag}`);
     }
   };
 
@@ -1154,7 +1155,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                                 onClick={() => handleAddExistingTag(tag)}
                                 className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
                               >
-                                {tag}
+                                {tag.startsWith('#') ? tag.slice(1) : tag}
                               </button>
                             ))}
                           </div>

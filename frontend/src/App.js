@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
 import NotesMainContainer from './components/NotesMainContainer.js';
 import TagListing from './components/TagListing.js';
-import TodoList from './components/TodoList.js';
+// Removed TodoList
 import LeftPanel from './components/LeftPanel';
 import RightPanel from './components/RightPanel';
 import Journals from './pages/Journals';
@@ -40,6 +40,12 @@ import FamilyTree from './pages/FamilyTree';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
+
+// Apply saved font preference on app load
+const savedFont = localStorage.getItem('appFont');
+if (savedFont && savedFont !== 'System Default') {
+  document.documentElement.style.fontFamily = `"${savedFont}", sans-serif`;
+}
 
 // MainContentArea component that adjusts based on left panel state
 const MainContentArea = ({
@@ -111,19 +117,7 @@ const MainContentArea = ({
               </div>
             </div>
           } />
-          <Route path="/todos" element={
-            <div className="h-full overflow-y-auto">
-              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                  <TodoList
-                    allNotes={allNotes}
-                    setAllNotes={setAllNotes}
-                    updateNote={updateNote}
-                  />
-                </div>
-              </div>
-            </div>
-          } />
+
           <Route path="/journals" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
@@ -312,7 +306,7 @@ const AppContent = () => {
   const [allNotes, setAllNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
-  const [todos, setTodos] = useState([]);
+
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
   const [showPastePopup, setShowPastePopup] = useState(false);

@@ -74,8 +74,8 @@ const TrackedEvents = ({ notes, setNotes }) => {
   if (trackedEvents.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+    <div className="mb-2">
+      <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
         Tracked Events
       </div>
       <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AlertsProvider, UpcomingAlertsRow, TodayEventsBar } from './Alerts.js';
+import { AlertsProvider, TodayEventsBar, BackupAlert } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
 import { loadAllNotes, createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils.js';
-import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon, ArrowTrendingUpIcon, CurrencyDollarIcon, SunIcon, CloudIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
 import BookmarkedLinks from './BookmarkedLinks.js';
@@ -13,12 +13,14 @@ import FlaggedReviewDues from './FlaggedReviewDues.js';
 import StockPrice from './Stocks.js';
 import ExchangeRates from './ExchangeRates.js';
 import Weather from './Weather.js';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 import EditEventModal from './EditEventModal.js';
 import WatchedTrackers from './WatchedTrackers.js';
-import TrackedEvents from './TrackedEvents.js';
+
 import TrackedInfoCards from './TrackedInfoCards.js';
 import Countdown from './Countdown.js';
+import CustomCalendar from './CustomCalendar.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
 
@@ -152,6 +154,58 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
   );
 };
 
+const AlertsHelpPopup = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800">Alerts & Reminders Wiki</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <h4 className="font-bold text-gray-900 mb-2">Quick Access</h4>
+            <ul className="list-disc pl-5 text-gray-700 space-y-1 text-sm">
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">r</kbd> to open the Reminders Only view.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">w</kbd> to open the Reviews Overdue Only view.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">Escape</kbd> to return to the normal dashboard view.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900 mb-2">Navigation</h4>
+            <ul className="list-disc pl-5 text-gray-700 space-y-1 text-sm">
+              <li>Use <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">&uarr;</kbd> and <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">&darr;</kbd> arrows to navigate through the reminders list.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">Enter</kbd> or <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">l</kbd> to open links within the currently focused reminder.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">s</kbd> to snooze or dismiss the focused reminder.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900 mb-2">Advanced (Vim-style) Navigation</h4>
+            <ul className="list-disc pl-5 text-gray-700 space-y-1 text-sm">
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">gg</kbd> to jump to the first reminder.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">G</kbd> to jump to the last reminder.</li>
+              <li>Type a number followed by <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">j</kbd> or <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">k</kbd> to jump forward or backward (e.g., <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">4j</kbd> jumps down 4 items).</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900 mb-2">Cadence & Grouping</h4>
+            <ul className="list-disc pl-5 text-gray-700 space-y-1 text-sm">
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">&rarr;</kbd> (Right Arrow) to open the cadence selector for the focused reminder.</li>
+              <li>Press <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 font-mono">&larr;</kbd> (Left Arrow) to close the cadence selector.</li>
+              <li>Use the buttons at the top of the Reminders list to group them by Color, Title, or Cadence.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const { isPinned, togglePinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
@@ -171,6 +225,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
   const [showAddOptionsPopup, setShowAddOptionsPopup] = useState(false);
+  const [showAlertsHelpPopup, setShowAlertsHelpPopup] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
@@ -185,6 +240,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   const [lastLoginTime, setLastLoginTime] = useState(null);
   const [activePopup, setActivePopup] = useState(null); // Track which popup is active: 'stock', 'exchange', 'weather', or null
+  const [showFontSelector, setShowFontSelector] = useState(false);
+  const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || 'System Default');
+  const fontSelectorRef = useRef(null);
 
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -196,6 +254,61 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Apply selected font globally
+  useEffect(() => {
+    if (selectedFont === 'System Default') {
+      document.documentElement.style.fontFamily = '';
+    } else {
+      document.documentElement.style.fontFamily = `"${selectedFont}", sans-serif`;
+    }
+    localStorage.setItem('appFont', selectedFont);
+  }, [selectedFont]);
+
+  // Close font selector on outside click
+  useEffect(() => {
+    if (!showFontSelector) return;
+    const handleClick = (e) => {
+      if (fontSelectorRef.current && !fontSelectorRef.current.contains(e.target)) {
+        setShowFontSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showFontSelector]);
+
+  const availableFonts = [
+    'System Default',
+    'Arial',
+    'Helvetica',
+    'Verdana',
+    'Tahoma',
+    'Trebuchet MS',
+    'Georgia',
+    'Times New Roman',
+    'Garamond',
+    'Courier New',
+    'Monaco',
+    'Menlo',
+    'Consolas',
+    'SF Pro Display',
+    'SF Mono',
+    'Inter',
+    'Roboto',
+    'Open Sans',
+    'Lato',
+    'Montserrat',
+    'Raleway',
+    'Poppins',
+    'Nunito',
+    'Quicksand',
+    'Comic Sans MS',
+    'Impact',
+    'Lucida Console',
+    'Palatino Linotype',
+    'Book Antiqua',
+    'Segoe UI',
+  ];
 
   // Load selected timezones from localStorage on component mount
   useEffect(() => {
@@ -236,44 +349,6 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     month: 'long',
     day: 'numeric'
   });
-
-  // Calculate fun facts and countdowns
-  const getFunFacts = () => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentDay = now.getDate();
-
-    // End of year
-    const endOfYear = new Date(currentYear, 11, 31);
-    const daysToEndOfYear = Math.ceil((endOfYear - now) / (1000 * 60 * 60 * 24));
-    const weeksToEndOfYear = Math.ceil(daysToEndOfYear / 7);
-    const monthsToEndOfYear = 12 - currentMonth - 1; // -1 because we're in current month
-
-    // End of month
-    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    const daysToEndOfMonth = endOfMonth.getDate() - currentDay;
-
-    // End of week (Sunday)
-    const daysToSunday = 7 - now.getDay();
-    const daysToEndOfWeek = daysToSunday === 7 ? 0 : daysToSunday;
-
-    // Progress through year
-    const startOfYear = new Date(currentYear, 0, 1);
-    const daysSinceStartOfYear = Math.ceil((now - startOfYear) / (1000 * 60 * 60 * 24));
-    const totalDaysInYear = new Date(currentYear, 11, 31).getDate() +
-      new Date(currentYear, 11, 0).getDate() * 11; // Approximate
-    const yearProgress = Math.round((daysSinceStartOfYear / totalDaysInYear) * 100);
-
-    return {
-      daysToEndOfYear,
-      weeksToEndOfYear,
-      monthsToEndOfYear,
-      daysToEndOfMonth,
-      daysToEndOfWeek,
-      yearProgress
-    };
-  };
 
   // Function to format timezone time in compact form
   const formatTimezoneTime = (timeZone) => {
@@ -671,7 +746,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
         <>
           {/* Bookmarked Links - Topmost Item */}
           {!isPinned && (
-            <div className="mb-8">
+            <div className="mb-4">
               <BookmarkedLinks
                 key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note && note.content && note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
                 notes={notes}
@@ -680,175 +755,23 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             </div>
           )}
 
+          {/* Backup Alert */}
+          <div className="mb-4">
+            <BackupAlert notes={notes} />
+          </div>
+
+
           {/* First Row: Date and Timezone Display (Full Width) */}
           <div className={`mb-4 ${isPinned ? 'pt-8' : ''}`}>
             <div className="flex flex-col items-center">
-              {/* Last Login Info */}
-              {lastLoginTime && (
-                <div className="mb-4 text-sm text-gray-500">
-                  You last logged in on {lastLoginTime.toLocaleString('en-US', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  })}
-                </div>
-              )}
-
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
-                <div className="relative group">
+                <div className="relative group/date">
                   <h1 className="text-3xl font-bold cursor-pointer">{formattedDate}</h1>
 
-                  {/* Time Until Year End Card - appears on hover */}
-                  <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-6 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    {(() => {
-                      const facts = getFunFacts();
-                      let yearCountdown = `${facts.daysToEndOfYear} days`;
-                      if (facts.weeksToEndOfYear > 0) {
-                        yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
-                      }
-                      if (facts.monthsToEndOfYear > 0) {
-                        yearCountdown += ` / ${facts.monthsToEndOfYear} month${facts.monthsToEndOfYear > 1 ? 's' : ''}`;
-                      }
-
-                      // Calculate next DST change for Melbourne (Australia/Melbourne)
-                      const getNextDSTChange = () => {
-                        const now = new Date();
-                        const currentYear = now.getFullYear();
-                        const nextYear = currentYear + 1;
-
-                        // DST ends: First Sunday in April at 3:00 AM (clocks go back 1 hour)
-                        // DST starts: First Sunday in October at 2:00 AM (clocks go forward 1 hour)
-
-                        const getFirstSundayOfMonth = (year, month) => {
-                          const firstDay = new Date(year, month, 1);
-                          const dayOfWeek = firstDay.getDay();
-                          const daysToAdd = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-                          return new Date(year, month, 1 + daysToAdd);
-                        };
-
-                        // Get DST end date (April) for current and next year
-                        const dstEndCurrent = getFirstSundayOfMonth(currentYear, 3); // April = month 3
-                        dstEndCurrent.setHours(3, 0, 0, 0);
-
-                        const dstEndNext = getFirstSundayOfMonth(nextYear, 3);
-                        dstEndNext.setHours(3, 0, 0, 0);
-
-                        // Get DST start date (October) for current and next year
-                        const dstStartCurrent = getFirstSundayOfMonth(currentYear, 9); // October = month 9
-                        dstStartCurrent.setHours(2, 0, 0, 0);
-
-                        const dstStartNext = getFirstSundayOfMonth(nextYear, 9);
-                        dstStartNext.setHours(2, 0, 0, 0);
-
-                        // Find the next DST change
-                        let nextChange = null;
-                        let changeType = '';
-
-                        if (now < dstEndCurrent) {
-                          nextChange = dstEndCurrent;
-                          changeType = 'ends';
-                        } else if (now < dstStartCurrent) {
-                          nextChange = dstStartCurrent;
-                          changeType = 'starts';
-                        } else if (now < dstEndNext) {
-                          nextChange = dstEndNext;
-                          changeType = 'ends';
-                        } else {
-                          nextChange = dstStartNext;
-                          changeType = 'starts';
-                        }
-
-                        return { date: nextChange, type: changeType };
-                      };
-
-                      const dstInfo = getNextDSTChange();
-                      const formatDate = (date) => {
-                        const dateStr = new Intl.DateTimeFormat('en-AU', {
-                          timeZone: 'Australia/Melbourne',
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        }).format(date);
-                        const timeStr = new Intl.DateTimeFormat('en-AU', {
-                          timeZone: 'Australia/Melbourne',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        }).format(date);
-                        return `${dateStr} (${timeStr})`;
-                      };
-
-                      return (
-                        <>
-                          {/* Title */}
-                          <h2 className="text-lg font-semibold text-gray-800 mb-4">Time Until Year End</h2>
-
-                          {/* Main Countdown */}
-                          <div className="text-2xl font-bold text-blue-600 mb-4">
-                            {yearCountdown}
-                          </div>
-
-                          {/* Remaining Section */}
-                          <div className="mb-4">
-                            <div className="text-sm text-gray-500 mb-2">Remaining</div>
-                            <div className="space-y-1 text-sm text-gray-700">
-                              {facts.daysToEndOfMonth > 0 && (
-                                <div>{facts.daysToEndOfMonth} days to end of month</div>
-                              )}
-                              {facts.daysToEndOfWeek > 0 && (
-                                <div>{facts.daysToEndOfWeek} days to end of week</div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="mt-4 mb-4">
-                            <div className="bg-green-500 rounded-lg px-4 py-2">
-                              <div className="text-white text-sm font-medium">
-                                {facts.yearProgress}% through the year
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Daylight Saving Info */}
-                          {showTimezones && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-                                <div className="flex items-start">
-                                  <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                  <div className="ml-3 flex-1">
-                                    <h3 className="text-sm font-medium text-blue-800">
-                                      Next Daylight Saving Change - Melbourne 🇦🇺
-                                    </h3>
-                                    <div className="mt-1 text-sm text-blue-700">
-                                      <p>
-                                        Daylight Saving {dstInfo.type === 'starts' ? 'starts' : 'ends'} on{' '}
-                                        <span className="font-semibold">{formatDate(dstInfo.date)}</span>
-                                      </p>
-                                      <p className="text-xs mt-1 text-blue-600">
-                                        {dstInfo.type === 'starts'
-                                          ? 'Clocks will go forward 1 hour (2:00 AM → 3:00 AM)'
-                                          : 'Clocks will go back 1 hour (3:00 AM → 2:00 AM)'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                  {/* Calendar dropdown popup - appears on hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-[1100px] bg-white rounded-lg shadow-xl border border-gray-200 z-50 opacity-0 invisible group-hover/date:opacity-100 group-hover/date:visible transition-all duration-200 max-h-[80vh] overflow-y-auto">
+                    <CustomCalendar allNotes={notes} />
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -856,6 +779,38 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   <div className="flex items-center gap-1 text-sm text-gray-500">
                     <span>{baseTimezoneFlag}</span>
                     <span>{baseTimezoneLabel}</span>
+                  </div>
+                  {/* Font Selector */}
+                  <div className="relative" ref={fontSelectorRef}>
+                    <button
+                      onClick={() => setShowFontSelector(!showFontSelector)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                      title="Change font"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="4 7 4 4 20 4 20 7" />
+                        <line x1="9" y1="20" x2="15" y2="20" />
+                        <line x1="12" y1="4" x2="12" y2="20" />
+                      </svg>
+                    </button>
+                    {showFontSelector && (
+                      <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-72 overflow-y-auto">
+                        <div className="p-2 border-b border-gray-100">
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Font</div>
+                        </div>
+                        {availableFonts.map((font) => (
+                          <button
+                            key={font}
+                            onClick={() => { setSelectedFont(font); setShowFontSelector(false); }}
+                            className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors ${selectedFont === font ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            style={{ fontFamily: font === 'System Default' ? 'inherit' : `"${font}", sans-serif` }}
+                          >
+                            {font}
+                            {selectedFont === font && <span className="float-right text-blue-500">&#10003;</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -868,110 +823,164 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
               )}
 
               {/* Stock Information, Exchange Rates, and Weather - Button Row */}
-              {showTimezones && (
-                <div className="mb-6 w-full">
-                  <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
-                    <div className="flex gap-1.5 sm:gap-2">
-                      {/* Stock Information Button */}
-                      <div
-                        className="relative group flex-1"
-                        onMouseEnter={() => setActivePopup('stock')}
-                        onMouseLeave={() => {
-                          // Only clear if this is still the active one
-                          if (activePopup === 'stock') {
-                            setActivePopup(null);
-                          }
-                        }}
-                      >
-                        <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
-                          <div className="text-sm font-semibold text-gray-900 mb-1">Stock Information</div>
-                          <div className="text-xs text-gray-600">
-                            {(() => {
-                              try {
-                                const cachedData = localStorage.getItem('stockPriceData');
-                                if (cachedData) {
-                                  const { price } = JSON.parse(cachedData);
-                                  return `$${price?.toFixed(2) || 'Loading...'}`;
-                                }
-                              } catch (e) { }
-                              return 'Loading...';
-                            })()}
-                          </div>
-                        </button>
-                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'stock' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                          }`}>
-                          <StockPrice forceExpanded={true} />
-                        </div>
-                      </div>
+              {showTimezones && (() => {
+                let stockPrice = null;
+                let stockSymbol = '';
+                let stockShares = parseInt(localStorage.getItem('stockShares') || '100', 10);
+                try {
+                  const c = localStorage.getItem('stockPriceData');
+                  if (c) { const d = JSON.parse(c); stockPrice = d.price; stockSymbol = d.symbol || ''; }
+                } catch (e) { }
 
-                      {/* Exchange Rates Button */}
-                      <div
-                        className="relative group flex-1"
-                        onMouseEnter={() => setActivePopup('exchange')}
-                        onMouseLeave={() => {
-                          // Only clear if this is still the active one
-                          if (activePopup === 'exchange') {
-                            setActivePopup(null);
-                          }
-                        }}
-                      >
-                        <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
-                          <div className="text-sm font-semibold text-gray-900 mb-1">Exchange Rates</div>
-                          <div className="text-xs text-gray-600">
-                            {(() => {
-                              try {
-                                const cachedData = localStorage.getItem('exchangeRatesData');
-                                if (cachedData) {
-                                  const { usdToInr, audToInr } = JSON.parse(cachedData);
-                                  return `USD: ₹${usdToInr?.toFixed(2) || '0.00'} | AUD: ₹${audToInr?.toFixed(2) || '0.00'}`;
-                                }
-                              } catch (e) { }
-                              return 'Loading...';
-                            })()}
-                          </div>
-                        </button>
-                        <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                          }`}>
-                          <ExchangeRates forceExpanded={true} />
-                        </div>
-                      </div>
+                // Compute market status
+                const getMarketInfo = () => {
+                  const now = new Date();
+                  const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+                  const day = etTime.getDay();
+                  const hour = etTime.getHours();
+                  const minute = etTime.getMinutes();
+                  const currentMin = hour * 60 + minute;
+                  const openMin = 9 * 60;
+                  const closeMin = 16 * 60;
+                  if (day === 0 || day === 6) {
+                    const daysUntil = day === 0 ? 1 : 2;
+                    const minsUntil = daysUntil * 24 * 60 - currentMin + openMin;
+                    const h = Math.floor(minsUntil / 60);
+                    const m = minsUntil % 60;
+                    return { open: false, label: 'Closed', countdown: `Opens in ${daysUntil}d ${h % 24}h ${m}m` };
+                  }
+                  if (currentMin >= openMin && currentMin < closeMin) {
+                    return { open: true, label: 'Open' };
+                  }
+                  let minsUntil = currentMin < openMin ? openMin - currentMin : (24 * 60 - currentMin) + openMin;
+                  if (currentMin >= closeMin) {
+                    // Check if tomorrow is weekend
+                    if (day === 5) { minsUntil += 2 * 24 * 60; }
+                  }
+                  const h = Math.floor(minsUntil / 60);
+                  const m = minsUntil % 60;
+                  return { open: false, label: 'Closed', countdown: `Opens in ${h}h ${m}m` };
+                };
+                const marketInfo = getMarketInfo();
 
-                      {/* Weather Button */}
-                      <div
-                        className="relative group flex-1"
-                        onMouseEnter={() => setActivePopup('weather')}
-                        onMouseLeave={() => {
-                          // Only clear if this is still the active one
-                          if (activePopup === 'weather') {
-                            setActivePopup(null);
-                          }
-                        }}
-                      >
-                        <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
-                          <div className="text-sm font-semibold text-gray-900 mb-1">Weather</div>
-                          <div className="text-xs text-gray-600">
-                            {(() => {
-                              try {
-                                const cachedData = localStorage.getItem('weatherData');
-                                if (cachedData) {
-                                  const w = JSON.parse(cachedData);
-                                  const condition = (w.rain > 0 || w.precipitation > 0) ? 'Showers' : w.temperature > 25 ? 'Sunny' : 'Partly Cloudy';
-                                  return `${w.temperature?.toFixed(1)}°C (feels ${w.apparentTemperature?.toFixed(1)}°C) · ${condition} · ${w.todayMax?.toFixed(0)}°/${w.todayMin?.toFixed(0)}°`;
+                let usdToInr = null, audToInr = null;
+                try {
+                  const c = localStorage.getItem('exchangeRatesData');
+                  if (c) ({ usdToInr, audToInr } = JSON.parse(c));
+                } catch (e) { }
+
+                let weather = null;
+                try {
+                  const c = localStorage.getItem('weatherData');
+                  if (c) weather = JSON.parse(c);
+                } catch (e) { }
+
+                const weatherCondition = weather
+                  ? ((weather.rain > 0 || weather.precipitation > 0) ? 'Showers' : weather.temperature > 25 ? 'Sunny' : 'Partly Cloudy')
+                  : null;
+                const isSunny = weatherCondition === 'Sunny';
+
+                return (
+                  <div className="mb-6 w-full">
+                    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
+                      <div className="flex gap-1.5 sm:gap-2 items-stretch">
+                        {/* Stock Information */}
+                        <div
+                          className="relative group flex-1 flex"
+                          onMouseEnter={() => setActivePopup('stock')}
+                          onMouseLeave={() => { if (activePopup === 'stock') setActivePopup(null); }}
+                        >
+                          <div className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start cursor-pointer">
+                            <div className="text-left min-w-0 flex-1">
+                              <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">
+                                {stockSymbol ? <span className="font-bold text-gray-800">{stockSymbol}</span> : 'Stock'} <span className={`${marketInfo.open ? 'text-green-600' : 'text-red-500'}`}>({marketInfo.label}{!marketInfo.open && marketInfo.countdown ? ` - ${marketInfo.countdown}` : ''})</span>
+                              </div>
+                              <div className="text-base font-semibold text-gray-900 leading-tight truncate">
+                                {stockPrice != null ? `$${stockPrice.toFixed(2)}` : '—'}
+                              </div>
+                              {stockPrice != null && (() => {
+                                const totalUsd = stockShares * stockPrice;
+                                let audStr = '';
+                                if (usdToInr && audToInr) {
+                                  const usdToAud = audToInr / usdToInr;
+                                  const totalAud = totalUsd / usdToAud;
+                                  audStr = ` (A$${totalAud.toLocaleString('en-AU', { maximumFractionDigits: 0 })})`;
                                 }
-                              } catch (e) { }
-                              return 'Loading...';
-                            })()}
+                                return (
+                                  <div className="text-[10px] text-gray-500">
+                                    Assets: <span className="font-medium text-gray-700">${totalUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })}{audStr}</span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('refreshStockPrice')); }}
+                              className="p-1 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
+                              title="Refresh stock price"
+                            >
+                              <ArrowPathIcon className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                        </button>
-                        <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'
-                          }`}>
-                          <Weather forceExpanded={true} />
+                          <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'stock' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                            <StockPrice forceExpanded={true} />
+                          </div>
+                        </div>
+
+                        {/* Exchange Rates */}
+                        <div
+                          className="relative group flex-1 flex"
+                          onMouseEnter={() => setActivePopup('exchange')}
+                          onMouseLeave={() => { if (activePopup === 'exchange') setActivePopup(null); }}
+                        >
+                          <button className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
+                            <div className="text-left min-w-0 flex-1">
+                              <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">Exchange Rates</div>
+                              <div className="flex items-baseline gap-3 leading-tight">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  ₹{usdToInr != null ? usdToInr.toFixed(2) : '—'}
+                                  <span className="text-[10px] font-normal text-gray-500 ml-1">USD</span>
+                                </div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  ₹{audToInr != null ? audToInr.toFixed(2) : '—'}
+                                  <span className="text-[10px] font-normal text-gray-500 ml-1">AUD</span>
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                          <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                            <ExchangeRates forceExpanded={true} />
+                          </div>
+                        </div>
+
+                        {/* Weather */}
+                        <div
+                          className="relative group flex-1 flex"
+                          onMouseEnter={() => setActivePopup('weather')}
+                          onMouseLeave={() => { if (activePopup === 'weather') setActivePopup(null); }}
+                        >
+                          <button className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
+                            <div className="text-left min-w-0 flex-1">
+                              <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">Weather</div>
+                              {weather ? (
+                                <div className="flex items-baseline gap-2 leading-tight">
+                                  <div className="text-base font-semibold text-gray-900">{weather.temperature?.toFixed(1)}°</div>
+                                  <div className="text-[11px] text-gray-500">feels {weather.apparentTemperature?.toFixed(1)}°</div>
+                                  <div className="text-[11px] text-gray-500 ml-auto">↑{weather.todayMax?.toFixed(0)}° ↓{weather.todayMin?.toFixed(0)}°</div>
+                                </div>
+                              ) : (
+                                <div className="text-base font-semibold text-gray-900 leading-tight">—</div>
+                              )}
+                            </div>
+                          </button>
+                          <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                            <Weather forceExpanded={true} />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Today Events Bar - Moved from AlertsProvider */}
               <div className="mb-6 w-full">
@@ -981,10 +990,13 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           </div>
 
           {/* Flagged Review Dues Section */}
-          <FlaggedReviewDues notes={notes} setNotes={setNotes} setActivePage={setActivePage} />
+          <FlaggedReviewDues notes={notes} setNotes={setNotes} setActivePage={setActivePage} sectionHeader={true} />
 
-          {/* Second Row: Event Manager Cards */}
-          <div className="mb-8">
+          {/* Events Section */}
+          <div className="mb-1 mt-2 border-b border-gray-200 pb-1">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Events</h2>
+          </div>
+          <div className="mb-4">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-4">
                 <div className="flex flex-wrap gap-1 items-center">
@@ -992,8 +1004,8 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   {[
                     { f: 'all',      label: 'All',      active: 'bg-blue-500 text-white' },
                     { f: 'deadline', label: 'Deadline',  active: 'bg-red-500 text-white' },
-                    { f: 'holiday',  label: 'Holiday',   active: 'bg-green-500 text-white' },
-                    { f: 'others',   label: 'Others',    active: 'bg-purple-500 text-white' },
+                    { f: 'holiday',  label: 'Holiday',   active: 'bg-blue-500 text-white' },
+                    { f: 'others',   label: 'Others',    active: 'bg-gray-600 text-white' },
                   ].map(({ f, label, active }) => {
                     const isActive = activeFilters.includes(f);
                     return (
@@ -1020,9 +1032,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 {/* Tags Filter Section */}
                 <div className="flex flex-wrap gap-1 items-center border-l border-gray-300 pl-4">
                   {[
-                    { f: 'birthday', label: '🎂 Birthday', active: 'bg-pink-500 text-white' },
-                    { f: 'wedding',  label: '💍 Wedding',  active: 'bg-rose-500 text-white' },
-                    { f: 'death',    label: '🕊️ Death',    active: 'bg-slate-500 text-white' },
+                    { f: 'birthday', label: '🎂 Birthday', active: 'bg-blue-500 text-white' },
+                    { f: 'wedding',  label: '💍 Wedding',  active: 'bg-blue-500 text-white' },
+                    { f: 'death',    label: '🕊️ Death',    active: 'bg-gray-600 text-white' },
                   ].map(({ f, label, active }) => {
                     const isActive = activeFilters.includes(f);
                     return (
@@ -1117,23 +1129,21 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
               </div>
             </div>
             {/* Event Notes Row */}
-            <div className="flex items-center gap-2 mb-6">
-              {/* Left Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {eventNotesHasOverflow && (
-                  <button
-                    onClick={scrollEventNotesLeft}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronLeftIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+            <div className="relative group/events mb-2 overflow-visible">
+              {/* Left Arrow - outside frame on hover */}
+              {eventNotesHasOverflow && (
+                <button
+                  onClick={scrollEventNotesLeft}
+                  className="absolute -left-10 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all opacity-0 group-hover/events:opacity-100"
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+              )}
 
               {/* Event Notes Container */}
               <div
                 ref={eventNotesScrollRef}
-                className="flex-1 overflow-x-auto"
+                className="overflow-x-auto"
                 style={{
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
@@ -1143,7 +1153,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   e.preventDefault();
                 }}
               >
-                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                <div className="inline-flex gap-4 pb-1" style={{ minWidth: 'max-content' }}>
                   <EventManager
                     type="eventNotes"
                     notes={notes}
@@ -1174,49 +1184,42 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 </div>
               </div>
 
-              {/* Right Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {eventNotesHasOverflow && (
-                  <button
-                    onClick={scrollEventNotesRight}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronRightIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+              {/* Right Arrow - overlay on hover */}
+              {eventNotesHasOverflow && (
+                <button
+                  onClick={scrollEventNotesRight}
+                  className="absolute -right-10 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all opacity-0 group-hover/events:opacity-100"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
-            {/* Tracked Events Row */}
-            <TrackedEvents notes={notes} setNotes={setNotes} />
 
             {/* Upcoming Alerts Row */}
-            <UpcomingAlertsRow notes={notes} setNotes={setNotes} />
 
             {/* Notes Row */}
-            <div className="flex items-center gap-2 mb-6">
-              {/* Left Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {notesHasOverflow && (
-                  <button
-                    onClick={scrollNotesLeft}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronLeftIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+            <div className="relative group/notes mb-2 overflow-visible">
+              {/* Left Arrow - outside frame on hover */}
+              {notesHasOverflow && (
+                <button
+                  onClick={scrollNotesLeft}
+                  className="absolute -left-10 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all opacity-0 group-hover/notes:opacity-100"
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+              )}
 
               {/* Notes Container */}
               <div
                 ref={notesScrollRef}
-                className="flex-1 overflow-x-auto"
+                className="overflow-x-auto"
                 style={{
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
                 }}
               >
-                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                <div className="inline-flex gap-4 pb-1" style={{ minWidth: 'max-content' }}>
                   <EventManager
                     type="notes"
                     notes={notes}
@@ -1234,40 +1237,47 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 </div>
               </div>
 
-              {/* Right Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {notesHasOverflow && (
-                  <button
-                    onClick={scrollNotesRight}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronRightIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+              {/* Right Arrow - overlay on hover */}
+              {notesHasOverflow && (
+                <button
+                  onClick={scrollNotesRight}
+                  className="absolute -right-10 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all opacity-0 group-hover/notes:opacity-100"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              )}
             </div>
           </div>
 
 
 
-          {/* Alerts Section */}
-          <div className="mb-8">
+          {/* Alerts & Reminders Section */}
+          <div className="mb-1 mt-2 border-b border-gray-200 pb-1 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Alerts & Reminders</h2>
+            <button 
+              onClick={() => setShowAlertsHelpPopup(true)}
+              className="text-gray-400 hover:text-blue-500 transition-colors"
+              title="Alerts & Reminders Wiki"
+            >
+              <InformationCircleIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="mb-4">
             <AlertsProvider
               notes={notes}
               events={events}
               setNotes={setNotes}
             >
-              {/* Additional dashboard content can be added here */}
             </AlertsProvider>
           </div>
 
           {/* Watched Trackers Section */}
-          <div className="mb-8">
+          <div className="mb-4">
             <WatchedTrackers notes={notes} setNotes={setNotes} />
           </div>
 
           {/* Tracked Info Cards */}
-          <div className="mb-8">
+          <div className="mb-4">
             <TrackedInfoCards notes={notes} setNotes={setNotes} />
           </div>
         </>
@@ -1286,6 +1296,12 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
         onAddEvent={handleAddEvent}
         onAddDeadline={handleAddDeadline}
         onAddHoliday={handleAddHoliday}
+      />
+
+      {/* Alerts Help Popup */}
+      <AlertsHelpPopup
+        isOpen={showAlertsHelpPopup}
+        onClose={() => setShowAlertsHelpPopup(false)}
       />
 
       {/* Edit Event Modal */}

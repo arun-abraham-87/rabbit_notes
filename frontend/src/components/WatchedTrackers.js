@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { EyeIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ExclamationCircleIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
@@ -86,10 +86,31 @@ function findAnswerNotes(notes, tid, dateStr) {
   });
 }
 
+const CompactTrackerRow = ({ tracker, answers }) => {
+  const sorted = [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+  const daysSinceLast = sorted.length > 0 ? moment().diff(moment(sorted[0].date), 'days') : null;
+  const overdueDays = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
+  const isOverdue = daysSinceLast !== null && daysSinceLast > overdueDays;
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2 bg-white rounded-lg border ${isOverdue ? 'border-red-300 bg-red-50' : 'border-gray-200'} hover:border-gray-300 transition-colors`}>
+      <span className={`text-sm font-medium flex-1 truncate ${isOverdue ? 'text-red-700' : 'text-gray-800'}`} title={tracker.title}>
+        {tracker.title}
+      </span>
+      {daysSinceLast !== null && daysSinceLast > 0 && (
+        <span className={`text-[10px] ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
+          {daysSinceLast}d ago
+        </span>
+      )}
+    </div>
+  );
+};
+
 const WatchedTrackers = ({ notes, setNotes }) => {
   const navigate = useNavigate();
   const [showOverdue, setShowOverdue] = useState(false);
   const [selectedTag, setSelectedTag] = useState(null);
+  const [compactView, setCompactView] = useState(() => localStorage.getItem('watchedTrackersCompact') === 'true');
 
   const { watched, answersByTracker, overdue, allTags } = useMemo(
     () => parseTrackerData(notes || []),
@@ -209,12 +230,21 @@ const WatchedTrackers = ({ notes, setNotes }) => {
             {showOverdue ? 'Hide overdue' : `Show all overdue (${overdue.length})`}
           </button>
         )}
-        <button
-          onClick={() => navigate('/trackers')}
-          className="ml-auto text-xs text-blue-500 hover:underline"
-        >
-          Manage →
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => { const v = !compactView; setCompactView(v); localStorage.setItem('watchedTrackersCompact', v); }}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+            title={compactView ? 'Expanded view' : 'Compact view'}
+          >
+            {compactView ? <Squares2X2Icon className="h-4 w-4" /> : <ListBulletIcon className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => navigate('/trackers')}
+            className="text-xs text-blue-500 hover:underline"
+          >
+            Manage →
+          </button>
+        </div>
       </div>
 
       {/* Tag filter bar — shows all tags from watched+overdue trackers */}
@@ -246,36 +276,63 @@ const WatchedTrackers = ({ notes, setNotes }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {visibleWatched.map(tracker => (
-          <TrackerCard
-            key={tracker.id}
-            tracker={tracker}
-            onToggleDay={handleToggleDay}
-            answers={answersByTracker[String(tracker.id)] || []}
-            onEdit={() => navigate('/trackers')}
-            isFocusMode={false}
-            isDevMode={false}
-            onWatch={handleUnwatch}
-            allTags={allTags}
-            onSaveTags={handleSaveTags}
-          />
-        ))}
-        {visibleOverdue.map(tracker => (
-          <TrackerCard
-            key={`overdue-${tracker.id}`}
-            tracker={tracker}
-            onToggleDay={handleToggleDay}
-            answers={answersByTracker[String(tracker.id)] || []}
-            onEdit={() => navigate('/trackers')}
-            isFocusMode={false}
-            isDevMode={false}
-            onWatch={handleUnwatch}
-            allTags={allTags}
-            onSaveTags={handleSaveTags}
-          />
-        ))}
-      </div>
+      {compactView ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+          {[...visibleWatched, ...visibleOverdue.map(t => ({ ...t, _isOverdue: true }))].map(tracker => (
+            <div key={tracker._isOverdue ? `overdue-${tracker.id}` : tracker.id} className="relative group">
+              <CompactTrackerRow
+                tracker={tracker}
+                answers={answersByTracker[String(tracker.id)] || []}
+                onToggleDay={handleToggleDay}
+              />
+              <div className="absolute left-0 top-full mt-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 delay-300 w-[350px]">
+                <TrackerCard
+                  tracker={tracker}
+                  onToggleDay={handleToggleDay}
+                  answers={answersByTracker[String(tracker.id)] || []}
+                  onEdit={() => navigate('/trackers')}
+                  isFocusMode={false}
+                  isDevMode={false}
+                  onWatch={handleUnwatch}
+                  allTags={allTags}
+                  onSaveTags={handleSaveTags}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {visibleWatched.map(tracker => (
+            <TrackerCard
+              key={tracker.id}
+              tracker={tracker}
+              onToggleDay={handleToggleDay}
+              answers={answersByTracker[String(tracker.id)] || []}
+              onEdit={() => navigate('/trackers')}
+              isFocusMode={false}
+              isDevMode={false}
+              onWatch={handleUnwatch}
+              allTags={allTags}
+              onSaveTags={handleSaveTags}
+            />
+          ))}
+          {visibleOverdue.map(tracker => (
+            <TrackerCard
+              key={`overdue-${tracker.id}`}
+              tracker={tracker}
+              onToggleDay={handleToggleDay}
+              answers={answersByTracker[String(tracker.id)] || []}
+              onEdit={() => navigate('/trackers')}
+              isFocusMode={false}
+              isDevMode={false}
+              onWatch={handleUnwatch}
+              allTags={allTags}
+              onSaveTags={handleSaveTags}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

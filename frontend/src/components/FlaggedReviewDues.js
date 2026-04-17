@@ -28,7 +28,7 @@ function getNextOccurrenceDays(cadenceType, cadenceValue) {
   return null;
 }
 
-const FlaggedReviewDues = ({ notes, setNotes, setActivePage }) => {
+const FlaggedReviewDues = ({ notes, setNotes, setActivePage, sectionHeader = false }) => {
   const flaggedNotes = useMemo(() =>
     (notes || []).filter(n => n.content && n.content.includes('meta::review_overdue_priority')),
     [notes]
@@ -77,6 +77,11 @@ const FlaggedReviewDues = ({ notes, setNotes, setActivePage }) => {
 
   return (
     <div className="mb-6 space-y-4">
+      {sectionHeader && (
+        <div className="mb-2 border-b border-gray-200 pb-1">
+          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Reviews Due</h2>
+        </div>
+      )}
       {/* Timer reminders */}
       {timerNotes.length > 0 && (
         <div>

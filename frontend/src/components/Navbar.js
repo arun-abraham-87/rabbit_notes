@@ -24,7 +24,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     
     // Define all pages (should match NAVBAR_PAGES in Settings.js)
     const allPages = [
-      'dashboard', 'notes', 'todos', 'watch', 'tags', 'journals', 'events', 
+      'dashboard', 'notes', 'watch', 'tags', 'journals', 'events', 
       'timelines', 'purchases', 'payments', 'countdowns', 'people', 'family-tree',
       'news', 'expense', 'trackers', 'calendar', 'bookmarks', 'assets', 
       'stock-vesting', 'pomodoro', 'information', 'over-the-years'
@@ -78,7 +78,6 @@ const Navbar = ({ activePage, setActivePage }) => {
   const allNavigationButtons = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'notes', label: 'Notes' },
-    { id: 'todos', label: 'Todos' },
     { id: 'watch', label: 'Watch' },
     { id: 'tags', label: 'Tags' },
     { id: 'journals', label: 'Journals' },

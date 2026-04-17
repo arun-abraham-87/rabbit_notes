@@ -655,6 +655,13 @@ const NoteCard = ({
             onSetFocusedNoteIndex(noteIndex);
           }
         }}
+        onDoubleClick={(e) => {
+          if (!isSuperEditMode && typeof setPopupNoteText === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+            setPopupNoteText(note.id);
+          }
+        }}
         tabIndex={0}
         role="button"
         onKeyDown={e => {

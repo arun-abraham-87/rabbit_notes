@@ -1294,11 +1294,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const currentMonthYear = weekDays[0].format('MMM YYYY');
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : ''}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
+    <div className={`bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : 'border border-gray-300'}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
 
       {/* Header */}
       <div className="mb-6">
-        <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+        <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-xl font-bold text-gray-900">{tracker.title}</h3>

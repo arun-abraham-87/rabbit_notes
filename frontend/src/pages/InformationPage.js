@@ -229,9 +229,9 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
       .sort()
       .map(tag => ({ tag, events: groups[tag] }));
 
-    // Add untagged group at the end if it has events
+    // Add untagged group at the beginning if it has events
     if (untagged.length > 0) {
-      sortedGroups.push({ tag: 'Untagged', events: untagged });
+      sortedGroups.unshift({ tag: 'Untagged', events: untagged });
     }
 
     return sortedGroups;
@@ -439,7 +439,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
           {/* Footer: tags + hover actions */}
           <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
             <div className="flex flex-wrap gap-1 min-h-[24px] flex-1">
-              {event.tags && event.tags.length > 0 && event.tags.map((tag, index) => {
+              {!groupByTag && event.tags && event.tags.length > 0 && event.tags.map((tag, index) => {
                 const tc = getTagColor(tag);
                 return (
                   <span
@@ -541,7 +541,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                       {/* Group header */}
                       <div className="flex items-center gap-3 mb-4">
                         <div className={`w-3 h-3 rounded-full ${color.accent}`} />
-                        <h2 className={`text-lg font-semibold ${color.text}`}>{group.tag}</h2>
+                        <h2 className={`text-lg font-semibold ${color.text}`}>{group.tag.charAt(0).toUpperCase() + group.tag.slice(1)}</h2>
                         <span className="text-xs text-gray-400">{group.events.length}</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>

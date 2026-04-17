@@ -34,6 +34,10 @@ const ExchangeRates = ({ forceExpanded = false }) => {
   const [editingNote, setEditingNote] = useState(null); // 'usd' or 'aud' or null
   const [tempNote, setTempNote] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
+  const [usdAmount, setUsdAmount] = useState('1000');
+  const [audAmount, setAudAmount] = useState('1000');
+  const [inrToUsdAmount, setInrToUsdAmount] = useState('100');
+  const [inrToAudAmount, setInrToAudAmount] = useState('100');
 
   // Initialize API call count
   useEffect(() => {
@@ -316,6 +320,16 @@ const ExchangeRates = ({ forceExpanded = false }) => {
                       <span className="text-gray-600 text-sm">1 USD =</span>
                       <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
                     </div>
+                  </div>
+                  <div className="text-xs text-gray-500 bg-blue-50 p-1.5 rounded border border-blue-100 space-y-1">
+                    <div className="flex items-center gap-1">
+                      <input type="number" value={inrToUsdAmount} onChange={(e) => setInrToUsdAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-blue-200 rounded text-xs text-center bg-white" /> INR = <span className="font-medium text-blue-700">${rates?.usdToInr && inrToUsdAmount ? (parseFloat(inrToUsdAmount) / rates.usdToInr).toFixed(2) : '0.00'} USD</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input type="number" value={usdAmount} onChange={(e) => setUsdAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-blue-200 rounded text-xs text-center bg-white" /> USD = <span className="font-medium text-blue-700">₹{rates?.usdToInr && usdAmount ? (parseFloat(usdAmount) * rates.usdToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end">
                     <div className="flex items-center gap-1">
                       {notes.usd && (
                         <button
@@ -374,6 +388,16 @@ const ExchangeRates = ({ forceExpanded = false }) => {
                       <span className="text-gray-600 text-sm">1 AUD =</span>
                       <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
                     </div>
+                  </div>
+                  <div className="text-xs text-gray-500 bg-green-50 p-1.5 rounded border border-green-100 space-y-1">
+                    <div className="flex items-center gap-1">
+                      <input type="number" value={inrToAudAmount} onChange={(e) => setInrToAudAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-green-200 rounded text-xs text-center bg-white" /> INR = <span className="font-medium text-green-700">A${rates?.audToInr && inrToAudAmount ? (parseFloat(inrToAudAmount) / rates.audToInr).toFixed(2) : '0.00'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input type="number" value={audAmount} onChange={(e) => setAudAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-green-200 rounded text-xs text-center bg-white" /> AUD = <span className="font-medium text-green-700">₹{rates?.audToInr && audAmount ? (parseFloat(audAmount) * rates.audToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end">
                     <div className="flex items-center gap-1">
                       {notes.aud && (
                         <button

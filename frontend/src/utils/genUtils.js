@@ -561,55 +561,8 @@ export const getIndentFlags = (contentLines) => {
   if (!Array.isArray(contentLines) || contentLines.length === 0) {
     return [];
   }
-  let h1Flag = false;
-  let h2Flag = false;
-
-  return contentLines.map((line, index) => {
-    // Determine element type
-    let isH1 = false;
-    let isH2 = false;
-    let isEmpty = false;
-
-    if (React.isValidElement(line)) {
-      const elementType = line.type;
-      if (elementType === 'h1') isH1 = true;
-      else if (elementType === 'h2') isH2 = true;
-      else {
-        const children = line.props?.children;
-        if (!children || (typeof children === 'string' && children.trim() === '')) {
-          isEmpty = true;
-        }
-      }
-    } else {
-      const lineContent = typeof line === 'string' ? line : (line?.props?.children || '');
-      if (typeof lineContent === 'string') {
-        if (lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) isH1 = true;
-        else if (lineContent.startsWith('<h2>') || lineContent.startsWith('##')) isH2 = true;
-        else if (lineContent.trim() === '') isEmpty = true;
-      }
-    }
-
-    if (isH1) {
-      h1Flag = true;
-      h2Flag = false;
-      return 0; // No indent for H1
-    }
-    if (isH2) {
-      h2Flag = true;
-      // Indent H2 one level if under H1
-      return h1Flag ? 1 : 0;
-    }
-    if (isEmpty) {
-      h2Flag = false;
-      h1Flag = false;
-      return 0;
-    }
-
-    // Content lines: indent based on context
-    if (h2Flag) return h1Flag ? 2 : 1; // Under H2 (and possibly H1)
-    if (h1Flag) return 1; // Under H1 only
-    return 0;
-  });
+  // Return 0 for all lines since automatic indentation under headers is disabled
+  return contentLines.map(() => 0);
 };
 
 

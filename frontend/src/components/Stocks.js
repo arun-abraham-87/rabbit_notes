@@ -1,7 +1,7 @@
 // src/components/StockPrice.js
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { loadAllNotes } from '../utils/ApiUtils';
+import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils';
 import { InformationCircleIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const SYMBOL = 'XYZ'; // e.g., Apple Inc.
@@ -27,6 +27,7 @@ const StockPrice = ({ forceExpanded = false }) => {
   const [showPopup, setShowPopup] = useState(false);
   const [tempValue, setTempValue] = useState('');
   const [editingField, setEditingField] = useState(null); // 'shares' or 'multiplier'
+  const [stockNoteId, setStockNoteId] = useState(null);
 
   // Initialize or update API call count
   useEffect(() => {
@@ -55,7 +56,8 @@ const StockPrice = ({ forceExpanded = false }) => {
         // Cache the price and timestamp
         localStorage.setItem('stockPriceData', JSON.stringify({
           timestamp: new Date().getTime(),
-          price: newPrice
+          price: newPrice,
+          symbol: SYMBOL
         }));
         
         // Update API call count
@@ -215,10 +217,46 @@ const StockPrice = ({ forceExpanded = false }) => {
     }
   }, [price, shares, multiplier]);
 
-  // Save values to localStorage when they change
+  // Load shares from notes on startup
+  useEffect(() => {
+    const loadSharesFromNotes = async () => {
+      try {
+        const response = await loadAllNotes();
+        const allNotes = response.notes || [];
+        const stockNote = allNotes.find(n => n.content && n.content.includes('meta::stock_quantity'));
+        if (stockNote) {
+          setStockNoteId(stockNote.id);
+          const qtyLine = stockNote.content.split('\n').find(l => l.trim().startsWith('stock_quantity:'));
+          if (qtyLine) {
+            const qty = parseInt(qtyLine.split('stock_quantity:')[1].trim(), 10);
+            if (!isNaN(qty)) {
+              setShares(qty);
+              localStorage.setItem('stockShares', qty.toString());
+            }
+          }
+        }
+      } catch (e) { console.error('Error loading stock quantity from notes:', e); }
+    };
+    loadSharesFromNotes();
+  }, []);
+
+  // Save values to localStorage and notes when they change
   useEffect(() => {
     localStorage.setItem('stockShares', shares.toString());
   }, [shares]);
+
+  // Save shares to note
+  const saveSharesNote = async (qty) => {
+    const content = `stock_quantity: ${qty}\nmeta::stock_quantity`;
+    try {
+      if (stockNoteId) {
+        await updateNoteById(stockNoteId, content);
+      } else {
+        const newNote = await createNote(content);
+        setStockNoteId(newNote.id);
+      }
+    } catch (e) { console.error('Error saving stock quantity note:', e); }
+  };
 
   useEffect(() => {
     localStorage.setItem('stockMultiplier', multiplier.toString());
@@ -268,17 +306,25 @@ const StockPrice = ({ forceExpanded = false }) => {
   // Add market status check to useEffect
   useEffect(() => {
     checkMarketStatus();
-    // Update market status every minute
     const interval = setInterval(checkMarketStatus, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Listen for refresh event from Dashboard card
+  useEffect(() => {
+    const handler = () => handleRefresh();
+    document.addEventListener('refreshStockPrice', handler);
+    return () => document.removeEventListener('refreshStockPrice', handler);
+  }, [apiKey]);
 
   const handleValueSubmit = (e) => {
     e.preventDefault();
     const newValue = parseFloat(tempValue);
     if (!isNaN(newValue) && newValue > 0) {
       if (editingField === 'shares') {
-        setShares(Math.floor(newValue)); // Ensure integer for shares
+        const qty = Math.floor(newValue);
+        setShares(qty);
+        saveSharesNote(qty);
       } else {
         setMultiplier(newValue);
       }

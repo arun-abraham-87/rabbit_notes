@@ -29,7 +29,7 @@ export const timeZones = [
 const NAVBAR_PAGES = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'notes', label: 'Notes' },
-  { id: 'todos', label: 'Todos' },
+
   { id: 'watch', label: 'Watch' },
   { id: 'tags', label: 'Tags' },
   { id: 'journals', label: 'Journals' },

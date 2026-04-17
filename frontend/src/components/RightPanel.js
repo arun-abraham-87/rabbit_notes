@@ -78,33 +78,28 @@ const RightPanel = ({ notes, setNotes, setActivePage }) => {
   }
 
   return (
-    <div 
-      className={`fixed right-0 top-0 h-full bg-white border-l border-gray-200 shadow-lg transition-all duration-300 z-40 ${
-        isCollapsed ? 'w-8' : 'w-80'
+    <div
+      className={`fixed right-0 top-[57px] bottom-0 bg-white border-l border-gray-200 shadow-lg transition-all duration-300 z-40 ${
+        isCollapsed ? 'w-3' : 'w-80'
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -left-3 top-4 bg-white border border-gray-200 rounded-full p-1 shadow-md hover:shadow-lg transition-shadow"
-      >
-        {isCollapsed ? (
-          <ChevronLeftIcon className="h-4 w-4 text-gray-600" />
-        ) : (
-          <ChevronRightIcon className="h-4 w-4 text-gray-600" />
-        )}
-      </button>
+      {/* Collapsed indicator strip */}
+      {isCollapsed && (
+        <div className="h-full flex items-center justify-center">
+          <div className="w-1 h-16 bg-gray-300 rounded-full" />
+        </div>
+      )}
 
       {!isCollapsed && (
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <MapPinIcon className="h-5 w-5 text-red-500" />
-              <h2 className="text-lg font-semibold text-gray-800">Pinned Notes</h2>
-              <span className="ml-auto text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+              <MapPinIcon className="h-4 w-4 text-red-500 flex-shrink-0" />
+              <h2 className="text-base font-semibold text-gray-800 truncate">Pinned Notes</h2>
+              <span className="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full flex-shrink-0">
                 {pinnedNotes.length}
               </span>
             </div>
@@ -147,8 +142,8 @@ const RightPanel = ({ notes, setNotes, setActivePage }) => {
                     </div>
 
                     {/* Note Content */}
-                    <div className="p-3">
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
+                    <div className="p-3 overflow-hidden">
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed max-h-32 overflow-y-auto">
                         {formattedContent}
                       </div>
                       

@@ -6,8 +6,6 @@ import moment from 'moment';
 import { updateNoteById } from '../utils/ApiUtils';
 import { getEventDetails } from '../utils/EventUtils';
 
-// Add pin icon import
-import { MapPinIcon } from '@heroicons/react/24/outline';
 import { DocumentTextIcon } from '@heroicons/react/24/solid';
 
 // Helper function to parse and make links clickable
@@ -840,10 +838,24 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Pinned Events - Small Tiles */}
+      {/* Pinned Events and Tracked Events - Small Tiles */}
       {(type === 'all' || type === 'eventNotes') && (() => {
         const pinnedEventNotes = getPinnedEventNotes();
-        if (pinnedEventNotes.length === 0) return null;
+        
+        const trackedEventNotes = (notes || [])
+          .filter(note => note?.content && note.content.split('\n').some(l => l.trim() === 'meta::event_tracked'))
+          .map(note => {
+            const lines = note.content.split('\n');
+            const get = prefix => lines.find(l => l.startsWith(prefix))?.slice(prefix.length).trim() || '';
+            const title = get('event_description:');
+            const dateStr = get('event_date:').split('T')[0];
+            const date = dateStr ? new Date(dateStr) : null;
+            return { id: note.id, description: title, nextOccurrence: date, originalNote: note };
+          })
+          .filter(e => e.description)
+          .sort((a, b) => (b.nextOccurrence || 0) - (a.nextOccurrence || 0));
+
+        if (pinnedEventNotes.length === 0 && trackedEventNotes.length === 0) return null;
 
         return (
           <div className="flex flex-row gap-2 flex-wrap">
@@ -865,23 +877,82 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
               return (
                 <div
                   key={`pinned-${note.id}`}
-                  className="group border-2 border-yellow-400 bg-yellow-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow cursor-pointer flex items-center gap-2"
+                  className="group bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 flex-shrink-0 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2.5"
                   style={{ minWidth: '120px' }}
                   title={`Click to scroll to ${note.description}`}
                   onClick={() => scrollToEventCard(note.id)}
                 >
+                  <div className="text-red-500 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                      <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>
+                    </svg>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-gray-700">
+                    <div className="text-[11px] font-medium text-gray-500">
                       {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
                     </div>
-                    <div className="text-sm font-semibold text-gray-900 truncate">
+                    <div className="text-sm font-bold text-gray-900 truncate">
                       {note.description}
                     </div>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
-                    className="text-yellow-500 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
                     title="Unpin Event"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+            
+            {trackedEventNotes.map(note => {
+              const eventDate = note.nextOccurrence ? new Date(note.nextOccurrence) : new Date();
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              eventDate.setHours(0, 0, 0, 0);
+              const daysDiff = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
+              const absDays = Math.abs(daysDiff);
+              const isPast = daysDiff > 0;
+              
+              const formattedDate = eventDate.toLocaleDateString(undefined, {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              });
+
+              return (
+                <div
+                  key={`tracked-${note.id}`}
+                  className="group bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 flex-shrink-0 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2.5"
+                  style={{ minWidth: '120px' }}
+                  title={`Click to scroll to ${note.description}`}
+                  onClick={() => scrollToEventCard(note.id)}
+                >
+                  <div className="text-blue-500 flex-shrink-0" title="Tracked Event">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                      <path fillRule="evenodd" d="M2.25 13.5a8.25 8.25 0 0 1 8.25-8.25.75.75 0 0 1 .75.75v6.75H18a.75.75 0 0 1 .75.75 8.25 8.25 0 0 1-16.5 0Z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M12.75 3a.75.75 0 0 1 .75-.75 8.25 8.25 0 0 1 8.25 8.25.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75V3Z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-medium text-gray-500">
+                      {absDays} {absDays === 1 ? 'day' : 'days'} {isPast ? 'since' : 'until'} {formattedDate}
+                    </div>
+                    <div className="text-sm font-bold text-gray-900 truncate">
+                      {note.description}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async (e) => { 
+                      e.stopPropagation(); 
+                      const updatedContent = note.originalNote.content.split('\n').filter(l => l.trim() !== 'meta::event_tracked').join('\n');
+                      await updateNoteById(note.id, updatedContent);
+                      if (setNotes) setNotes(prev => prev.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+                    }}
+                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                    title="Untrack Event"
                   >
                     <XMarkIcon className="h-4 w-4" />
                   </button>
@@ -951,7 +1022,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
             return (
               <div
                 key={ev.id}
-                className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow"
+                className="group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-lg transition-shadow"
                 style={{ backgroundColor: ev.bgColor || '#ffffff' }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
@@ -1016,7 +1087,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
           return noteItems.map(ev => {
             const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
-              <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
+              <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
                 <div
                   className="font-bold text-gray-900 w-full break-words"
                   style={{ wordBreak: 'break-word' }}
@@ -1100,7 +1171,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
               <div
                 key={note.id}
                 ref={(el) => { eventCardRefs.current[note.id] = el; }}
-                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} ${pinnedEvents.includes(note.id) ? 'ring-2 ring-yellow-400' : ''} relative`}
+                className={`group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-lg transition-shadow ${isToday ? 'animate-pulse' : ''}  relative`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
@@ -1174,10 +1245,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                 <div className="absolute top-2 right-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
-                    className={`p-1 rounded-full transition-colors ${pinnedEvents.includes(note.id) ? 'text-yellow-600 hover:text-red-500 bg-yellow-100' : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'}`}
+                    className={`p-1 rounded-full transition-colors ${pinnedEvents.includes(note.id) ? 'text-red-500 hover:text-red-600 bg-red-50' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                     title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
                   >
-                    <MapPinIcon className="h-4 w-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                      <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>
+                    </svg>
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity max-w-full">

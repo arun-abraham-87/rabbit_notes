@@ -566,43 +566,22 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       }
     }
 
+
+
     if (e.key === 'Tab') {
       e.preventDefault();
       const newLines = [...lines];
       const line = newLines[index];
 
       if (e.shiftKey) {
-        const cursorAtStart = e.target.selectionStart === 0;
-        const prevLine = lines[index - 1];
-
-        if (cursorAtStart && index > 0 && prevLine) {
-          e.preventDefault();
-          const current = newLines[index];
-          newLines[index - 1].text += ' ' + current.text;
-          newLines.splice(index, 1);
-          setLines(newLines);
-          setTimeout(() => {
-            const prevTextarea = textareasRef.current[index - 1];
-            if (prevTextarea) {
-              prevTextarea.focus();
-              prevTextarea.selectionStart = prevTextarea.selectionEnd = prevTextarea.value.length;
-            }
-          }, 0);
-          return;
-        }
-
-        // Existing outdent logic
-        if (line.text.startsWith('    ')) {
-          line.text = line.text.slice(4);
-        } else if (line.text.startsWith('- ')) {
-          line.text = line.text.slice(2);
+        if (line.text.startsWith('{meta::sub} ')) {
+          line.text = line.text.slice(12);
+        } else if (line.text.startsWith('{meta::sub}')) {
+          line.text = line.text.slice(11);
         }
       } else {
-        // Indent with bullet or additional space
-        if (!line.text.startsWith('- ')) {
-          line.text = '- ' + line.text;
-        } else {
-          line.text = '    ' + line.text;
+        if (!line.text.startsWith('{meta::sub}')) {
+          line.text = '{meta::sub} ' + line.text;
         }
       }
 
@@ -611,7 +590,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       setTimeout(() => {
         const cursor = textareasRef.current[index];
         if (cursor) {
-          const offset = e.shiftKey ? -4 : 4;
+          const offset = e.shiftKey ? -12 : 12;
           const pos = Math.max(0, e.target.selectionStart + offset);
           cursor.selectionStart = cursor.selectionEnd = pos;
         }
@@ -625,24 +604,11 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       let cursorPos = e.target.selectionStart;
       const newLines = [...lines];
       const currentLine = newLines[index];
-      const isBullet = currentLine.text.startsWith('- ');
-      // Adjust cursor position since bullet textarea doesn't show the "- " prefix
-      if (isBullet) cursorPos += 2;
       const before = currentLine.text.slice(0, cursorPos);
       const after = currentLine.text.slice(cursorPos);
 
-      // Continue list items if prefixed with "- "
-      const listMatch = before.match(/^(-\s+)/);
-
-      // If bullet line is empty (just "- "), remove the bullet instead of continuing
-      if (isBullet && before.trim() === '-' && !after) {
-        currentLine.text = '';
-        setLines(newLines);
-        return;
-      }
-
       currentLine.text = before;
-      const newLineText = listMatch ? listMatch[1] + after : after;
+      const newLineText = after;
 
       const newLine = {
         id: `line-${Date.now()}`,
@@ -653,15 +619,11 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       newLines.splice(index + 1, 0, newLine);
       setLines(newLines);
 
-      // Removed cursor line update
-
       setTimeout(() => {
         const nextTextarea = textareasRef.current[index + 1];
         if (nextTextarea) {
           nextTextarea.focus();
-          // Adjust cursor for bullet lines since "- " prefix is hidden in textarea
-          const displayLength = newLineText.startsWith('- ') ? newLineText.length - 2 : newLineText.length;
-          nextTextarea.selectionStart = nextTextarea.selectionEnd = displayLength;
+          nextTextarea.selectionStart = nextTextarea.selectionEnd = 0;
         }
       }, 0);
 
@@ -682,13 +644,6 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       const textLength = e.target.value.length;
       if (cursorPosition === textLength && index < lines.length - 1) {
         e.preventDefault();
-        // Auto-prefix next line if current is a list item
-        const newLines = [...lines];
-        const match = newLines[index].text.match(/^(-\s+)/);
-        if (match && !newLines[index + 1].text.startsWith(match[1])) {
-          newLines[index + 1].text = match[1] + newLines[index + 1].text;
-          setLines(newLines);
-        }
         textareasRef.current[index + 1]?.focus();
         return;
       }
@@ -1269,30 +1224,16 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                       </div>
                     ) : (
                       <div className="flex items-start w-full">
-                        {line.text.startsWith('- ') && (
-                          <span className="text-gray-400 mt-1.5 ml-4 mr-0 flex-shrink-0 text-sm select-none">•</span>
-                        )}
                         <textarea
                           ref={(el) => (textareasRef.current[originalIndex] = el)}
-                          value={line.text.startsWith('- ') ? line.text.slice(2) : line.text}
+                          value={line.text}
                           onFocus={() => {
                             setFocusedLineIndex(originalIndex);
                           }}
                           onChange={(e) => {
-                            const val = e.target.value;
-                            if (line.text.startsWith('- ')) {
-                              handleTextChange(originalIndex, '- ' + val);
-                            } else {
-                              handleTextChange(originalIndex, val);
-                            }
+                            handleTextChange(originalIndex, e.target.value);
                           }}
                           onKeyDown={(e) => {
-                            // If bullet line and backspace at position 0, remove the bullet prefix
-                            if (line.text.startsWith('- ') && e.key === 'Backspace' && e.target.selectionStart === 0 && e.target.selectionEnd === 0) {
-                              e.preventDefault();
-                              handleTextChange(originalIndex, line.text.slice(2));
-                              return;
-                            }
                             handleKeyDown(e, originalIndex);
                           }}
                           onPaste={(e) => handlePaste(e, originalIndex)}
@@ -1305,7 +1246,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                               index: originalIndex
                             });
                           }}
-                          className={`w-full ${line.text.startsWith('- ') ? 'pl-1' : 'pl-6'} pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                          className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
                             }`}
                           rows={1}
                         />

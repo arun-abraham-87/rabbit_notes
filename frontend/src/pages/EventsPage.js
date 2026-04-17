@@ -1180,30 +1180,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   };
 
-  const handleAcknowledgeEvent = async (eventId, year) => {
-    const event = allNotes.find(note => note.id === eventId);
-    if (!event) return;
-
-    // Add the acknowledgment meta tag with correct format
-    const metaTag = `meta::acknowledged::${year}`;
-
-    // Check if the tag already exists
-    if (event.content.includes(metaTag)) {
-      return; // Already acknowledged
-    }
-
-    // Add the meta tag to the content
-    const updatedContent = event.content.trim() + '\n' + metaTag;
-
-    try {
-      // Update the note with the new content
-      const response = await updateNoteById(eventId, updatedContent);
-      setAllNotes(allNotes.map(note =>
-        note.id === eventId ? { ...note, content: response.content } : note
-      ));
-    } catch (error) {
-      console.error('Error acknowledging event:', error);
-    }
+  const handleAcknowledgeEvent = (eventId, dateKey) => {
+    // EventAlerts already persists the acknowledgment tag; sync local state only.
+    const metaTag = `meta::acknowledged::${dateKey}`;
+    setAllNotes(prev => prev.map(note => {
+      if (note.id !== eventId) return note;
+      if (note.content.includes(metaTag)) return note;
+      return { ...note, content: note.content.trim() + '\n' + metaTag };
+    }));
   };
 
   const handleTagClick = (displayTag) => {

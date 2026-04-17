@@ -575,65 +575,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                               </div>
 
                               <div className="flex-1 px-6 py-4 flex flex-col">
-                                {/* Icons on top - horizontal */}
-                                <div className="flex items-center gap-2 mb-3 justify-end">
-                                  <button
-                                    onClick={() => handleToggleDeadline(occurrence.event)}
-                                    className={`p-2 rounded transition-colors ${
-                                      occurrence.event.content.includes('meta::event_deadline')
-                                        ? 'text-red-500 hover:text-red-600'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                    }`}
-                                    title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
-                                  >
-                                    <FlagIcon className="h-5 w-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => setRawNote(occurrence.event)}
-                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                    title="View raw note"
-                                  >
-                                    <CodeBracketIcon className="h-5 w-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenTimelineModal(occurrence.event)}
-                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                    title="Link to timeline"
-                                  >
-                                    <LinkIcon className="h-5 w-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleEditEvent(occurrence.event)}
-                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                    title="Edit event"
-                                  >
-                                    <PencilIcon className="h-5 w-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      navigate(`/notes?note=${occurrence.event.id}`);
-                                    }}
-                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                    title="View original note"
-                                  >
-                                    <DocumentTextIcon className="h-5 w-5" />
-                                  </button>
-                                  {occurrence.event.dateTime && (
-                                    <a
-                                      href={`https://photos.google.com/search/${moment(occurrence.event.dateTime).format('YYYY-MM-DD')}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                      title="View photos"
-                                    >
-                                      <PhotoIcon className="h-5 w-5" />
-                                    </a>
-                                  )}
-                                </div>
-                                
-                                <div className="flex-1 space-y-2">
-                                  {/* Event title */}
+                                {/* Event title + action icons on same row */}
+                                <div className="flex items-start justify-between gap-2 mb-2">
                                   <h3 className={`text-xl font-bold ${
                                       occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
                                     }`}>
@@ -650,7 +593,65 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                       ) : (
                                         occurrence.event.description
                                       )}
-                                    </h3>
+                                  </h3>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button
+                                      onClick={() => handleToggleDeadline(occurrence.event)}
+                                      className={`p-1.5 rounded transition-colors ${
+                                        occurrence.event.content.includes('meta::event_deadline')
+                                          ? 'text-red-500 hover:text-red-600'
+                                          : 'text-gray-500 hover:text-gray-700'
+                                      }`}
+                                      title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
+                                    >
+                                      <FlagIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setRawNote(occurrence.event)}
+                                      className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="View raw note"
+                                    >
+                                      <CodeBracketIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenTimelineModal(occurrence.event)}
+                                      className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="Link to timeline"
+                                    >
+                                      <LinkIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleEditEvent(occurrence.event)}
+                                      className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="Edit event"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        navigate(`/notes?note=${occurrence.event.id}`);
+                                      }}
+                                      className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="View original note"
+                                    >
+                                      <DocumentTextIcon className="h-4 w-4" />
+                                    </button>
+                                    {occurrence.event.dateTime && (
+                                      <a
+                                        href={`https://photos.google.com/search/${moment(occurrence.event.dateTime).format('YYYY-MM-DD')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                                        title="View photos"
+                                      >
+                                        <PhotoIcon className="h-4 w-4" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 space-y-2">
                                   
                                   {/* Original Date */}
                                         <p className="text-sm text-gray-600">

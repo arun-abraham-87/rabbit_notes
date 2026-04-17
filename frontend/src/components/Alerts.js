@@ -31,7 +31,7 @@ import { checkNeedsReview } from '../utils/watchlistUtils';
 import MeetingManager from './MeetingManager.js';
 import EditEventModal from './EditEventModal';
 import DeadlinePassedAlert from './DeadlinePassedAlert';
-import CriticalTodosAlert from './CriticalTodosAlert';
+
 import ReviewOverdueAlert from './ReviewOverdueAlert';
 import UnacknowledgedMeetingsAlert from './UnacknowledgedMeetingsAlert';
 import TrackerQuestionsAlert from './TrackerQuestionsAlert';
@@ -702,55 +702,24 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
-            <h3 className="ml-3 text-base font-semibold text-red-800">
-              Backup Overdue ({diffDays} days)
-            </h3>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="text-red-600 hover:text-red-700 focus:outline-none"
-            aria-label={isExpanded ? "Collapse backup alert" : "Expand backup alert"}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="h-5 w-5" />
-            ) : (
-              <ChevronDownIcon className="h-5 w-5" />
-            )}
-          </button>
+    <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+      <ExclamationCircleIcon className="h-4 w-4 text-red-500 flex-shrink-0" />
+      <span className="text-sm font-medium text-red-800">
+        Backup Overdue ({diffDays} days)
+      </span>
+      <span className="text-xs text-red-500">Last: {lastBackupDate.toLocaleDateString()}</span>
+      {isBackingUp ? (
+        <div className="flex items-center gap-1 text-xs text-blue-600 ml-auto">
+          <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+          <span>Backing up...</span>
         </div>
-      </div>
-      {isExpanded && (
-        <div className="p-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <CalendarIcon className="h-4 w-4" />
-            <span>Last backup: {lastBackupDate.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-red-600 mb-4">
-            <ExclamationCircleIcon className="h-4 w-4" />
-            <span>Backup is overdue by {diffDays} days</span>
-          </div>
-          {isBackingUp ? (
-            <div className="flex items-center gap-2 text-sm text-blue-600">
-              <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              <span>Backing up...</span>
-            </div>
-          ) : (
-            <button
-              onClick={startBackup}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-            >
-              Start Backup
-            </button>
-          )}
-        </div>
+      ) : (
+        <button
+          onClick={startBackup}
+          className="ml-auto px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+        >
+          Backup Now
+        </button>
       )}
     </div>
   );
@@ -920,7 +889,6 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-4 w-full">
-        <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />
         <MeetingManager
           allNotes={notes}
@@ -978,4 +946,4 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
   );
 };
 
-export { Alerts, AlertsProvider, UpcomingAlertsRow, TodayEventsBar };
+export { Alerts, AlertsProvider, UpcomingAlertsRow, TodayEventsBar, BackupAlert };

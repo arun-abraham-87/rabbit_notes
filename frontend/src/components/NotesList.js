@@ -10,7 +10,6 @@ import { findDuplicatedUrls } from '../utils/genUtils';
 import RightClickMenu from './RightClickMenu';
 import EndDatePickerModal from './EndDatePickerModal';
 import LinkNotesModal from './LinkNotesModal';
-import TagSelectionPopup from './TagSelectionPopup';
 import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
 import NoteCard from './NoteCard';
@@ -44,6 +43,8 @@ import NoteActionPopup from './NoteActionPopup';
 import NoteEditorModal from './NoteEditorModal';
 import RawNoteModal from './RawNoteModal';
 import LinkSelectionPopup from './LinkSelectionPopup';
+import { toast } from 'react-toastify';
+import UndoToast from './UndoToast';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -74,9 +75,6 @@ const NotesList = ({
   const location = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
-  const [isPopupVisible, setPopupVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [popupNoteText, setPopupNoteText] = useState(null);
   const [linkingNoteId, setLinkingNoteId] = useState(null);
@@ -85,7 +83,6 @@ const NotesList = ({
   const [showPastePopup, setShowPastePopup] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [newNoteText, setNewNoteText] = useState('');
-  const popupTimeoutRef = useRef(null);
   const safeNotes = allNotes || [];
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
   const [editingInlineDate, setEditingInlineDate] = useState({
@@ -337,6 +334,19 @@ const NotesList = ({
     };
   }, [focusedNoteIndex, safeNotes, multiMoveNoteId]);
 
+  useEffect(() => {
+    const handleStartMultiMoveToSection = (e) => {
+      const noteId = e?.detail?.noteId;
+      if (!noteId) return;
+      setMultiMoveNoteId(noteId);
+    };
+
+    document.addEventListener('startMultiMoveToSection', handleStartMultiMoveToSection);
+    return () => {
+      document.removeEventListener('startMultiMoveToSection', handleStartMultiMoveToSection);
+    };
+  }, []);
+
   // Handle escape key to exit bulk delete mode
   useEffect(() => {
     const handleExitBulkDeleteMode = () => {
@@ -394,20 +404,13 @@ const NotesList = ({
 
   // Scroll smoothly to another note card by id
   const scrollToNote = (id) => {
-    // First, set search query to filter to this specific note
-    const targetNote = fullNotesList.find(n => n.id === id);
-    if (targetNote) {
-      // Get the first line of the note as the search term
-      const firstLine = targetNote.content.split('\n')[0]?.trim();
-      if (firstLine) {
-        setSearchQuery(firstLine);
-      }
+    const noteEl = document.querySelector(`#note-${id}`);
+    if (noteEl) {
+      noteEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // Note not visible in current results — navigate to it via id: search
+      setSearchQuery(`id:${id}`);
     }
-
-    // Then scroll to the note
-    document
-      .querySelector(`#note-${id}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleModalDelete = (noteId) => {
@@ -459,67 +462,6 @@ const NotesList = ({
 
   };
 
-  const handleTextSelection = (e) => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-
-      // Check if the selection is within our component
-      if (!notesListRef.current?.contains(container)) {
-        return;
-      }
-
-      const rect = range.getBoundingClientRect();
-      setSelectedText(selection.toString().trim());
-
-      // Calculate position relative to the viewport
-      const viewportX = rect.left;
-      const viewportY = rect.top;
-
-      // Add scroll offset to get the absolute position
-      const x = viewportX + window.scrollX;
-      const y = viewportY + window.scrollY;
-
-      // Position the popup above the selected text with some offset
-      setPopupPosition({
-        x: x,
-        y: y - 40, // Position slightly above the text
-      });
-
-      if (popupTimeoutRef.current) {
-        clearTimeout(popupTimeoutRef.current);
-      }
-
-      // Show popup immediately on selection
-      setPopupVisible(true);
-    } else {
-      setPopupVisible(false);
-    }
-  };
-
-  const handleConvertToTag = () => {
-    addObjects(selectedText, refreshTags);
-    setPopupVisible(false);
-    Alerts.success('Tag created successfully');
-  };
-
-  const handleSearch = () => {
-    if (setSearchQuery) {
-      setSearchQuery(selectedText);
-      setPopupVisible(false);
-      // Find and focus the search input
-      const searchInput = document.querySelector('input[type="search"]');
-      if (searchInput) {
-        searchInput.value = selectedText;
-        searchInput.focus();
-      }
-    }
-  };
-
-  const handleCancelPopup = () => {
-    setPopupVisible(false);
-  };
 
   const toggleNoteSelection = (id) => {
     setSelectedNotes((prev) =>
@@ -552,18 +494,6 @@ const NotesList = ({
     duplicatedUrlColors,
   } = findDuplicatedUrls(safeNotes);
 
-  useEffect(() => {
-    const notesListElement = notesListRef.current;
-    if (notesListElement) {
-      notesListElement.addEventListener('mouseup', handleTextSelection);
-      return () => {
-        notesListElement.removeEventListener('mouseup', handleTextSelection);
-        if (popupTimeoutRef.current) {
-          clearTimeout(popupTimeoutRef.current);
-        }
-      };
-    }
-  }, []);
 
   useEffect(() => {
     if (rightClickText === null) {
@@ -576,19 +506,18 @@ const NotesList = ({
   useEffect(() => {
     if (rightClickText === 'copied') {
       setShowCopyToast(true);
-      const timer = setTimeout(() => {
-        setShowCopyToast(false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    } else {
-      setShowCopyToast(false);
     }
   }, [rightClickText]);
 
   useEffect(() => {
-    if (!showCopyToast) {
+    if (!showCopyToast) return undefined;
+
+    const timer = setTimeout(() => {
+      setShowCopyToast(false);
       setRightClickText(null);
-    }
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, [showCopyToast]);
 
   useEffect(() => {
@@ -617,7 +546,6 @@ const NotesList = ({
         setRightClickText(null);
         setRightClickIndex(null);
         setRightClickNoteId(null);
-        setPopupVisible(false); // Also dismiss the tag selection popup
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -641,7 +569,7 @@ const NotesList = ({
       // Only block arrow keys if we're in a modal but NOT in a note editor
       const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
       const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
-      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
 
       // Check if we're in a note editor
@@ -649,7 +577,7 @@ const NotesList = ({
       const isInNoteEditor = noteEditorContainer?.contains(document.activeElement);
 
       // Only block if we're in a modal but NOT in a note editor
-      if ((isAnyModalOpen || isInModal) && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
+      if (isAnyModalOpen && !isInModal && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -660,7 +588,7 @@ const NotesList = ({
     return () => {
       document.removeEventListener('keydown', handleGlobalArrowKeys, true);
     };
-  }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, showNoteActionPopup.visible]);
+  }, [showLinkPopupRef, showPastePopup, isModalOpen, linkPopupVisible, popupNoteText, rawNote, showNoteActionPopup.visible]);
 
   // Handle keyboard navigation between notes
   useEffect(() => {
@@ -679,7 +607,7 @@ const NotesList = ({
       // Check if any modal or popup is open and block arrow keys completely
       const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
       const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
-      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen;
       const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
 
       // Check if we're in a note editor specifically
@@ -687,7 +615,7 @@ const NotesList = ({
       const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) ||
         document.activeElement?.closest('.note-editor-container');
 
-      if ((isAnyModalOpen || isInModal) && !isInNoteEditor) {
+      if (isAnyModalOpen && !isInModal && !isInNoteEditor) {
         // Block arrow keys when any modal is open BUT NOT when in note editor
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k') {
           e.preventDefault();
@@ -712,7 +640,7 @@ const NotesList = ({
       }
 
       // Check if any popup is open - if so, don't handle general keyboard shortcuts
-      const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
+      const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen;
 
       // Also check if note editor modal is open
       const noteEditorModal = document.querySelector('.note-editor-container[data-modal="true"]');
@@ -1305,7 +1233,7 @@ const NotesList = ({
     // Ignore if popup/modal is open - check both by state and by DOM
     const isLinkTextPopupOpen = document.querySelector('[data-link-text-popup="true"]');
     const isInModal = target.closest('[data-modal="true"]') || activeElement?.closest('[data-modal="true"]');
-    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen || isLinkTextPopupOpen || isInModal) {
+    if (showLinkPopupRef.current || showPastePopup || isModalOpen || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible || isAddTextModalOpen || isLinkEditPopupOpen || isLinkTextPopupOpen || isInModal) {
       return;
     }
     // Vim navigation logic
@@ -1396,7 +1324,7 @@ const NotesList = ({
     // Reset buffer if any other key
     setVimNumberBuffer('');
     setVimGPressed(false);
-  }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, vimGPressed, vimNumberBuffer, safeNotes]);
+  }, [showLinkPopupRef, showPastePopup, isModalOpen, linkPopupVisible, popupNoteText, rawNote, vimGPressed, vimNumberBuffer, safeNotes]);
 
   useEffect(() => {
     if (location.pathname !== '/notes') return;
@@ -1504,7 +1432,7 @@ const NotesList = ({
 
       {showCopyToast && (
         <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg z-50">
-          Copied to clipboard
+          Note line copied
         </div>
       )}
       {selectedNotes.length > 1 && (
@@ -1585,6 +1513,7 @@ const NotesList = ({
                     noteIndex={index}
                     settings={settings}
                     addNote={addNotes}
+                    setShowCopyToast={setShowCopyToast}
                   />
                 ))}
               </div>
@@ -1664,6 +1593,7 @@ const NotesList = ({
                     onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                     settings={settings}
                     addNote={addNotes}
+                    setShowCopyToast={setShowCopyToast}
                   />
                 ))}
               </div>
@@ -1744,6 +1674,7 @@ const NotesList = ({
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                   settings={settings}
                   addNote={addNotes}
+                  setShowCopyToast={setShowCopyToast}
                 />
               ))}
             </div>
@@ -1753,7 +1684,6 @@ const NotesList = ({
 
       <DeleteConfirmationModal isOpen={isModalOpen} onClose={closeModal} onConfirm={confirmDelete} title="Confirm Deletion" message="Are you sure you want to delete this note? This action cannot be undone." />
 
-      <TagSelectionPopup visible={isPopupVisible} position={popupPosition} selectedText={selectedText} onConvert={handleConvertToTag} onSearch={handleSearch} onCancel={handleCancelPopup} />
 
       {popupNoteText && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -2000,8 +1930,21 @@ const NotesList = ({
           lineIndex={rightClickIndex}
           pos={rightClickPos}
           notes={allNotes}
+          multiMoveNoteId={multiMoveNoteId}
           updateNote={updateNoteCallback}
+          showUndoToast={(label, originalContent) => {
+            const noteId = rightClickNoteId;
+            toast(({ closeToast }) => (
+              <UndoToast
+                label={label}
+                onUndo={() => updateNoteCallback(noteId, originalContent)}
+                closeToast={closeToast}
+              />
+            ), { autoClose: 10000, closeButton: false, icon: false, style: { padding: '8px 12px' } });
+          }}
           setRightClickText={setRightClickText}
+          setRightClickNoteId={setRightClickNoteId}
+          setRightClickIndex={setRightClickIndex}
           setEditedLineContent={setEditedLineContent}
           setEditingLine={setEditingLine}
           setShowCopyToast={setShowCopyToast}

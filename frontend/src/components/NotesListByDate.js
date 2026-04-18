@@ -85,16 +85,16 @@ function NotesListByDate({ notes, searchQuery }) {
                   <div className="flex-1">
                     <div className="text-sm text-gray-800 whitespace-pre-wrap space-y-2">
                       {nonMetaLines.map((line, idx) => {
-                        if (line.startsWith('###')) {
+                        if (line.startsWith('{#h1#}')) {
                           return (
                             <h1 key={idx} className="text-lg font-bold text-gray-900 pb-1">
-                              {line.replace(/^###/, '').replace(/#+$/, '').trim()}
+                              {line.replace(/^\{#h1#\}/, '').trim()}
                             </h1>
                           );
-                        } else if (line.startsWith('##')) {
+                        } else if (line.startsWith('{#h2#}')) {
                           return (
                             <h2 key={idx} className="text-base font-semibold text-gray-800 pb-1">
-                              {line.replace(/^##(?!#)/, '').replace(/#+$/, '').trim()}
+                              {line.replace(/^\{#h2#\}/, '').trim()}
                             </h2>
                           );
                         } else if (line.startsWith('#') && !line.startsWith('##')) {

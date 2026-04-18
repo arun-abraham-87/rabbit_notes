@@ -3,7 +3,6 @@ import NoteCardHeader from './NoteCardHeader';
 import NoteCardContent from './NoteCardContent';
 import NoteCardFooter from './NoteCardFooter';
 import NoteTagBar from './NoteTagBar';
-import NoteCardSuperEditBanner from './NoteCardSuperEditBanner';
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
 import { DevModeInfo } from '../utils/DevUtils';
 
@@ -120,8 +119,8 @@ const NoteCard = ({
         if (highlightedLineIndex !== -1) {
           const updatedLines = [...lines];
           // Wrap the line with ### if it's not already wrapped
-          if (!updatedLines[highlightedLineIndex].trim().startsWith('###')) {
-            updatedLines[highlightedLineIndex] = `###${updatedLines[highlightedLineIndex].trim()}###`;
+          if (!updatedLines[highlightedLineIndex].trim().startsWith('{#h1#}')) {
+            updatedLines[highlightedLineIndex] = `{#h1#}${updatedLines[highlightedLineIndex].trim()}`;
           }
           
           const updatedContent = updatedLines.join('\n');
@@ -139,8 +138,8 @@ const NoteCard = ({
         if (highlightedLineIndex !== -1) {
           const updatedLines = [...lines];
           // Wrap the line with ## if it's not already wrapped
-          if (!updatedLines[highlightedLineIndex].trim().startsWith('##')) {
-            updatedLines[highlightedLineIndex] = `##${updatedLines[highlightedLineIndex].trim()}##`;
+          if (!updatedLines[highlightedLineIndex].trim().startsWith('{#h2#}')) {
+            updatedLines[highlightedLineIndex] = `{#h2#}${updatedLines[highlightedLineIndex].trim()}`;
           }
           
           const updatedContent = updatedLines.join('\n');
@@ -159,8 +158,8 @@ const NoteCard = ({
           const updatedLines = [...lines];
           // Clear all formatting: remove ###, ##, **, etc.
           let cleanText = updatedLines[highlightedLineIndex].trim();
-          cleanText = cleanText.replace(/^###\s*/, '').replace(/\s*###$/, ''); // Remove H1
-          cleanText = cleanText.replace(/^##\s*/, '').replace(/\s*##$/, ''); // Remove H2
+          cleanText = cleanText.replace(/^\{#h1#\}\s*/, ''); // Remove H1
+          cleanText = cleanText.replace(/^\{#h2#\}\s*/, ''); // Remove H2
           cleanText = cleanText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove bold
           cleanText = cleanText.replace(/^-\s*/, ''); // Remove bullet points
           
@@ -655,13 +654,6 @@ const NoteCard = ({
             onSetFocusedNoteIndex(noteIndex);
           }
         }}
-        onDoubleClick={(e) => {
-          if (!isSuperEditMode && typeof setPopupNoteText === 'function') {
-            e.preventDefault();
-            e.stopPropagation();
-            setPopupNoteText(note.id);
-          }
-        }}
         tabIndex={0}
         role="button"
         onKeyDown={e => {
@@ -693,8 +685,6 @@ const NoteCard = ({
           boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : undefined
         }}
       >
-      <NoteCardSuperEditBanner isVisible={isFocused && !isSuperEditMode} />
-      
       {/* Developer Mode Test Indicator */}
       {testDevMode && (
         <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl z-10">

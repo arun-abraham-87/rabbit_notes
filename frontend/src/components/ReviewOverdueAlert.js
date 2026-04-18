@@ -641,8 +641,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
     // Helper to render a line with URL logic
     const renderLine = (line, key) => {
-      // Check for H1 headers (###text###)
-      const h1Match = line.match(/^###(.+?)###$/);
+      // Check for H1 headers ({#h1#}text)
+      const h1Match = line.match(/^\{#h1#\}(.+)$/);
       if (h1Match) {
         const toSentenceCase = (text) => {
           if (!text || typeof text !== 'string') return text;
@@ -656,8 +656,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
         );
       }
       
-      // Check for H2 headers (##text##)
-      const h2Match = line.match(/^##(.+?)##$/);
+      // Check for H2 headers ({#h2#}text)
+      const h2Match = line.match(/^\{#h2#\}(.+)$/);
       if (h2Match) {
         return (
           <h2 key={key} className="text-lg font-semibold text-purple-700">
@@ -768,7 +768,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
         {firstFiveLines.map((line, index) => {
           const isFirstLine = index === 0;
           const isSecondLine = index === 1;
-          const isFirstLineH1 = line.trim().startsWith('###') && line.trim().endsWith('###');
+          const isFirstLineH1 = line.trim().startsWith('{#h1#}');
           
           return (
             <div 
@@ -1082,8 +1082,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       const updatedLines = lines.map((line, index) => {
         if (index === 0) {
           // Remove any existing H1 markers and add new ones
-          const cleanText = line.replace(/^###\s*/, '').replace(/\s*###$/, '');
-          return `###${cleanText}###`;
+          const cleanText = line.replace(/^\{#h1#\}\s*/, '');
+          return `{#h1#}${cleanText}`;
         }
         return line;
       });

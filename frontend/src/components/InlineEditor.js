@@ -18,7 +18,7 @@ const API_BASE_URL = 'http://localhost:5001/api';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {}, allNotes = [], addNote = null, updateNote = null, currentNoteId = null }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, onNavigateLine, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {}, allNotes = [], addNote = null, updateNote = null, currentNoteId = null }) => {
   
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
@@ -191,24 +191,18 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }
   }, [displayText, isInitialMount]);
 
-  // Detect if text is H1 (###) or H2 (##) and strip hash symbols for editing
+  // Detect if text is H1 ({#h1#}) or H2 ({#h2#}) and strip prefix for editing
   useEffect(() => {
     const trimmedText = text.trim();
     let newDisplayText = text;
     let newHeaderType = null;
     
-    if (trimmedText.startsWith('###') && trimmedText.endsWith('###')) {
+    if (trimmedText.startsWith('{#h1#}')) {
       newHeaderType = 'h1';
-      newDisplayText = trimmedText.substring(3, trimmedText.length - 3); // Remove '###' prefix and '###' suffix
-    } else if (trimmedText.startsWith('##') && trimmedText.endsWith('##')) {
+      newDisplayText = trimmedText.slice(6); // Remove '{#h1#}' prefix
+    } else if (trimmedText.startsWith('{#h2#}')) {
       newHeaderType = 'h2';
-      newDisplayText = trimmedText.substring(2, trimmedText.length - 2); // Remove '##' prefix and '##' suffix
-    } else if (trimmedText.startsWith('### ')) {
-      newHeaderType = 'h1';
-      newDisplayText = trimmedText.substring(4); // Remove '### ' prefix only
-    } else if (trimmedText.startsWith('## ')) {
-      newHeaderType = 'h2';
-      newDisplayText = trimmedText.substring(3); // Remove '## ' prefix only
+      newDisplayText = trimmedText.slice(6); // Remove '{#h2#}' prefix
     } else {
       newHeaderType = null;
       newDisplayText = text;
@@ -410,8 +404,22 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   const handleKeyDown = (e) => {
-    
-    
+    // Handle ArrowUp/ArrowDown to navigate between note lines
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && onNavigateLine && !showWikiLinkDropdown) {
+      const el = inputRef.current;
+      if (el) {
+        const val = el.value;
+        const cursor = el.selectionStart;
+        const isFirstLine = e.key === 'ArrowUp' && !val.substring(0, cursor).includes('\n');
+        const isLastLine = e.key === 'ArrowDown' && !val.substring(cursor).includes('\n');
+        if (isFirstLine || isLastLine) {
+          e.preventDefault();
+          onNavigateLine(e.key === 'ArrowUp' ? -1 : 1);
+          return;
+        }
+      }
+    }
+
     // Handle wiki-link dropdown navigation
     if (showWikiLinkDropdown) {
       const wikiLinkNotes = getWikiLinkNotes(wikiLinkSearch);
@@ -520,9 +528,9 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       
       // Add header symbols back if it was a header
       if (headerType === 'h1') {
-        finalText = '###' + displayText + '###';
+        finalText = '{#h1#}' + displayText;
       } else if (headerType === 'h2') {
-        finalText = '##' + displayText + '##';
+        finalText = '{#h2#}' + displayText;
       }
       
       // Handle image upload if image is pasted

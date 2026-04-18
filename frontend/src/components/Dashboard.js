@@ -23,6 +23,7 @@ import Countdown from './Countdown.js';
 import CustomCalendar from './CustomCalendar.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
+import { DEFAULT_APP_FONT, applyAppFont } from '../utils/FontUtils';
 
 const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoliday }) => {
   useEffect(() => {
@@ -241,7 +242,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [lastLoginTime, setLastLoginTime] = useState(null);
   const [activePopup, setActivePopup] = useState(null); // Track which popup is active: 'stock', 'exchange', 'weather', or null
   const [showFontSelector, setShowFontSelector] = useState(false);
-  const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || 'System Default');
+  const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
   const fontSelectorRef = useRef(null);
 
   // Refs for scroll containers
@@ -257,11 +258,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
 
   // Apply selected font globally
   useEffect(() => {
-    if (selectedFont === 'System Default') {
-      document.documentElement.style.fontFamily = '';
-    } else {
-      document.documentElement.style.fontFamily = `"${selectedFont}", sans-serif`;
-    }
+    applyAppFont(selectedFont);
     localStorage.setItem('appFont', selectedFont);
   }, [selectedFont]);
 
@@ -278,7 +275,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   }, [showFontSelector]);
 
   const availableFonts = [
-    'System Default',
+    DEFAULT_APP_FONT,
     'Arial',
     'Helvetica',
     'Verdana',
@@ -803,7 +800,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                             key={font}
                             onClick={() => { setSelectedFont(font); setShowFontSelector(false); }}
                             className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors ${selectedFont === font ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                            style={{ fontFamily: font === 'System Default' ? 'inherit' : `"${font}", sans-serif` }}
+                            style={{ fontFamily: font === DEFAULT_APP_FONT ? 'inherit' : `"${font}", sans-serif` }}
                           >
                             {font}
                             {selectedFont === font && <span className="float-right text-blue-500">&#10003;</span>}

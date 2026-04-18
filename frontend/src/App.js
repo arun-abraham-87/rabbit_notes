@@ -40,12 +40,10 @@ import FamilyTree from './pages/FamilyTree';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
+import { applySavedAppFont } from './utils/FontUtils';
 
 // Apply saved font preference on app load
-const savedFont = localStorage.getItem('appFont');
-if (savedFont && savedFont !== 'System Default') {
-  document.documentElement.style.fontFamily = `"${savedFont}", sans-serif`;
-}
+applySavedAppFont();
 
 // MainContentArea component that adjusts based on left panel state
 const MainContentArea = ({

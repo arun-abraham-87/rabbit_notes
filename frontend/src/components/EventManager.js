@@ -1171,14 +1171,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
               <div
                 key={note.id}
                 ref={(el) => { eventCardRefs.current[note.id] = el; }}
-                className={`group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-lg transition-shadow ${isToday ? 'animate-pulse' : ''}  relative`}
+                className={`group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-lg transition-shadow relative`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
               >
                 {isToday && (
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="animate-bounce text-green-600">🎉</div>
+                    <div className="text-green-600">🎉</div>
                     <div className="text-green-800 font-bold text-lg">
                       {shouldShowAnniversary ? 'Anniversary Today!' : 'TODAY!'}
                     </div>

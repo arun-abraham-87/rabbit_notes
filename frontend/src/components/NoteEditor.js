@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
-import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
@@ -46,11 +47,11 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
 
   // Helper function to restore URLs from reversed form
   const restoreUrlsInText = (text) => {
-    // Regular expression to match reversed URLs (ending with ptth)
-    const reversedUrlRegex = /(https?:\/\/[^\s]+ptth)/g;
+    // Regular expression to match reversed URLs (ending with reversed http/https)
+    const reversedUrlRegex = /[^\s()[\]]+\/\/:s?ptth/g;
 
     // Regular expression to match markdown links with reversed URLs
-    const reversedMarkdownLinkRegex = /\[([^\]]+)\]\(([^)]+ptth)\)/g;
+    const reversedMarkdownLinkRegex = /\[([^\]]+)\]\(([^)\s]+\/\/:s?ptth)\)/g;
 
     let result = text;
 
@@ -98,7 +99,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       ...processedContentLines.map((text, index) => ({
         id: `line-${index}`,
         text,
-        isTitle: text.startsWith('##') && text.endsWith('##'),
+        isTitle: text.startsWith('{#h1#}') || text.startsWith('{#h2#}'),
       })),
       // Add empty line for editing (if not in add mode)
       ...(!isAddMode ? [{ id: `line-${Date.now()}-editing`, text: '', isTitle: false }] : []),
@@ -127,6 +128,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
+  const [insertionPoint, setInsertionPoint] = useState(null); // { index: number, position: 'above' | 'below' }
 
   // Removed vim-like mode system - always in edit mode
 
@@ -269,14 +271,14 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
     // Prepare selected line
     let content = newLines[index].text.trim();
     // Remove any H2 markers if present
-    if (content.startsWith('##') && content.endsWith('##')) {
-      content = content.slice(2, -2);
+    if (content.startsWith('{#h2#}')) {
+      content = content.slice(6);
     }
     // Toggle H1
-    if (content.startsWith('###') && content.endsWith('###')) {
-      content = content.slice(3, -3);
+    if (content.startsWith('{#h1#}')) {
+      content = content.slice(6);
     } else {
-      content = `###${content}###`;
+      content = `{#h1#}${content}`;
     }
     // Update the line
     newLines[index].text = content;
@@ -288,14 +290,14 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
     // Prepare selected line
     let content = newLines[index].text.trim();
     // Remove H1 markers if present
-    if (content.startsWith('###') && content.endsWith('###')) {
-      content = content.slice(3, -3);
+    if (content.startsWith('{#h1#}')) {
+      content = content.slice(6);
     }
     // Toggle H2
-    if (content.startsWith('##') && content.endsWith('##')) {
-      content = content.slice(2, -2);
+    if (content.startsWith('{#h2#}')) {
+      content = content.slice(6);
     } else {
-      content = `##${content}##`;
+      content = `{#h2#}${content}`;
     }
     // Update the line
     newLines[index].text = content;
@@ -310,8 +312,47 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
   const [urlLabelSelection, setUrlLabelSelection] = useState({ urlIndex: null, labelIndex: null });
   const [pendingUrlIndex, setPendingUrlIndex] = useState(null);
   const [customLabel, setCustomLabel] = useState('');
+  const [customUrl, setCustomUrl] = useState('');
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, index: null });
   const textareasRef = useRef([]);
+
+  const getEditableLinkParts = (lineText = '') => {
+    const markdownMatch = lineText.match(/^(\s*)\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)(\s*)$/);
+    if (markdownMatch) {
+      return {
+        leadingWhitespace: markdownMatch[1],
+        label: markdownMatch[2],
+        url: markdownMatch[3],
+        trailingWhitespace: markdownMatch[4]
+      };
+    }
+
+    const plainUrlMatch = lineText.match(/^(\s*)(https?:\/\/[^\s]+)(\s*)$/);
+    if (plainUrlMatch) {
+      return {
+        leadingWhitespace: plainUrlMatch[1],
+        label: '',
+        url: plainUrlMatch[2],
+        trailingWhitespace: plainUrlMatch[3]
+      };
+    }
+
+    return {
+      leadingWhitespace: '',
+      label: '',
+      url: lineText,
+      trailingWhitespace: ''
+    };
+  };
+
+  const buildEditableLinkLine = (lineText, label, url) => {
+    const { leadingWhitespace, trailingWhitespace } = getEditableLinkParts(lineText);
+    const cleanLabel = label.trim();
+    const cleanUrl = url.trim();
+    return cleanLabel
+      ? `${leadingWhitespace}[${cleanLabel}](${cleanUrl})${trailingWhitespace}`
+      : `${leadingWhitespace}${cleanUrl}${trailingWhitespace}`;
+  };
 
   // Removed conflicting useEffect that was focusing the last textarea
 
@@ -487,6 +528,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       setLines(newLines);
       setPendingUrlIndex(index);
       setCustomLabel(new URL(pasteText).hostname);
+      setCustomUrl(pasteText);
       setTimeout(() => {
         const input = document.getElementById('custom-label-input');
         if (input) input.focus();
@@ -731,6 +773,40 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
     }
   };
 
+  const insertLineAbove = (index) => {
+    const newLines = [...lines];
+    newLines.splice(index, 0, { id: `line-${Date.now()}-above`, text: '', isTitle: false });
+    setLines(newLines);
+    setTimeout(() => {
+      if (textareasRef.current[index]) {
+        textareasRef.current[index].focus();
+      }
+    }, 10);
+  };
+
+  const insertLineBelow = (index) => {
+    const newLines = [...lines];
+    newLines.splice(index + 1, 0, { id: `line-${Date.now()}-below`, text: '', isTitle: false });
+    setLines(newLines);
+    setTimeout(() => {
+      if (textareasRef.current[index + 1]) {
+        textareasRef.current[index + 1].focus();
+      }
+    }, 10);
+  };
+
+  const insertSeparatorAbove = (index) => {
+    const newLines = [...lines];
+    newLines.splice(index, 0, { id: `line-${Date.now()}-sep-above`, text: '----------------------------------------------------------------------------------------------------', isTitle: false });
+    setLines(newLines);
+  };
+
+  const insertSeparatorBelow = (index) => {
+    const newLines = [...lines];
+    newLines.splice(index + 1, 0, { id: `line-${Date.now()}-sep-below`, text: '----------------------------------------------------------------------------------------------------', isTitle: false });
+    setLines(newLines);
+  };
+
   const saveNote = () => {
 
 
@@ -918,14 +994,30 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
         )}
         <div className="mb-4 flex justify-end items-center">
 
-          {pendingUrlIndex !== null && (
+          {pendingUrlIndex !== null && ReactDOM.createPortal(
             <div
-              className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[9999]"
+              data-modal="true"
+              data-link-text-popup="true"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (e.target === e.currentTarget) {
+                  setPendingUrlIndex(null);
+                  setCustomLabel('');
+                  setCustomUrl('');
+                  setShowTextSelection(false);
+                }
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                // Stop propagation to prevent NoteEditor/NotesList from seeing keys
+                e.stopPropagation();
+              }}
             >
               <div
                 className="bg-white p-6 rounded-lg shadow-md w-96 max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
               >
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Link Text</h3>
                 <div className="space-y-4">
@@ -939,13 +1031,13 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                       value={customLabel}
                       onChange={(e) => setCustomLabel(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === 'Escape') {
+                        if (e.key === 'Enter') {
                           const newLines = [...lines];
-                          const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
-                          newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+                          newLines[pendingUrlIndex].text = buildEditableLinkLine(newLines[pendingUrlIndex].text, customLabel, customUrl);
                           setLines(newLines);
                           setPendingUrlIndex(null);
                           setCustomLabel('');
+                          setCustomUrl('');
                           setShowTextSelection(false);
 
                           // Add a new row and focus on it
@@ -960,8 +1052,14 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                             const nextTextarea = textareasRef.current[pendingUrlIndex + 1];
                             if (nextTextarea) {
                               nextTextarea.focus();
+                              nextTextarea.selectionStart = nextTextarea.selectionEnd = 0;
                             }
                           }, 0);
+                        } else if (e.key === 'Escape') {
+                          setPendingUrlIndex(null);
+                          setCustomLabel('');
+                          setCustomUrl('');
+                          setShowTextSelection(false);
                         }
                       }}
                       className="w-full border px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -972,9 +1070,14 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
 
                   <div className="border rounded-lg overflow-hidden">
                     <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowTextSelection(!showTextSelection);
+                        setShowTextSelection(prev => !prev);
                       }}
                       className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between"
                     >
@@ -988,35 +1091,46 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
 
                     {showTextSelection && (
                       <div className="border-t max-h-48 overflow-y-auto">
-                        {lines.map((line, idx) => {
-                          // Skip empty lines, meta lines, and the current URL line
-                          if (
-                            idx === pendingUrlIndex ||
-                            !line.text.trim() ||
-                            line.text.trim().startsWith('meta::') ||
-                            line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ||
-                            line.text.match(/^https?:\/\/[^\s]+$/)
-                          ) {
-                            return null;
+                        {(() => {
+                          const selectableLines = lines
+                            .map((line, idx) => ({ line, idx }))
+                            .filter(({ line, idx }) => (
+                              idx !== pendingUrlIndex &&
+                              line.text.trim() &&
+                              !line.text.trim().startsWith('meta::') &&
+                              !line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) &&
+                              !line.text.match(/^https?:\/\/[^\s]+$/)
+                            ));
+
+                          if (selectableLines.length === 0) {
+                            return (
+                              <div className="px-4 py-3 text-sm text-gray-400">
+                                No text lines available to use as the link label.
+                              </div>
+                            );
                           }
 
-                          return (
+                          return selectableLines.map(({ line, idx }) => (
                             <button
                               key={line.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setCustomLabel(line.text);
                                 // Remove the selected line from the note
                                 const newLines = [...lines];
-                                // Get the URL from the current URL line
-                                const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
                                 // Update the URL line with the markdown link format
-                                newLines[pendingUrlIndex].text = `[${line.text}](${url})`;
+                                newLines[pendingUrlIndex].text = buildEditableLinkLine(newLines[pendingUrlIndex].text, line.text, customUrl);
                                 // Remove the selected text line
                                 newLines.splice(idx, 1);
                                 setLines(newLines);
                                 setPendingUrlIndex(null);
                                 setCustomLabel('');
+                                setCustomUrl('');
                                 setShowTextSelection(false);
                               }}
                               className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 border-b last:border-b-0 flex items-center group"
@@ -1024,17 +1138,40 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                               <span className="flex-1 truncate">{line.text}</span>
                               <span className="text-blue-500 opacity-0 group-hover:opacity-100 ml-2">Use</span>
                             </button>
-                          );
-                        })}
+                          ));
+                        })()}
                       </div>
                     )}
                   </div>
 
                   <div className="text-sm text-gray-500 break-all">
-                    <span className="font-medium">URL: </span>
-                    <span className="break-all">
-                      {lines[pendingUrlIndex]?.text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || lines[pendingUrlIndex]?.text}
-                    </span>
+                    <label htmlFor="custom-url-input" className="block text-sm mb-2 text-gray-700">
+                      URL:
+                    </label>
+                    <input
+                      id="custom-url-input"
+                      type="text"
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const newLines = [...lines];
+                          newLines[pendingUrlIndex].text = buildEditableLinkLine(newLines[pendingUrlIndex].text, customLabel, customUrl);
+                          setLines(newLines);
+                          setPendingUrlIndex(null);
+                          setCustomLabel('');
+                          setCustomUrl('');
+                          setShowTextSelection(false);
+                        } else if (e.key === 'Escape') {
+                          setPendingUrlIndex(null);
+                          setCustomLabel('');
+                          setCustomUrl('');
+                          setShowTextSelection(false);
+                        }
+                      }}
+                      className="w-full border px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter URL"
+                    />
                   </div>
                   <div className="flex justify-end space-x-3 mt-6">
                     <button
@@ -1042,6 +1179,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                         e.stopPropagation();
                         setPendingUrlIndex(null);
                         setCustomLabel('');
+                        setCustomUrl('');
                         setShowTextSelection(false);
                       }}
                       className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
@@ -1052,11 +1190,11 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                       onClick={(e) => {
                         e.stopPropagation();
                         const newLines = [...lines];
-                        const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
-                        newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+                        newLines[pendingUrlIndex].text = buildEditableLinkLine(newLines[pendingUrlIndex].text, customLabel, customUrl);
                         setLines(newLines);
                         setPendingUrlIndex(null);
                         setCustomLabel('');
+                        setCustomUrl('');
                         setShowTextSelection(false);
                       }}
                       className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -1066,7 +1204,8 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
         {/* {isAddMode && !isModal && (
@@ -1090,7 +1229,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
               const updatedLines = e.target.value.split('\n').map((text, index) => ({
                 id: `line-${timestamp}-${index}`,
                 text,
-                isTitle: text.startsWith('##') && text.endsWith('##'),
+                isTitle: text.startsWith('{#h1#}') || text.startsWith('{#h2#}'),
               }));
               setLines(updatedLines);
               // Update search query if in add mode
@@ -1127,8 +1266,58 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                   {dropTargetIndex === originalIndex && draggedId !== lines[originalIndex].id && (
                     <div className="h-1 bg-blue-500 rounded my-1"></div>
                   )}
+                  {/* Insertion point highlight */}
+                  {insertionPoint && insertionPoint.index === originalIndex && (
+                    <div className={`absolute left-0 right-0 h-1 bg-blue-500 z-[70] rounded-full transition-all ${insertionPoint.position === 'above' ? 'top-0' : 'bottom-0'}`} />
+                  )}
                   <div className="flex items-start px-3 py-2 relative">
-                    <span className="absolute left-1 top-2 text-gray-400 cursor-grab group-hover:opacity-100 opacity-0">☰</span>
+                    {/* Hover actions on the far left - widened to ensure stable hover bridge */}
+                    <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center group/actions">
+                      {/* The thin "invisible" trigger strip */}
+                      <div className="w-1.5 h-2/3 bg-gray-300 opacity-0 group-hover/actions:opacity-100 rounded-full transition-opacity cursor-pointer"></div>
+                      
+                      {/* The actual buttons revealed on hover of the strip or line */}
+                      <div className="absolute right-[calc(100%-2px)] hidden group-hover/actions:flex flex-col gap-1.5 bg-white shadow-2xl border border-gray-200 rounded-xl p-2 z-[100] min-w-[130px]">
+                        <button
+                          onMouseEnter={() => setInsertionPoint({ index: originalIndex, position: 'above' })}
+                          onMouseLeave={() => setInsertionPoint(null)}
+                          onClick={(e) => { e.stopPropagation(); insertLineAbove(originalIndex); setInsertionPoint(null); }}
+                          className="w-full h-10 flex items-center justify-between px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm active:scale-95"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Above</span>
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onMouseEnter={() => setInsertionPoint({ index: originalIndex, position: 'below' })}
+                          onMouseLeave={() => setInsertionPoint(null)}
+                          onClick={(e) => { e.stopPropagation(); insertLineBelow(originalIndex); setInsertionPoint(null); }}
+                          className="w-full h-10 flex items-center justify-between px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm active:scale-95"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Below</span>
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                        <div className="h-px bg-gray-200 my-1"></div>
+                        <button
+                          onMouseEnter={() => setInsertionPoint({ index: originalIndex, position: 'above' })}
+                          onMouseLeave={() => setInsertionPoint(null)}
+                          onClick={(e) => { e.stopPropagation(); insertSeparatorAbove(originalIndex); setInsertionPoint(null); }}
+                          className="w-full h-10 flex items-center justify-between px-3 bg-gray-800 hover:bg-black text-white rounded-lg transition-all shadow-sm active:scale-95"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Line ↑</span>
+                          <span className="font-bold text-lg leading-tight">―</span>
+                        </button>
+                        <button
+                          onMouseEnter={() => setInsertionPoint({ index: originalIndex, position: 'below' })}
+                          onMouseLeave={() => setInsertionPoint(null)}
+                          onClick={(e) => { e.stopPropagation(); insertSeparatorBelow(originalIndex); setInsertionPoint(null); }}
+                          className="w-full h-10 flex items-center justify-between px-3 bg-gray-800 hover:bg-black text-white rounded-lg transition-all shadow-sm active:scale-95"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Line ↓</span>
+                          <span className="font-bold text-lg leading-tight">―</span>
+                        </button>
+                      </div>
+                    </div>
+                    <span className="absolute left-7 top-2 text-gray-400 cursor-grab group-hover:opacity-100 opacity-0">☰</span>
                     {line.text.match(/^https?:\/\/[^\s]+$/) && urlLabelSelection.urlIndex === null && (
                       <input
                         type="checkbox"
@@ -1157,7 +1346,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                     )}
                     {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ? (
                       <div
-                        className="flex items-center pl-6 pr-28 w-full"
+                        className="flex items-center pl-12 pr-28 w-full"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
@@ -1172,6 +1361,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                             const url = match[2];
                             setPendingUrlIndex(originalIndex);
                             setCustomLabel(currentLabel);
+                            setCustomUrl(url);
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           onMouseUp={(e) => e.stopPropagation()}
@@ -1192,7 +1382,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                       </div>
                     ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
                       <div
-                        className="flex items-center pl-6 pr-28 w-full"
+                        className="flex items-center pl-12 pr-28 w-full"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
@@ -1204,6 +1394,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                             e.preventDefault();
                             setPendingUrlIndex(originalIndex);
                             setCustomLabel(new URL(line.text).hostname);
+                            setCustomUrl(line.text);
                           }}
                           onMouseDown={(e) => e.stopPropagation()}
                           onMouseUp={(e) => e.stopPropagation()}
@@ -1246,7 +1437,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                               index: originalIndex
                             });
                           }}
-                          className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                          className={`w-full pl-12 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
                             }`}
                           rows={1}
                         />
@@ -1344,8 +1535,8 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                         </button>
                         {(() => {
                           const text = lines[index]?.text || '';
-                          const isH1 = text.startsWith('###') && text.endsWith('###');
-                          const isH2 = text.startsWith('##') && text.endsWith('##');
+                          const isH1 = text.startsWith('{#h1#}');
+                          const isH2 = text.startsWith('{#h2#}');
                           if (isH1 || isH2) {
                             return (
                               <>
@@ -1354,8 +1545,8 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                                   onClick={() => {
                                     const newLines = [...lines];
                                     let text = newLines[index].text;
-                                    if (isH1) text = text.slice(3, -3);
-                                    else if (isH2) text = text.slice(2, -2);
+                                    if (isH1) text = text.slice(6);
+                                    else if (isH2) text = text.slice(6);
                                     newLines[index].text = text;
                                     newLines[index].isTitle = false;
                                     setLines(newLines);
@@ -1576,8 +1767,8 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
             </button>
             {(() => {
               const text = lines[contextMenu.index]?.text || '';
-              const isH1 = text.startsWith('###') && text.endsWith('###');
-              const isH2 = text.startsWith('##') && text.endsWith('##');
+              const isH1 = text.startsWith('{#h1#}');
+              const isH2 = text.startsWith('{#h2#}');
               if (isH1 || isH2) {
                 return (
                   <button
@@ -1585,8 +1776,8 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                     onClick={() => {
                       const newLines = [...lines];
                       let text = newLines[contextMenu.index].text;
-                      if (isH1) text = text.slice(3, -3);
-                      else if (isH2) text = text.slice(2, -2);
+                      if (isH1) text = text.slice(6);
+                      else if (isH2) text = text.slice(6);
                       newLines[contextMenu.index].text = text;
                       newLines[contextMenu.index].isTitle = false;
                       setLines(newLines);

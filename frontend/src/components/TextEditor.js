@@ -433,7 +433,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
                   <div
                     contentEditable
                     suppressContentEditableWarning
-                    className={`editable-div px-4 py-2 mb-3 whitespace-pre-wrap rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${selectedIndices.includes(index) ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-200"} ${index === 0 && notes[0].startsWith('###') ? 'text-2xl font-bold' : ''}`}
+                    className={`editable-div px-4 py-2 mb-3 whitespace-pre-wrap rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${selectedIndices.includes(index) ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-200"} ${index === 0 && notes[0].startsWith('{#h1#}') ? 'text-2xl font-bold' : ''}`}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onKeyUp={(e) => handleKeyUp(e, index)}
                     onInput={(e) => handleInputChange(e, index)}
@@ -463,7 +463,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
                         const content = notes[index];
                         const updated = [...notes];
                         updated.splice(index, 1);
-                        updated.unshift(`###${content}###`);
+                        updated.unshift(`{#h1#}${content}`);
                         setNotes(updated);
                         setTimeout(() => focusDiv(0, true), 0);
                       }}

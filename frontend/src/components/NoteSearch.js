@@ -15,7 +15,7 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
       ...contentSource.split('\n').map((text, index) => ({
         id: `line-${index}`,
         text,
-        isTitle: text.startsWith('##') && text.endsWith('##'),
+        isTitle: text.startsWith('{#h1#}') || text.startsWith('{#h2#}'),
       })),
       // Only add extra line if not in add mode
       ...(!isAddMode ? [{ id: `line-${Date.now()}-extra`, text: '', isTitle: false }] : [])
@@ -195,14 +195,14 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
     // Prepare selected line
     let content = newLines[index].text.trim();
     // Remove any H2 markers if present
-    if (content.startsWith('##') && content.endsWith('##')) {
-      content = content.slice(2, -2);
+    if (content.startsWith('{#h2#}')) {
+      content = content.slice(6);
     }
     // Toggle H1
-    if (content.startsWith('###') && content.endsWith('###')) {
-      content = content.slice(3, -3);
+    if (content.startsWith('{#h1#}')) {
+      content = content.slice(6);
     } else {
-      content = `###${content}###`;
+      content = `{#h1#}${content}`;
     }
     // Update the line
     newLines[index].text = content;
@@ -214,14 +214,14 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
     // Prepare selected line
     let content = newLines[index].text.trim();
     // Remove H1 markers if present
-    if (content.startsWith('###') && content.endsWith('###')) {
-      content = content.slice(3, -3);
+    if (content.startsWith('{#h1#}')) {
+      content = content.slice(6);
     }
     // Toggle H2
-    if (content.startsWith('##') && content.endsWith('##')) {
-      content = content.slice(2, -2);
+    if (content.startsWith('{#h2#}')) {
+      content = content.slice(6);
     } else {
-      content = `##${content}##`;
+      content = `{#h2#}${content}`;
     }
     // Update the line
     newLines[index].text = content;
@@ -1048,7 +1048,7 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
             const updatedLines = e.target.value.split('\n').map((text, index) => ({
               id: `line-${timestamp}-${index}`,
               text,
-              isTitle: text.startsWith('##') && text.endsWith('##'),
+              isTitle: text.startsWith('{#h1#}') || text.startsWith('{#h2#}'),
             }));
             setLines(updatedLines);
             // Update search query if in add mode
@@ -1260,8 +1260,8 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
                     </button>
                     {(() => {
                       const text = lines[index]?.text || '';
-                      const isH1 = text.startsWith('###') && text.endsWith('###');
-                      const isH2 = text.startsWith('##') && text.endsWith('##');
+                      const isH1 = text.startsWith('{#h1#}');
+                      const isH2 = text.startsWith('{#h2#}');
                       if (isH1 || isH2) {
                         return (
                           <>
@@ -1270,8 +1270,8 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
                               onClick={() => {
                                 const newLines = [...lines];
                                 let text = newLines[index].text;
-                                if (isH1) text = text.slice(3, -3);
-                                else if (isH2) text = text.slice(2, -2);
+                                if (isH1) text = text.slice(6);
+                                else if (isH2) text = text.slice(6);
                                 newLines[index].text = text;
                                 newLines[index].isTitle = false;
                                 setLines(newLines);
@@ -1516,8 +1516,8 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
           </button>
           {(() => {
             const text = lines[contextMenu.index]?.text || '';
-            const isH1 = text.startsWith('###') && text.endsWith('###');
-            const isH2 = text.startsWith('##') && text.endsWith('##');
+            const isH1 = text.startsWith('{#h1#}');
+            const isH2 = text.startsWith('{#h2#}');
             if (isH1 || isH2) {
               return (
                 <button
@@ -1525,8 +1525,8 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
                   onClick={() => {
                     const newLines = [...lines];
                     let text = newLines[contextMenu.index].text;
-                    if (isH1) text = text.slice(3, -3);
-                    else if (isH2) text = text.slice(2, -2);
+                    if (isH1) text = text.slice(6);
+                    else if (isH2) text = text.slice(6);
                     newLines[contextMenu.index].text = text;
                     newLines[contextMenu.index].isTitle = false;
                     setLines(newLines);

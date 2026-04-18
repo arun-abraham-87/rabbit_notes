@@ -184,8 +184,8 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     
     return nonMetaLines.map((line, index) => {
       // Check for headings
-      const h1Match = line.match(/^###(.+)###$/);
-      const h2Match = line.match(/^##(.+)##$/);
+      const h1Match = line.match(/^\{#h1#\}(.+)$/);
+      const h2Match = line.match(/^\{#h2#\}(.+)$/);
 
       if (h1Match) {
         return (

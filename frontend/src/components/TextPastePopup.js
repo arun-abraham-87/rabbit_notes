@@ -498,58 +498,22 @@ const TextPastePopup = ({
                   }`}
                 title="Add to Watch List"
               >
-                Watch
+                Add to watch list
               </button>
-              <button
-                onClick={() => setIsSensitiveSelected(!isSensitiveSelected)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isSensitiveSelected ? 'bg-red-100 text-red-700 border border-red-300' : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300'
-                  }`}
-                title="Mark as Sensitive"
-              >
-                Sensitive
-              </button>
-
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setSelectedPriority(selectedPriority === 'critical' ? null : 'critical')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'critical' ? 'bg-red-100 text-red-700 border border-red-300' : 'text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300'
+                  onClick={() => setIsSensitiveSelected(!isSensitiveSelected)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isSensitiveSelected ? 'bg-red-100 text-red-700 border border-red-300' : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300'
                     }`}
-                  title="Critical Priority"
+                  title="Mark as Sensitive"
                 >
-                  Critical
-                </button>
-                <button
-                  onClick={() => setSelectedPriority(selectedPriority === 'high' ? null : 'high')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'high' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50 border border-orange-300'
-                    }`}
-                  title="High Priority"
-                >
-                  High
-                </button>
-                <button
-                  onClick={() => setSelectedPriority(selectedPriority === 'medium' ? null : 'medium')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'medium' ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-300'
-                    }`}
-                  title="Medium Priority"
-                >
-                  Medium
-                </button>
-                <button
-                  onClick={() => setSelectedPriority(selectedPriority === 'low' ? null : 'low')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedPriority === 'low' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-300'
-                    }`}
-                  title="Low Priority"
-                >
-                  Low
+                  Sensitive
                 </button>
               </div>
             </div>
           </div>
           {(selectedPriority || isWatchSelected || isSensitiveSelected || pastedImage) && (
             <div className="text-sm text-gray-600 italic space-y-1">
-              {selectedPriority && (
-                <div>Marked as todo - priority {selectedPriority}</div>
-              )}
               {isWatchSelected && (
                 <div>Added to watch list</div>
               )}

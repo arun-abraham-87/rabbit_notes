@@ -246,6 +246,22 @@ const getLinkTypeIndicator = (url) => {
   }
 };
 
+const getDisplayLinkIndicator = (url, host, hasCustomText = false) => {
+  const indicator = getLinkTypeIndicator(url);
+  if (!indicator || hasCustomText) return indicator;
+
+  const hostWords = host.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const indicatorWords = indicator
+    .replace(/\[|\]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(word => word.length > 1);
+
+  return indicatorWords.some(word => hostWords.some(hostWord => hostWord.includes(word)))
+    ? ''
+    : indicator;
+};
+
 
 export const highlightMatches = (text, searchTerm) => {
   if (!searchTerm || typeof text !== 'string') return text;
@@ -336,41 +352,51 @@ export const findDuplicatedUrls = (safeNotes) => {
 export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateToNote = null) => {
   
   const raw = isListItem ? line.slice(2) : line; // strip "- " bullet
+
+  // Extract leading formatting prefixes (bold, italics, color)
+  let remaining = raw;
+  let isBoldLine = false;
+  let isItalicsLine = false;
+  let lineColor = null;
+  // Strip any combination of leading prefixes
+  let prefixFound = true;
+  while (prefixFound) {
+    prefixFound = false;
+    if (remaining.startsWith('{#bold#}')) { isBoldLine = true; remaining = remaining.slice(8); prefixFound = true; }
+    if (remaining.startsWith('{#italics#}')) { isItalicsLine = true; remaining = remaining.slice(11); prefixFound = true; }
+    const colorPrefixMatch = remaining.match(/^\{<([^}]+)>\}/);
+    if (colorPrefixMatch) { lineColor = colorPrefixMatch[1]; remaining = remaining.slice(colorPrefixMatch[0].length); prefixFound = true; }
+    if (remaining.startsWith('{#h1#}')) { remaining = remaining.slice(6); prefixFound = true; }
+    if (remaining.startsWith('{#h2#}')) { remaining = remaining.slice(6); prefixFound = true; }
+  }
+
   const elements = [];
   const regex =
-    /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s)]+)|([^\s]+\/\/[^\s]+ptth)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]/g;
+    /(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s)]+)|([^\s]+\/\/[^\s]+ptth)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]/g;
   let lastIndex = 0;
   let match;
 
   // Walk through every markdown / URL / color match
-  while ((match = regex.exec(raw)) !== null) {
-    
-    
-    
+  while ((match = regex.exec(remaining)) !== null) {
+
     // Add text between previous match and current match (with highlights)
     if (match.index > lastIndex) {
       elements.push(
         ...[].concat(
-          highlightMatches(raw.slice(lastIndex, match.index), searchTerm)
+          highlightMatches(remaining.slice(lastIndex, match.index), searchTerm)
         )
       );
     }
 
-    if (match[1]) {
-      // **bold**
-      elements.push(
-        <strong key={`bold-${idx}-${match.index}`}>{match[2]}</strong>
-      );
-    } else if (match[3] && match[4]) {
-      
+    if (match[1] && match[2]) {
       // [text](url) - handle both regular and reversed URLs
-      const url = match[5];
+      const url = match[3];
       const isReversedUrl = url.match(/[^\s]+\/\/[^\s]+ptth/);
       const originalUrl = isReversedUrl ? url.split('').reverse().join('') : url;
-      
+
       // Check if this is a note navigation link
       const isNoteNavigationLink = originalUrl.startsWith('#/notes?note=');
-      
+
       if (isNoteNavigationLink) {
         // Handle note navigation links with SPA navigation
         elements.push(
@@ -389,7 +415,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
               }
             }}
           >
-            {match[4]}
+            {match[2]}
           </a>
         );
       } else {
@@ -403,20 +429,20 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             className="text-blue-600 underline"
             title={originalUrl}
           >
-            {match[4]}
+            {match[2]}
           </a>
         );
       }
-      
-    } else if (match[6]) {
+
+    } else if (match[4]) {
       // bare URL
       try {
-        const host = new URL(match[6]).hostname.replace(/^www\./, '');
-        const linkIndicator = getLinkTypeIndicator(match[6]);
+        const host = new URL(match[4]).hostname.replace(/^www\./, '');
+        const linkIndicator = getDisplayLinkIndicator(match[4], host);
         elements.push(
           <a
             key={`url-${idx}-${match.index}`}
-            href={match[6]}
+            href={match[4]}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -432,26 +458,25 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`url-fallback-${idx}-${match.index}`}
-            href={match[6]}
+            href={match[4]}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
           >
-            {match[6]}
+            {match[4]}
           </a>
         );
       }
-    } else if (match[7]) {
-      
+    } else if (match[5]) {
+
       // reversed URL (ends with ptth)
       try {
-        const reversedUrl = match[7];
+        const reversedUrl = match[5];
         const originalUrl = reversedUrl.split('').reverse().join('');
-        
-        
+
         const host = new URL(originalUrl).hostname.replace(/^www\./, '');
-        
-        const linkIndicator = getLinkTypeIndicator(originalUrl);
+
+        const linkIndicator = getDisplayLinkIndicator(originalUrl, host);
         elements.push(
           <a
             key={`reversed-url-${idx}-${match.index}`}
@@ -467,25 +492,25 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             ) : host}
           </a>
         );
-        
+
       } catch (error) {
         console.error('❌ Error processing reversed URL:', error);
         elements.push(
           <a
             key={`reversed-url-fallback-${idx}-${match.index}`}
-            href={match[7].split('').reverse().join('')}
+            href={match[5].split('').reverse().join('')}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
           >
-            {match[7].split('').reverse().join('')}
+            {match[5].split('').reverse().join('')}
           </a>
         );
       }
-    } else if (match[8] && match[9]) {
-      // [color:#HEXCODE:text]
-      const color = match[8];
-      const text = match[9];
+    } else if (match[6] && match[7]) {
+      // [color:#HEXCODE:text] - legacy format
+      const color = match[6];
+      const text = match[7];
       elements.push(
         <span key={`color-${idx}-${match.index}`} style={{ color }}>
           {buildLineElements(text, `${idx}-color-${match.index}`, false, searchTerm, onNavigateToNote)}
@@ -499,11 +524,23 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
   // Append any remaining text after the final match
   if (lastIndex < raw.length) {
     elements.push(
-      ...[].concat(highlightMatches(raw.slice(lastIndex), searchTerm))
+      ...[].concat(highlightMatches(remaining.slice(lastIndex), searchTerm))
     );
   }
 
-  return elements;
+  // Wrap all elements with bold/italic/color if line-level prefixes were found
+  let result = elements;
+  if (isBoldLine) {
+    result = [<strong key={`bold-line-${idx}`}>{result}</strong>];
+  }
+  if (isItalicsLine) {
+    result = [<em key={`italic-line-${idx}`}>{result}</em>];
+  }
+  if (lineColor) {
+    result = [<span key={`color-line-${idx}`} style={{ color: lineColor }}>{result}</span>];
+  }
+
+  return result;
 };
 
 // Helpers for clickable dates in lines
@@ -582,4 +619,3 @@ export const getRawLines = (content) => {
   ////
   return split_vals
 };
-

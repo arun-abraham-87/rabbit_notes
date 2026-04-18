@@ -390,11 +390,19 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None', allNotes = 
           imageMetaTag;
       }
       
-      // Ensure content ends with a newline
-      const contentWithNewline = finalNoteContent.endsWith('\n') ? finalNoteContent : finalNoteContent + '\n';
+      // Extract all meta tags currently in finalNoteContent to merge with selectedMetaTags
+      const allLines = finalNoteContent.split('\n');
+      const textWithoutMeta = allLines.filter(line => !line.trim().startsWith('meta::')).join('\n');
+      const existingMetaTagsInContent = allLines.filter(line => line.trim().startsWith('meta::'));
+
+      const contentWithNewline = textWithoutMeta.endsWith('\n') ? textWithoutMeta : textWithoutMeta + '\n';
+      
+      // Deduplicate tags. We just use a Set for simple duplication prevention.
+      const deduplicatedMetaTags = [...new Set([...selectedMetaTags, ...existingMetaTagsInContent])];
+
       // Append meta tags with newlines
-      const finalContent = selectedMetaTags.length > 0
-        ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
+      const finalContent = deduplicatedMetaTags.length > 0
+        ? contentWithNewline + deduplicatedMetaTags.join('\n') + '\n'
         : contentWithNewline;
 
       // Reorder meta tags to ensure they appear at the bottom

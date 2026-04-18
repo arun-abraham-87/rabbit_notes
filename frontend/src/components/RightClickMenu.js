@@ -5,40 +5,29 @@ export default function RightClickMenu({
   lineIndex,
   pos,
   notes,
+  multiMoveNoteId,
   updateNote,
+  showUndoToast,
   setRightClickText,
+  setRightClickNoteId,
+  setRightClickIndex,
   setEditedLineContent,
   setEditingLine,
   setShowCopyToast
 }) {
-  // Usage tracking functions
-  const getButtonUsage = () => {
-    try {
-      const usage = localStorage.getItem('rightClickMenuUsage');
-      return usage ? JSON.parse(usage) : {};
-    } catch (error) {
-      console.error('Error loading button usage:', error);
-      return {};
-    }
-  };
-
-  const updateButtonUsage = (buttonId) => {
-    try {
-      const usage = getButtonUsage();
-      usage[buttonId] = (usage[buttonId] || 0) + 1;
-      localStorage.setItem('rightClickMenuUsage', JSON.stringify(usage));
-    } catch (error) {
-      console.error('Error updating button usage:', error);
-    }
-  };
-
-  const trackButtonClick = (buttonId, callback) => {
-    return () => {
-      updateButtonUsage(buttonId);
-      callback();
-    };
-  };
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
+  const [showMoveToSectionSubmenu, setShowMoveToSectionSubmenu] = useState(false);
+
+  const note = notes.find(n => n.id === noteId);
+
+  // Wrap updateNote to capture original content and show undo toast
+  const editWithUndo = (newContent, label = 'Edit applied') => {
+    const originalContent = note?.content;
+    updateNote(noteId, newContent);
+    if (originalContent !== undefined && showUndoToast) {
+      showUndoToast(label, originalContent);
+    }
+  };
   
   // Calculate adjusted position to keep menu in viewport
   const menuRef = React.useRef(null);
@@ -96,32 +85,106 @@ export default function RightClickMenu({
   };
 
   const handleSetColor = (color) => {
-    if (noteId == null || lineIndex == null) return;
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
+    if (noteId == null || lineIndex == null || !note) return;
 
     const arr = note.content.split('\n');
     const text = arr[lineIndex];
-    
-    // Remove existing color meta info
+
     let cleanText = text
-      .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')  // Remove HTML spans
-      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2')  // Remove old color markers
-      .replace(/@\$%\^[^@]+@\$%\^/g, '');  // Remove existing new format color markers
-    
-    // Add new color meta info if color is not 'default'
-    arr[lineIndex] = color === 'default' ? cleanText : `${cleanText}@$%^${color}@$%^`;
-    
-    updateNote(noteId, arr.join('\n'));
+      .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')
+      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2')
+      .replace(/@\$%\^[^@]+@\$%\^/g, '')
+      .replace(/^\{<[^}]+>\}/, '');
+
+    arr[lineIndex] = color === 'default' ? cleanText : `{<${color}>}${cleanText}`;
+    editWithUndo(arr.join('\n'), 'Color changed');
     setShowColorSubmenu(false);
   };
 
   if (noteId == null || lineIndex == null) return null;
-  const note = notes.find((n) => n.id === noteId);
   if (!note) return null;
 
-  // Button definitions with usage tracking
-  const buttonDefinitions = [
+  const noteLines = note.content.split('\n');
+  const isBatchMultiSelectMode = multiMoveNoteId === noteId;
+  const visibleLineEntries = noteLines
+    .map((line, actualIndex) => ({ line, actualIndex }))
+    .filter(({ line }) => !line.trim().startsWith('meta::'));
+
+  const h2Sections = visibleLineEntries
+    .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
+    .filter(({ line }) => {
+      const trimmed = line.trim();
+      return trimmed.startsWith('{#h2#}');
+    })
+    .map(({ line, actualIndex, visibleIndex }) => ({
+      actualIndex,
+      visibleIndex,
+      label: line.trim().slice(6).trim() || 'Untitled section'
+    }));
+
+  const moveLineToSection = async (targetSectionActualIndex) => {
+    const sourceEntry = visibleLineEntries[lineIndex];
+    if (!sourceEntry) return;
+
+    const updatedLines = [...noteLines];
+    const [movedLine] = updatedLines.splice(sourceEntry.actualIndex, 1);
+    if (typeof movedLine === 'undefined') return;
+
+    let adjustedTargetIndex = targetSectionActualIndex;
+    if (sourceEntry.actualIndex < targetSectionActualIndex) {
+      adjustedTargetIndex -= 1;
+    }
+
+    let insertIndex = adjustedTargetIndex + 1;
+    while (insertIndex < updatedLines.length) {
+      const trimmed = updatedLines[insertIndex].trim();
+      const isMeta = trimmed.startsWith('meta::');
+      const isH1 = trimmed.startsWith('{#h1#}');
+      const isH2 = trimmed.startsWith('{#h2#}');
+
+      if (isMeta || isH1 || isH2) {
+        break;
+      }
+      insertIndex += 1;
+    }
+
+    updatedLines.splice(insertIndex, 0, movedLine);
+    editWithUndo(updatedLines.join('\n'), 'Moved to section');
+    setShowMoveToSectionSubmenu(false);
+    setRightClickText(null);
+    setRightClickNoteId(null);
+    setRightClickIndex(null);
+  };
+
+  const startMultiMoveToSection = () => {
+    document.dispatchEvent(new CustomEvent('startMultiMoveToSection', {
+      detail: { noteId, lineIndex }
+    }));
+    setShowMoveToSectionSubmenu(false);
+    setRightClickText(null);
+    setRightClickNoteId(null);
+    setRightClickIndex(null);
+  };
+
+  const startGenericMultiSelect = () => {
+    document.dispatchEvent(new CustomEvent('startMultiSelectFromContextMenu', {
+      detail: { noteId, lineIndex }
+    }));
+    setRightClickText(null);
+    setRightClickNoteId(null);
+    setRightClickIndex(null);
+  };
+
+  const triggerBatchAction = (action, payload = {}) => {
+    document.dispatchEvent(new CustomEvent('contextMultiSelectAction', {
+      detail: { noteId, action, ...payload }
+    }));
+    setRightClickText(null);
+    setRightClickNoteId(null);
+    setRightClickIndex(null);
+  };
+
+  const primaryButtons = [
     {
       id: 'edit',
       label: 'Edit',
@@ -137,13 +200,33 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         arr.splice(lineIndex, 1);
-        updateNote(noteId, arr.join('\n'));
+        editWithUndo(arr.join('\n'), 'Line deleted');
       }
     },
     {
       id: 'copy',
       label: 'Copy',
       onClick: () => handleCopyLine(note.content.split('\n')[lineIndex])
+    },
+    {
+      id: 'remove-hashes',
+      label: 'Remove #',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        const text = arr[lineIndex];
+        // Remove # characters only outside of {...} blocks
+        let result = '';
+        let depth = 0;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (ch === '{') { depth++; result += ch; }
+          else if (ch === '}') { depth = Math.max(0, depth - 1); result += ch; }
+          else if (ch === '#' && depth === 0) { /* skip */ }
+          else { result += ch; }
+        }
+        arr[lineIndex] = result;
+        editWithUndo(arr.join('\n'), 'Hashes removed');
+      }
     },
     {
       id: 'remove-formatting',
@@ -157,30 +240,54 @@ export default function RightClickMenu({
           hasChanges = false;
           let newText = text;
 
-          // Remove new format color markers
+          // Remove new {<...>} color prefix
+          if (newText.match(/^\{<[^}]+>\}/)) {
+            newText = newText.replace(/^\{<[^}]+>\}/, '');
+            hasChanges = true;
+          }
+
+          // Remove old @$%^ color markers (migration)
           if (newText.match(/@\$%\^[^@]+@\$%\^/)) {
             newText = newText.replace(/@\$%\^[^@]+@\$%\^/, '');
             hasChanges = true;
           }
 
-          // Remove old format color markers
+          // Remove old [color:...] format color markers (migration)
           if (newText.match(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/)) {
             newText = newText.replace(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/, '$1');
             hasChanges = true;
           }
 
           // Remove heading markers
-          if (newText.startsWith('###') && newText.endsWith('###')) {
-            newText = newText.slice(3, -3);
+          if (newText.startsWith('{#h1#}')) {
+            newText = newText.slice(6);
             hasChanges = true;
-          } else if (newText.startsWith('##') && newText.endsWith('##')) {
+          } else if (newText.startsWith('{#h2#}')) {
+            newText = newText.slice(6);
+            hasChanges = true;
+          }
+
+          // Remove {#bold#} prefix
+          if (newText.startsWith('{#bold#}')) {
+            newText = newText.slice(8);
+            hasChanges = true;
+          }
+
+          // Remove {#italics#} prefix
+          if (newText.startsWith('{#italics#}')) {
+            newText = newText.slice(11);
+            hasChanges = true;
+          }
+
+          // Remove old ** bold markers (migration)
+          if (newText.startsWith('**') && newText.endsWith('**')) {
             newText = newText.slice(2, -2);
             hasChanges = true;
           }
 
-          // Remove bold markers
-          if (newText.startsWith('**') && newText.endsWith('**')) {
-            newText = newText.slice(2, -2);
+          // Remove old * italic markers (migration)
+          if (newText.startsWith('*') && newText.endsWith('*') && !newText.startsWith('**')) {
+            newText = newText.slice(1, -1);
             hasChanges = true;
           }
 
@@ -198,7 +305,7 @@ export default function RightClickMenu({
         } while (hasChanges);
 
         arr[lineIndex] = text;
-        updateNote(noteId, arr.join('\n'));
+        editWithUndo(arr.join('\n'), 'Formatting removed');
       }
     },
     {
@@ -207,11 +314,11 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         const h1Text = arr[lineIndex].trim()
-          .replace(/^###|###$/g, '')  // Remove H1 markers first
-          .replace(/^##|##$/g, '')    // Remove H2 markers
+          .replace('{#h1#}', '')  // Remove H1 markers first
+          .replace('{#h2#}', '')  // Remove H2 markers
           .trim();
-        arr[lineIndex] = `###${h1Text}###`;
-        updateNote(noteId, arr.join('\n'));
+        arr[lineIndex] = `{#h1#}${h1Text}`;
+        editWithUndo(arr.join('\n'), 'Set H1');
       }
     },
     {
@@ -220,11 +327,11 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         const h2Text = arr[lineIndex].trim()
-          .replace(/^###|###$/g, '')  // Remove H1 markers first
-          .replace(/^##|##$/g, '')    // Remove H2 markers
+          .replace('{#h1#}', '')  // Remove H1 markers first
+          .replace('{#h2#}', '')  // Remove H2 markers
           .trim();
-        arr[lineIndex] = `##${h2Text}##`;
-        updateNote(noteId, arr.join('\n'));
+        arr[lineIndex] = `{#h2#}${h2Text}`;
+        editWithUndo(arr.join('\n'), 'Set H2');
       }
     },
     {
@@ -232,9 +339,28 @@ export default function RightClickMenu({
       label: 'AA',
       onClick: () => {
         const arr = note.content.split('\n');
-        const upperLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `[${text.toUpperCase()}](${url})`);
-        arr[lineIndex] = upperLine.toUpperCase();
-        updateNote(noteId, arr.join('\n'));
+        let lineText = arr[lineIndex];
+
+        // Extract all leading formatting prefixes
+        const prefixes = [];
+        let rest = lineText;
+        let found = true;
+        while (found) {
+          found = false;
+          if (rest.startsWith('{#h1#}')) { prefixes.push('{#h1#}'); rest = rest.slice(6); found = true; }
+          else if (rest.startsWith('{#h2#}')) { prefixes.push('{#h2#}'); rest = rest.slice(6); found = true; }
+          if (rest.startsWith('{#bold#}')) { prefixes.push('{#bold#}'); rest = rest.slice(8); found = true; }
+          if (rest.startsWith('{#italics#}')) { prefixes.push('{#italics#}'); rest = rest.slice(11); found = true; }
+          const colorPfx = rest.match(/^\{<[^}]+>\}/);
+          if (colorPfx) { prefixes.push(colorPfx[0]); rest = rest.slice(colorPfx[0].length); found = true; }
+        }
+
+        // Apply uppercase to text content only
+        rest = rest.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `[${text.toUpperCase()}](${url})`);
+        rest = rest.toUpperCase();
+
+        arr[lineIndex] = prefixes.join('') + rest;
+        editWithUndo(arr.join('\n'), 'Uppercase');
       }
     },
     {
@@ -243,45 +369,36 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         let lineText = arr[lineIndex];
-        
-        // Handle H1 and H2 markers first
-        let isH1 = false;
-        let isH2 = false;
-        let cleanText = lineText;
-        
-        if (lineText.startsWith('###') && lineText.endsWith('###')) {
-          isH1 = true;
-          cleanText = lineText.slice(3, -3);
-        } else if (lineText.startsWith('##') && lineText.endsWith('##')) {
-          isH2 = true;
-          cleanText = lineText.slice(2, -2);
+
+        // Extract all leading formatting prefixes
+        const prefixes = [];
+        let rest = lineText;
+        let found = true;
+        while (found) {
+          found = false;
+          if (rest.startsWith('{#h1#}')) { prefixes.push('{#h1#}'); rest = rest.slice(6); found = true; }
+          else if (rest.startsWith('{#h2#}')) { prefixes.push('{#h2#}'); rest = rest.slice(6); found = true; }
+          if (rest.startsWith('{#bold#}')) { prefixes.push('{#bold#}'); rest = rest.slice(8); found = true; }
+          if (rest.startsWith('{#italics#}')) { prefixes.push('{#italics#}'); rest = rest.slice(11); found = true; }
+          const colorPfx = rest.match(/^\{<[^}]+>\}/);
+          if (colorPfx) { prefixes.push(colorPfx[0]); rest = rest.slice(colorPfx[0].length); found = true; }
         }
-        
+
         // Handle markdown links
-        cleanText = cleanText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
+        rest = rest.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
           const sent = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
           return `[${sent}](${url})`;
         });
-        
+
         // Split into words and capitalize each word
-        const words = cleanText.split(' ');
-        const capitalizedWords = words.map((word, index) => {
+        const words = rest.split(' ');
+        const capitalizedWords = words.map((word) => {
           if (word.length === 0) return word;
-          const capitalized = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-          return capitalized;
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         });
-        
-        let result = capitalizedWords.join(' ');
-        
-        // Add back the markers if they were present
-        if (isH1) {
-          result = `###${result}###`;
-        } else if (isH2) {
-          result = `##${result}##`;
-        }
-        
-        arr[lineIndex] = result;
-        updateNote(noteId, arr.join('\n'));
+
+        arr[lineIndex] = prefixes.join('') + capitalizedWords.join(' ');
+        editWithUndo(arr.join('\n'), 'Title case');
       }
     },
     {
@@ -290,8 +407,20 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         let boldLine = arr[lineIndex];
-        arr[lineIndex] = boldLine.startsWith('**') && boldLine.endsWith('**') ? boldLine.slice(2, -2) : `**${boldLine}**`;
-        updateNote(noteId, arr.join('\n'));
+        // Strip h1/h2 prefix to check for bold after it
+        const h1h2Match = boldLine.match(/^(\{#h[12]#\})(.*)/s);
+        if (h1h2Match) {
+          const prefix = h1h2Match[1];
+          const after = h1h2Match[2];
+          arr[lineIndex] = after.startsWith('{#bold#}')
+            ? `${prefix}${after.slice(8)}`
+            : `${prefix}{#bold#}${after}`;
+        } else {
+          arr[lineIndex] = boldLine.startsWith('{#bold#}')
+            ? boldLine.slice(8)
+            : `{#bold#}${boldLine}`;
+        }
+        editWithUndo(arr.join('\n'), 'Bold toggled');
       }
     },
     {
@@ -300,76 +429,20 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         let italLine = arr[lineIndex];
-        arr[lineIndex] = italLine.startsWith('*') && italLine.endsWith('*') && !italLine.startsWith('**') ? italLine.slice(1, -1) : `*${italLine}*`;
-        updateNote(noteId, arr.join('\n'));
-      }
-    },
-    {
-      id: 'insert-above',
-      label: 'Insert ↑',
-      onClick: async () => {
-        const arr = note.content.split('\n');
-        
-        // Find the raw line index for the content line index
-        let rawLineIndex = 0;
-        let contentLineCount = 0;
-        for (let i = 0; i < arr.length; i++) {
-          if (!arr[i].trim().startsWith('meta::')) {
-            if (contentLineCount === lineIndex) {
-              rawLineIndex = i;
-              break;
-            }
-            contentLineCount++;
-          }
+        // Strip h1/h2 prefix to check for italics after it
+        const h1h2Match = italLine.match(/^(\{#h[12]#\})(.*)/s);
+        if (h1h2Match) {
+          const prefix = h1h2Match[1];
+          const after = h1h2Match[2];
+          arr[lineIndex] = after.startsWith('{#italics#}')
+            ? `${prefix}${after.slice(11)}`
+            : `${prefix}{#italics#}${after}`;
+        } else {
+          arr[lineIndex] = italLine.startsWith('{#italics#}')
+            ? italLine.slice(11)
+            : `{#italics#}${italLine}`;
         }
-        
-        // Insert the new line
-        arr.splice(rawLineIndex, 0, ' ');
-        const updatedContent = arr.join('\n');
-        
-        // Wait for the note to be updated before setting editing line
-        await updateNote(noteId, updatedContent);
-        
-        // The new line will be at the same content line index (pushing the original line down)
-        const newContentLineIndex = lineIndex;
-        
-        // Open inline editor for the newly inserted row using content line index
-        setEditedLineContent(' ');
-        setEditingLine({ noteId, lineIndex: newContentLineIndex });
-      }
-    },
-    {
-      id: 'insert-below',
-      label: 'Insert ↓',
-      onClick: async () => {
-        const arr = note.content.split('\n');
-        
-        // Find the raw line index for the content line index
-        let rawLineIndex = 0;
-        let contentLineCount = 0;
-        for (let i = 0; i < arr.length; i++) {
-          if (!arr[i].trim().startsWith('meta::')) {
-            if (contentLineCount === lineIndex) {
-              rawLineIndex = i;
-              break;
-            }
-            contentLineCount++;
-          }
-        }
-        
-        // Insert the new line
-        arr.splice(rawLineIndex + 1, 0, ' ');
-        const updatedContent = arr.join('\n');
-        
-        // Wait for the note to be updated before setting editing line
-        await updateNote(noteId, updatedContent);
-        
-        // The new line will be at the next content line index
-        const newContentLineIndex = lineIndex + 1;
-        
-        // Open inline editor for the newly inserted row using content line index
-        setEditedLineContent(' ');
-        setEditingLine({ noteId, lineIndex: newContentLineIndex });
+        editWithUndo(arr.join('\n'), 'Italics toggled');
       }
     },
     {
@@ -380,7 +453,7 @@ export default function RightClickMenu({
         if (lineIndex > 0) {
           arr[lineIndex - 1] += ' ' + arr[lineIndex];
           arr.splice(lineIndex, 1);
-          updateNote(noteId, arr.join('\n'));
+          editWithUndo(arr.join('\n'), 'Merged up');
         }
       }
     },
@@ -392,7 +465,7 @@ export default function RightClickMenu({
         if (lineIndex < arr.length - 1) {
           arr[lineIndex] += ' ' + arr[lineIndex + 1];
           arr.splice(lineIndex + 1, 1);
-          updateNote(noteId, arr.join('\n'));
+          editWithUndo(arr.join('\n'), 'Merged down');
         }
       }
     },
@@ -402,7 +475,7 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         if (lineIndex > 0) [arr[lineIndex - 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex - 1]];
-        updateNote(noteId, arr.join('\n'));
+        editWithUndo(arr.join('\n'), 'Moved up');
       }
     },
     {
@@ -411,18 +484,71 @@ export default function RightClickMenu({
       onClick: () => {
         const arr = note.content.split('\n');
         if (lineIndex < arr.length - 1) [arr[lineIndex + 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex + 1]];
-        updateNote(noteId, arr.join('\n'));
+        editWithUndo(arr.join('\n'), 'Moved down');
+      }
+    },
+    {
+      id: 'move-to-section',
+      label: 'Move To Section',
+      onClick: () => {
+        if (h2Sections.length === 0) return;
+        setShowMoveToSectionSubmenu((current) => !current);
       }
     }
   ];
 
-  // Sort buttons by usage (most used first)
-  const usage = getButtonUsage();
-  const sortedButtons = buttonDefinitions.sort((a, b) => {
-    const aUsage = usage[a.id] || 0;
-    const bUsage = usage[b.id] || 0;
-    return bUsage - aUsage; // Most used first
-  });
+  const DIVIDER = '----------------------------------------------------------------------------------------------------';
+
+  const getRawLineIndex = () => {
+    const arr = note.content.split('\n');
+    let count = 0;
+    for (let i = 0; i < arr.length; i++) {
+      if (!arr[i].trim().startsWith('meta::')) {
+        if (count === lineIndex) return i;
+        count++;
+      }
+    }
+    return lineIndex;
+  };
+
+  const insertButtons = [
+    {
+      id: 'insert-above',
+      label: 'Insert ↑',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(getRawLineIndex(), 0, ' ');
+        editWithUndo(arr.join('\n'), 'Line inserted above');
+      }
+    },
+    {
+      id: 'insert-below',
+      label: 'Insert ↓',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(getRawLineIndex() + 1, 0, ' ');
+        editWithUndo(arr.join('\n'), 'Line inserted below');
+      }
+    },
+    {
+      id: 'insert-divider-above',
+      label: 'Divider ↑',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(getRawLineIndex(), 0, DIVIDER);
+        editWithUndo(arr.join('\n'), 'Divider inserted above');
+      }
+    },
+    {
+      id: 'insert-divider-below',
+      label: 'Divider ↓',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(getRawLineIndex() + 1, 0, DIVIDER);
+        editWithUndo(arr.join('\n'), 'Divider inserted below');
+      }
+    }
+  ];
 
   const colorOptions = [
     { color: '#DC2626', label: 'Red' },
@@ -437,24 +563,141 @@ export default function RightClickMenu({
       ref={menuRef}
       style={{ position: 'fixed', top: `${adjustedPos.y}px`, left: `${adjustedPos.x}px` }}
       className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1"
-      onMouseLeave={() => setShowColorSubmenu(false)}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.stopPropagation()}
+      onMouseLeave={() => {
+        setShowColorSubmenu(false);
+        setShowMoveToSectionSubmenu(false);
+      }}
     >
-      <div className="grid grid-cols-2 gap-1">
-        {/* Dynamic buttons sorted by usage */}
-        {sortedButtons.map((button, index) => (
+      {isBatchMultiSelectMode ? (
+        <div className="grid grid-cols-2 gap-2 min-w-[220px]">
           <button
-            key={button.id}
-            className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-            onClick={trackButtonClick(button.id, button.onClick)}
+            className={`p-1 text-xs rounded cursor-pointer ${
+              h2Sections.length === 0 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 hover:shadow-lg'
+            }`}
+            onClick={() => triggerBatchAction('move_to_section')}
+            disabled={h2Sections.length === 0}
           >
-            {button.label}
+            Move To Section
           </button>
-        ))}
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            onClick={() => triggerBatchAction('move_to_new_note')}
+          >
+            Move To New Note
+          </button>
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            onClick={() => triggerBatchAction('move_to_note')}
+          >
+            Move To Note
+          </button>
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            onClick={() => triggerBatchAction('bold')}
+          >
+            Bold
+          </button>
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            onClick={() => triggerBatchAction('italics')}
+          >
+            Italics
+          </button>
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            onClick={() => triggerBatchAction('cancel_multi_select')}
+          >
+            Cancel
+          </button>
+          <div className="col-span-2 border-t-2 my-1"></div>
+          <div className="col-span-2 flex justify-center gap-1 py-1">
+            {colorOptions.map((option) => (
+              <button
+                key={option.color}
+                className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow"
+                style={{ backgroundColor: option.color }}
+                title={option.label}
+                onClick={() => triggerBatchAction('color', { color: option.color })}
+              />
+            ))}
+            <button
+              className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow bg-white border border-gray-300 relative"
+              title="Default"
+              onClick={() => triggerBatchAction('color', { color: 'default' })}
+            >
+              <span className="absolute inset-0 flex items-center justify-center text-red-500 font-bold text-xs">×</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+      <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-1 col-span-2">
+          {primaryButtons.map((button) => (
+            <button
+              key={button.id}
+              className={`p-1 text-xs rounded cursor-pointer ${
+                button.id === 'move-to-section' && h2Sections.length === 0
+                  ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-100 hover:bg-gray-200 hover:shadow-lg'
+              }`}
+              onClick={button.onClick}
+              disabled={button.id === 'move-to-section' && h2Sections.length === 0}
+            >
+              {button.label}
+            </button>
+          ))}
+          <button
+            className="p-1 text-xs rounded cursor-pointer bg-green-50 hover:bg-green-100 hover:shadow-lg"
+            onClick={startGenericMultiSelect}
+          >
+            Multi Select
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {insertButtons.map((button) => (
+            <button
+              key={button.id}
+              className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+              onClick={button.onClick}
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
+
+        {showMoveToSectionSubmenu && h2Sections.length > 0 && (
+          <>
+            <div className="col-span-3 border-t my-1"></div>
+            <div className="col-span-3 text-[10px] uppercase tracking-wide text-gray-500 px-1">
+              Move under H2
+            </div>
+            <button
+              className="col-span-3 text-left p-1 text-xs bg-purple-50 hover:bg-purple-100 rounded cursor-pointer"
+              onClick={startMultiMoveToSection}
+            >
+              Select Multiple Lines
+            </button>
+            {h2Sections.map((section) => (
+              <button
+                key={`section-${section.actualIndex}`}
+                className="col-span-3 text-left p-1 text-xs bg-blue-50 hover:bg-blue-100 rounded cursor-pointer truncate"
+                onClick={() => moveLineToSection(section.actualIndex)}
+                title={section.label}
+              >
+                {section.label}
+              </button>
+            ))}
+          </>
+        )}
         
-        <div className="col-span-2 border-t-2 my-1"></div>
+        <div className="col-span-3 border-t-2 my-1"></div>
         
         {/* Color options as squares - always at bottom */}
-        <div className="col-span-2 flex justify-center gap-1 py-1">
+        <div className="col-span-3 flex justify-center gap-1 py-1">
           {colorOptions.map((option) => (
             <button
               key={option.color}
@@ -473,6 +716,7 @@ export default function RightClickMenu({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 } 

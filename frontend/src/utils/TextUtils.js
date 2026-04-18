@@ -104,23 +104,32 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
   // Map first to preserve original index, then filter
   const lines = allLines
     .map((line, originalIndex) => {
-      
-      // First extract any color value wrapped in @$%^ markers
-      const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
-      const color = colorMatch ? colorMatch[1] : null;
+      // Strip leading tabs (sub-line indentation)
+      let rest = line.replace(/^\t+/, '');
 
-      // Remove the color markers and get clean text
-      const cleanLine = line.replace(/@\$%\^[^@]+@\$%\^/, '');
-      
-      // Track the original index to check code blocks
-      return { line: cleanLine, color, originalIndex };
+      // Extract ALL leading formatting prefixes in any order:
+      // {#h1#}, {#h2#}, {#bold#}, {#italics#}, {<color>}
+      let color = null;
+      let isBoldLine = false;
+      let isItalicLine = false;
+      let changed = true;
+      while (changed) {
+        changed = false;
+        if (rest.startsWith('{#bold#}')) { isBoldLine = true; rest = rest.slice(8); changed = true; }
+        if (rest.startsWith('{#italics#}')) { isItalicLine = true; rest = rest.slice(11); changed = true; }
+        const colorMatch = rest.match(/^\{<([^}]+)>\}/);
+        if (colorMatch) { color = colorMatch[1]; rest = rest.slice(colorMatch[0].length); changed = true; }
+        // h1/h2 are kept in the line string for type detection downstream — don't strip here
+      }
+
+      return { line: rest, color, isBoldLine, isItalicLine, originalIndex };
     })
     .filter(({ line }) => !line.trim().startsWith('meta::'));
 
   // Process lines
   const processedElements = [];
   
-  lines.forEach(({ line, color, originalIndex }, lineIndex) => {
+  lines.forEach(({ line, color, isBoldLine, isItalicLine, originalIndex }, lineIndex) => {
     // Check if this line is a code block delimiter (```)
     const trimmed = line.trim();
     const isCodeDelimiter = trimmed === '```';
@@ -138,7 +147,7 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
     );
     
     // Check if this is an h2 header
-    const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
+    const isH2 = trimmed.startsWith('{#h2#}');
     
     // Step 1: Parse inline formatting (skip for code blocks and delimiters)
     let formattedContent;
@@ -191,7 +200,7 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
     let type = 'normal';
     if (codeBlockRange || isCodeBlockLine || isSingleLineCode) {
       type = 'codeblock';
-    } else if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+    } else if (trimmed.startsWith('{#h1#}')) {
       type = 'heading1';
     } else if (isH2) {
       type = 'heading2';
@@ -239,10 +248,13 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
       isSingleLineCodeBlock: isSingleLineCode
     });
 
-    // Step 4: If we have a color value, wrap the final element in a colored span
-    if (color) {
+    // Step 4: Apply line-level formatting (bold, italic, color) extracted from prefixes
+    if (isBoldLine || isItalicLine || color) {
+      const style = color ? { color } : undefined;
+      const fontWeight = isBoldLine ? 'bold' : undefined;
+      const fontStyle = isItalicLine ? 'italic' : undefined;
       element = React.cloneElement(element, {
-        style: { color }
+        style: { ...(element.props.style || {}), ...(style || {}), ...(fontWeight ? { fontWeight } : {}), ...(fontStyle ? { fontStyle } : {}) }
       });
     }
 
@@ -500,6 +512,32 @@ const getLinkTypeIndicator = (url) => {
   }
 };
 
+const getDisplayLinkIndicator = (url, displayText = '') => {
+  const indicator = getLinkTypeIndicator(url);
+  if (!indicator) return '';
+
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    const visibleText = displayText.toLowerCase();
+    const visibleWords = visibleText.split(/[^a-z0-9]+/).filter(Boolean);
+    const hostWords = hostname.split(/[^a-z0-9]+/).filter(Boolean);
+    const indicatorWords = indicator
+      .replace(/\[|\]/g, '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(word => word.length > 1);
+
+    const alreadyVisibleInText = indicatorWords.some(word =>
+      visibleWords.some(visibleWord => visibleWord.includes(word))
+    );
+    const visibleTextIsHost = visibleText === hostname || hostWords.some(word => visibleWords.includes(word));
+
+    return alreadyVisibleInText || visibleTextIsHost ? '' : indicator;
+  } catch (error) {
+    return indicator;
+  }
+};
+
 /**
  * Parse inline formatting (bold, links, colors)
  */
@@ -517,17 +555,32 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     return str.split('').reverse().join('');
   };
 
-  // First handle any heading markers by temporarily replacing them
+  // Strip any remaining formatting prefixes (bold/italic/color/h1/h2) from content
   let processedContent = content;
-  const trimmed = content.trim();
-  const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-  const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
+  let changed = true;
+  while (changed) {
+    changed = false;
+    if (processedContent.startsWith('{#bold#}')) { processedContent = processedContent.slice(8); changed = true; }
+    if (processedContent.startsWith('{#italics#}')) { processedContent = processedContent.slice(11); changed = true; }
+    const cm = processedContent.match(/^\{<([^}]+)>\}/);
+    if (cm) { processedContent = processedContent.slice(cm[0].length); changed = true; }
+  }
+  const trimmed = processedContent.trim();
+  const isH1 = trimmed.startsWith('{#h1#}');
+  const isH2 = trimmed.startsWith('{#h2#}');
 
   if (isH1) {
-    processedContent = content.slice(3, -3);
+    processedContent = processedContent.replace(/^(\s*)\{#h1#\}/, '$1');
   } else if (isH2) {
-    processedContent = content.slice(2, -2);
+    processedContent = processedContent.replace(/^(\s*)\{#h2#\}/, '$1');
   }
+
+  processedContent = processedContent
+    .replace(/\{#bold#\}/g, '')
+    .replace(/\{#italics#\}/g, '')
+    .replace(/\{#h1#\}/g, '')
+    .replace(/\{#h2#\}/g, '')
+    .replace(/\{<[^}]+>\}/g, '');
 
   const elements = [];
   let currentText = '';
@@ -691,7 +744,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
                 }
                 const isReversedUrlInMarkdown = hasReversedUrls && beforeLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
                 const originalUrl = isReversedUrlInMarkdown ? reverseString(beforeLink.url) : beforeLink.url;
-                const linkIndicator = getLinkTypeIndicator(originalUrl);
+                const linkIndicator = getDisplayLinkIndicator(originalUrl, beforeLink.customText);
                 tempElements.push(
                   <span key={`url-${lineIndex}-before-wiki-${i}-${j}`} className="inline-flex items-center gap-1">
                     <a
@@ -782,7 +835,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
             }
             const isReversedUrlInMarkdown = hasReversedUrls && afterLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
             const originalUrl = isReversedUrlInMarkdown ? reverseString(afterLink.url) : afterLink.url;
-            const linkIndicator = getLinkTypeIndicator(originalUrl);
+            const linkIndicator = getDisplayLinkIndicator(originalUrl, afterLink.customText);
             elements.push(
               <span key={`url-${lineIndex}-after-wiki-${j}`} className="inline-flex items-center gap-1">
                 <a
@@ -836,7 +889,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         
         
         // Add the markdown link
-        const linkIndicator = getLinkTypeIndicator(originalUrl);
+        const linkIndicator = getDisplayLinkIndicator(originalUrl, linkMatch.customText);
         const linkElement = (
           <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
             <a
@@ -933,26 +986,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         const char = processedContent[i];
         const nextChar = processedContent[i + 1];
 
-        // Handle bold markers
-        if (char === '*' && nextChar === '*') {
-          if (currentText) {
-            elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
-            currentText = '';
-          }
-          isBold = !isBold;
-          i++; // Skip next asterisk
-          continue;
-        }
-
-        // Handle italic markers
-        if (char === '*' && !isBold) {
-          if (currentText) {
-            elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
-            currentText = '';
-          }
-          isItalic = !isItalic;
-          continue;
-        }
+        // {#bold#} and {#italics#} are stripped at the line level before reaching here
 
         // Handle URLs
         if ((char === 'h' && processedContent.slice(i, i + 7) === 'http://') ||
@@ -1088,7 +1122,7 @@ const wrapInContainer = ({ content, type, lineIndex, isCodeBlockStart, isCodeBlo
     case 'bullet':
       return (
         <div key={`bullet-${lineIndex}`} className="flex">
-          <span className="mr-2">•</span>
+          <span className="mr-2" style={{fontSize: '0.5em', lineHeight: 'inherit', verticalAlign: 'middle'}}>•</span>
           <div>{content}</div>
         </div>
       );
@@ -1136,4 +1170,3 @@ export const __testing__ = {
   highlightSearchTerm,
   wrapInContainer
 };
-

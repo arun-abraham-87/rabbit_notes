@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false, initialText = '', noteContent = '' }) => {
@@ -166,9 +167,27 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-modal="true" data-add-text-modal="true">
-      <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" 
+      data-modal="true" 
+      data-add-text-modal="true"
+      data-link-text-popup="true"
+      onClick={(e) => {
+        // Close modal when clicking on the backdrop
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+      onKeyDown={(e) => {
+        // Stop propagation to prevent global listeners from intercepting
+        e.stopPropagation();
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4"
+        onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">
             {isEditing ? 'Edit Link Text' : 'Add Custom Text'}
@@ -356,6 +375,8 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default AddTextModal; 

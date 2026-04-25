@@ -6,6 +6,27 @@ const NotesContext = createContext();
 export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastClickedUrl, setLastClickedUrlState] = useState(() => localStorage.getItem('lastClickedUrl') || null);
+  const [windowFocused, setWindowFocused] = useState(true);
+
+  useEffect(() => {
+    const onBlur = () => setWindowFocused(false);
+    const onFocus = () => setWindowFocused(true);
+    const onVisibility = () => setWindowFocused(!document.hidden);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  const setLastClickedUrl = (url) => {
+    setLastClickedUrlState(url);
+    localStorage.setItem('lastClickedUrl', url);
+  };
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -48,12 +69,15 @@ export function NotesProvider({ children }) {
   };
 
   return (
-    <NotesContext.Provider value={{ 
-      notes, 
+    <NotesContext.Provider value={{
+      notes,
       isLoading,
       addNote,
       updateNote,
-      setNotes
+      setNotes,
+      lastClickedUrl,
+      setLastClickedUrl,
+      windowFocused,
     }}>
       {children}
     </NotesContext.Provider>

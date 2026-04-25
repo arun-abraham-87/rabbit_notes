@@ -39,6 +39,119 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     'Pacific/Auckland': '🇳🇿',
   };
 
+  const getZonedTimeParts = (date, timeZone) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(date);
+
+    const valueByType = parts.reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+    return {
+      hour: parseInt(valueByType.hour, 10) % 24,
+      minute: parseInt(valueByType.minute, 10),
+      second: parseInt(valueByType.second, 10),
+    };
+  };
+
+  const AnalogClock = ({ hour, minute, second, isDay }) => {
+    const hourAngle = ((hour % 12) + minute / 60) * 30;
+    const minuteAngle = (minute + second / 60) * 6;
+    const secondAngle = second * 6;
+    const tickColor = isDay ? '#475569' : '#cbd5e1';
+    const faceFill = isDay ? 'rgba(255, 255, 255, 0.78)' : 'rgba(15, 23, 42, 0.64)';
+    const faceStroke = isDay ? 'rgba(148, 163, 184, 0.55)' : 'rgba(226, 232, 240, 0.32)';
+    const handColor = isDay ? '#111827' : '#f8fafc';
+    const accentColor = isDay ? '#2563eb' : '#38bdf8';
+    const secondColor = isDay ? '#ef4444' : '#fb7185';
+
+    return (
+      <svg
+        className="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 drop-shadow-sm"
+        viewBox="0 0 120 120"
+        role="img"
+        aria-label={`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} analog clock`}
+      >
+        <circle cx="60" cy="60" r="55" fill={faceFill} stroke={faceStroke} strokeWidth="3" />
+        <circle cx="60" cy="60" r="48" fill="none" stroke={faceStroke} strokeWidth="1" />
+        {Array.from({ length: 12 }).map((_, index) => {
+          const angle = index * 30;
+          const isQuarter = index % 3 === 0;
+          return (
+            <line
+              key={index}
+              x1="60"
+              y1={isQuarter ? '10' : '14'}
+              x2="60"
+              y2={isQuarter ? '20' : '18'}
+              stroke={tickColor}
+              strokeWidth={isQuarter ? '3' : '1.5'}
+              strokeLinecap="round"
+              transform={`rotate(${angle} 60 60)`}
+            />
+          );
+        })}
+        {[12, 3, 6, 9].map((number) => {
+          const angle = (number % 12) * 30 - 90;
+          const radius = 36;
+          const x = 60 + Math.cos((angle * Math.PI) / 180) * radius;
+          const y = 60 + Math.sin((angle * Math.PI) / 180) * radius + 4;
+          return (
+            <text
+              key={number}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="700"
+              fill={tickColor}
+            >
+              {number}
+            </text>
+          );
+        })}
+        <line
+          x1="60"
+          y1="64"
+          x2="60"
+          y2="33"
+          stroke={handColor}
+          strokeWidth="5"
+          strokeLinecap="round"
+          transform={`rotate(${hourAngle} 60 60)`}
+        />
+        <line
+          x1="60"
+          y1="66"
+          x2="60"
+          y2="23"
+          stroke={accentColor}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          transform={`rotate(${minuteAngle} 60 60)`}
+        />
+        <line
+          x1="60"
+          y1="70"
+          x2="60"
+          y2="18"
+          stroke={secondColor}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          transform={`rotate(${secondAngle} 60 60)`}
+        />
+        <circle cx="60" cy="60" r="5" fill={accentColor} />
+        <circle cx="60" cy="60" r="2" fill={secondColor} />
+      </svg>
+    );
+  };
+
   /**
    * Helper to format a date as YYYY-MM-DD in a given timezone.
    */
@@ -158,65 +271,26 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   };
 
   /**
-   * Get time-based description based on hour
-   */
-  const getTimeDescription = (hour) => {
-    if (hour >= 0 && hour < 6) return 'pre-dawn';
-    if (hour >= 6 && hour < 8) return 'early morning';
-    if (hour >= 8 && hour < 10) return 'mid-morning';
-    if (hour >= 10 && hour < 12) return 'late morning';
-    if (hour >= 12 && hour < 14) return 'early afternoon';
-    if (hour >= 14 && hour < 16) return 'mid-afternoon';
-    if (hour >= 16 && hour < 18) return 'early evening';
-    if (hour >= 18 && hour < 20) return 'evening';
-    if (hour >= 20 && hour < 21) return 'late evening';
-    if (hour >= 21 && hour < 24) return 'night';
-    return 'night';
-  };
-
-  /**
    * A single card showing the time in one zone.
    */
   const ZoneCard = ({ label, timeZone }) => {
-    const now = new Date();
+    const now = time;
+    const { hour, minute, second } = getZonedTimeParts(now, timeZone);
 
     // Determine day vs. night for icon + animation
-    const hour = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour12: false,
-      hour: 'numeric',
-    }).format(now);
-    const hourNum = parseInt(hour, 10);
+    const hourNum = hour;
     const isDay = hourNum >= 6 && hourNum < 18;
     const icon = isDay ? '☀️' : '🌙';
     const animation = isDay ? 'animate-bounce' : 'animate-pulse';
 
     // Conditional background: gradient at night
     const cardBgClasses = isDay
-      ? 'bg-gradient-to-br from-yellow-100 via-white to-blue-100 text-gray-700'
-      : 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-white';
+      ? 'bg-gradient-to-br from-yellow-100 via-white to-blue-100 text-gray-700 border border-yellow-200/70'
+      : 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-white border border-gray-700';
 
     // Compute offset relative to base timezone
     const baseLabel = baseTimezone.split('/').pop().replace('_', ' ');
     const diff = label === baseLabel ? null : getTimeDiffFromBase(timeZone);
-
-    // Determine if this zone's date is before/after base timezone date
-    const zoneYMD = formatYMD(now, timeZone);
-    const baseYMD = formatYMD(now, baseTimezone);
-    let relativeDayText = 'today';
-    if (zoneYMD < baseYMD) {
-      relativeDayText = 'yesterday';
-    } else if (zoneYMD > baseYMD) {
-      relativeDayText = 'tomorrow';
-    }
-
-    // Format time as HH:mm (24-hour format)
-    const formattedTime24 = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(now);
 
     // Format time as 12-hour format for display in brackets
     const formattedTime12 = new Intl.DateTimeFormat('en-US', {
@@ -233,27 +307,31 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     }).format(now);
 
     // Color code based on hour: morning/afternoon green, evening/night orange
-    const color = (hourNum >= 6 && hourNum < 18) ? 'text-green-500' : 'text-orange-500';
+    const color = isDay ? 'text-green-600' : 'text-orange-300';
+    const mutedText = isDay ? 'text-gray-500' : 'text-gray-300';
+    const quietText = isDay ? 'text-gray-400' : 'text-gray-400';
 
     return (
-      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 flex-1 overflow-hidden`}>
-        <div className="flex justify-between items-center mb-1 gap-3">
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-xs sm:text-sm font-bold whitespace-nowrap">
+      <div className={`${cardBgClasses} shadow-md rounded-lg p-3 sm:p-4 flex min-w-[176px] flex-1 flex-col items-center overflow-hidden`}>
+        <div className="mb-2 flex w-full items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-xs font-bold sm:text-sm" title={label}>
               {label}
             </span>
-            <span className="text-sm whitespace-nowrap">{flagMap[timeZone] || ''}</span>
+            <span className="text-sm flex-shrink-0">{flagMap[timeZone] || ''}</span>
             <span className={`${animation} text-xs flex-shrink-0`}>{icon}</span>
           </div>
-          <div className={`text-sm sm:text-base font-semibold ${color} whitespace-nowrap flex-shrink-0`}>
+          <div className={`text-sm font-semibold sm:text-base ${color} whitespace-nowrap flex-shrink-0`}>
             {formattedTime12}
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 flex-wrap gap-1">
+        <AnalogClock hour={hour} minute={minute} second={second} isDay={isDay} />
+
+        <div className={`mt-2 flex w-full items-center justify-between gap-2 text-[10px] sm:text-xs ${mutedText}`}>
           <span className="whitespace-nowrap">{formattedDate}</span>
           {diff && (
-            <span className="text-[10px] sm:text-xs text-gray-400 whitespace-nowrap ml-2">
+            <span className={`text-[10px] sm:text-xs ${quietText} whitespace-nowrap`}>
               {diff}
             </span>
           )}
@@ -279,37 +357,16 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     return 'earlyMorning'; // midnight - 6 AM
   };
 
-  // Enrich with numeric diff, dayLabel, hour, tier, and formatted date
+  // Enrich with numeric diff/date/tier for stable display ordering.
   const enrichedZones = timezonesToShow
     .map(z => {
       const diffHrs = getTimeDiffHours(z.timeZone);
-      const now = new Date();
-      const zoneYMD = formatYMD(now, z.timeZone);
-      const baseYMD = formatYMD(now, baseTimezone);
-      const dayLabel =
-        zoneYMD < baseYMD
-          ? 'Previous Day'
-          : zoneYMD > baseYMD
-            ? 'Next Day'
-            : 'Same Day';
-      
-      // Get formatted date for grouping
-      const formattedDate = new Intl.DateTimeFormat('en-US', {
-        timeZone: z.timeZone,
-        month: 'short',
-        day: 'numeric',
-      }).format(now);
-      
-      // Get hour in the timezone
-      const hour = new Intl.DateTimeFormat('en-US', {
-        timeZone: z.timeZone,
-        hour12: false,
-        hour: 'numeric',
-      }).format(now);
-      const hourNum = parseInt(hour, 10);
+      const zoneYMD = formatYMD(time, z.timeZone);
+      const { hour } = getZonedTimeParts(time, z.timeZone);
+      const hourNum = hour;
       const tier = getTimeTier(hourNum);
       
-      return { ...z, diffHrs, dayLabel, hourNum, tier, zoneYMD, formattedDate };
+      return { ...z, diffHrs, tier, zoneYMD };
     })
     .sort((a, b) => {
       // First sort by date (YMD): earlier dates first
@@ -325,51 +382,9 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       return a.diffHrs - b.diffHrs;
     });
 
-  // Group zones by date and tier
-  const zonesByDateAndTier = {};
-  enrichedZones.forEach(z => {
-    const key = `${z.zoneYMD}-${z.tier}`;
-    if (!zonesByDateAndTier[key]) {
-      zonesByDateAndTier[key] = {
-        date: z.zoneYMD,
-        formattedDate: z.formattedDate,
-        tier: z.tier,
-        zones: []
-      };
-    }
-    zonesByDateAndTier[key].zones.push(z);
-  });
-
-  // Convert to array and sort by date, then tier
-  const groupedSections = Object.values(zonesByDateAndTier).sort((a, b) => {
-    // Sort by date first
-    const dateDiff = a.date.localeCompare(b.date);
-    if (dateDiff !== 0) return dateDiff;
-    
-    // Then by tier order
-    const tierOrder = { earlyMorning: 0, morning: 1, afternoon: 2, lateNight: 3 };
-    return tierOrder[a.tier] - tierOrder[b.tier];
-  });
-
-  const tierLabels = {
-    morning: 'Morning (6 AM - 12 PM)',
-    afternoon: 'Afternoon (12 PM - 6 PM)',
-    lateNight: 'Late Night (6 PM - 12 AM)',
-    earlyMorning: 'Early Morning (12 AM - 6 AM)',
-  };
-
-  // Get base date for comparison
-  const now = new Date();
-  const baseYMD = formatYMD(now, baseTimezone);
-  const baseFormattedDate = new Intl.DateTimeFormat('en-US', {
-    timeZone: baseTimezone,
-    month: 'short',
-    day: 'numeric',
-  }).format(now);
-
   return (
     <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
-      <div className="flex gap-1.5 sm:gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 sm:gap-3">
         {enrichedZones.map(({ label, timeZone }) => (
           <ZoneCard key={label} label={label} timeZone={timeZone} />
         ))}

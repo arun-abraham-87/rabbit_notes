@@ -166,7 +166,7 @@ const CalendarStats = ({ currentDate }) => {
   );
 };
 
-const CustomCalendar = ({ allNotes }) => {
+const CustomCalendar = ({ allNotes, onAddEventForDate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState([]);
@@ -371,10 +371,21 @@ const CustomCalendar = ({ allNotes }) => {
     setContextMenu({ show: false, x: 0, y: 0, date: null, event: null });
   };
 
+  const openAddEventForDate = (date) => {
+    if (!date) return;
+    setShowDatePopup(false);
+    setContextMenu({ show: false, x: 0, y: 0, date: null, event: null });
+    if (onAddEventForDate) {
+      onAddEventForDate(date);
+      return;
+    }
+    setAddEventDate(date);
+    setShowAddEventModal(true);
+  };
+
   const handleAddEvent = (e) => {
     e.preventDefault();
-    setSelectedDate(contextMenu.date);
-    setContextMenu({ show: false, x: 0, y: 0 });
+    openAddEventForDate(contextMenu.date);
   };
 
   const handleEditEvent = (e) => {
@@ -672,12 +683,10 @@ const CustomCalendar = ({ allNotes }) => {
                 </div>
               )}
               <div className="flex justify-between mt-4">
-                <button
-                  onClick={() => {
-                    setShowDatePopup(false);
-                    setAddEventDate(selectedDate);
-                    setShowAddEventModal(true);
-                  }}
+	                <button
+	                  onClick={() => {
+	                    openAddEventForDate(selectedDate);
+	                  }}
                   className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
                 >
                   + Add Event

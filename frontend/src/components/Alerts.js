@@ -850,6 +850,9 @@ const UpcomingAlertsRow = ({ notes, setNotes }) => {
 
 const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const [EventAlertsComponent, setEventAlertsComponent] = useState(null);
+  const toastTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+    ? 'dark'
+    : 'light';
 
   useEffect(() => {
     import('./EventAlerts').then(module => {
@@ -886,7 +889,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="light"
+        theme={toastTheme}
       />
       <div className="space-y-4 w-full">
         <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />

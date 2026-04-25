@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { searchInNote } from '../utils/NotesUtils';
+import { isBackupDoneMessageNote, isTimelineNote, searchInNote } from '../utils/NotesUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 
 const NoteFilters = ({
@@ -20,100 +20,71 @@ const NoteFilters = ({
   onExcludeExpensesChange,
   onExcludeSensitiveChange,
   onExcludeTrackersChange,
-  resetTrigger = 0
+  onExcludeTimelinesChange,
+  onExcludeBackupDoneMessagesChange,
+  onExcludePeopleChange,
+  resetTrigger = 0,
+  // Controlled values from parent
+  excludeEvents: excludeEventsProp,
+  excludeMeetings: excludeMeetingsProp,
+  excludeEventNotes: excludeEventNotesProp,
+  excludeBackupNotes: excludeBackupNotesProp,
+  excludeWatchEvents: excludeWatchEventsProp,
+  excludeBookmarks: excludeBookmarksProp,
+  excludeExpenses: excludeExpensesProp,
+  excludeSensitive: excludeSensitiveProp,
+  excludeTrackers: excludeTrackersProp,
+  excludeTimelines: excludeTimelinesProp,
+  excludeBackupDoneMessages: excludeBackupDoneMessagesProp,
+  excludePeople: excludePeopleProp,
 }) => {
-  const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
-  const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
-  const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
-  const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
-  const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
-  const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
-  const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
-  const [excludeSensitive, setExcludeSensitive] = useState(true); // Default to true to exclude sensitive notes
-  const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
+  const isControlled = excludeEventsProp !== undefined;
 
-  // Only set the initial state of checkboxes
+  const [excludeEventsLocal, setExcludeEventsLocal] = useState(settings.excludeEventsByDefault || false);
+  const [excludeMeetingsLocal, setExcludeMeetingsLocal] = useState(settings.excludeMeetingsByDefault || false);
+  const [excludeEventNotesLocal, setExcludeEventNotesLocal] = useState(true);
+  const [excludeBackupNotesLocal, setExcludeBackupNotesLocal] = useState(true);
+  const [excludeWatchEventsLocal, setExcludeWatchEventsLocal] = useState(true);
+  const [excludeBookmarksLocal, setExcludeBookmarksLocal] = useState(true);
+  const [excludeExpensesLocal, setExcludeExpensesLocal] = useState(true);
+  const [excludeSensitiveLocal, setExcludeSensitiveLocal] = useState(true);
+  const [excludeTrackersLocal, setExcludeTrackersLocal] = useState(true);
+  const [excludeTimelinesLocal, setExcludeTimelinesLocal] = useState(true);
+  const [excludeBackupDoneMessagesLocal, setExcludeBackupDoneMessagesLocal] = useState(true);
+  const [excludePeopleLocal, setExcludePeopleLocal] = useState(true);
+
+  // Use controlled values if provided, otherwise fall back to local state
+  const excludeEvents = isControlled ? excludeEventsProp : excludeEventsLocal;
+  const excludeMeetings = isControlled ? excludeMeetingsProp : excludeMeetingsLocal;
+  const excludeEventNotes = isControlled ? excludeEventNotesProp : excludeEventNotesLocal;
+  const excludeBackupNotes = isControlled ? excludeBackupNotesProp : excludeBackupNotesLocal;
+  const excludeWatchEvents = isControlled ? excludeWatchEventsProp : excludeWatchEventsLocal;
+  const excludeBookmarks = isControlled ? excludeBookmarksProp : excludeBookmarksLocal;
+  const excludeExpenses = isControlled ? excludeExpensesProp : excludeExpensesLocal;
+  const excludeSensitive = isControlled ? excludeSensitiveProp : excludeSensitiveLocal;
+  const excludeTrackers = isControlled ? excludeTrackersProp : excludeTrackersLocal;
+  const excludeTimelines = isControlled ? excludeTimelinesProp : excludeTimelinesLocal;
+  const excludeBackupDoneMessages = isControlled ? excludeBackupDoneMessagesProp : excludeBackupDoneMessagesLocal;
+  const excludePeople = isControlled ? excludePeopleProp : excludePeopleLocal;
+
+  // Reset all filters when resetTrigger changes (and is not 0) — only needed for uncontrolled mode
   useEffect(() => {
-    setExcludeEvents(settings.excludeEventsByDefault || false);
-    setExcludeMeetings(settings.excludeMeetingsByDefault || false);
-  }, [settings.excludeEventsByDefault, settings.excludeMeetingsByDefault]);
-
-  // Notify parent component when exclude states change
-  useEffect(() => {
-    if (onExcludeEventsChange) {
-      onExcludeEventsChange(excludeEvents);
-    }
-  }, [excludeEvents, onExcludeEventsChange]);
-
-  useEffect(() => {
-    if (onExcludeMeetingsChange) {
-      onExcludeMeetingsChange(excludeMeetings);
-    }
-  }, [excludeMeetings, onExcludeMeetingsChange]);
-
-  // Notify parent component when deadline passed filter changes
-
-  useEffect(() => {
-    if (onExcludeEventNotesChange) {
-      onExcludeEventNotesChange(excludeEventNotes);
-    }
-  }, [excludeEventNotes, onExcludeEventNotesChange]);
-
-  useEffect(() => {
-    if (onExcludeBackupNotesChange) {
-      onExcludeBackupNotesChange(excludeBackupNotes);
-    }
-  }, [excludeBackupNotes, onExcludeBackupNotesChange]);
-
-  useEffect(() => {
-    if (onExcludeWatchEventsChange) {
-      onExcludeWatchEventsChange(excludeWatchEvents);
-    }
-  }, [excludeWatchEvents, onExcludeWatchEventsChange]);
-
-  useEffect(() => {
-    if (onExcludeBookmarksChange) {
-      onExcludeBookmarksChange(excludeBookmarks);
-    }
-  }, [excludeBookmarks, onExcludeBookmarksChange]);
-
-  useEffect(() => {
-    if (onExcludeExpensesChange) {
-      onExcludeExpensesChange(excludeExpenses);
-    }
-  }, [excludeExpenses, onExcludeExpensesChange]);
-
-  useEffect(() => {
-    if (onExcludeSensitiveChange) {
-      onExcludeSensitiveChange(excludeSensitive);
-    }
-  }, [excludeSensitive, onExcludeSensitiveChange]);
-
-  useEffect(() => {
-    if (onExcludeTrackersChange) {
-      onExcludeTrackersChange(excludeTrackers);
-    }
-  }, [excludeTrackers, onExcludeTrackersChange]);
-
-  // Reset all filters when resetTrigger changes (and is not 0)
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      console.log('🔄 [NoteFilters] Reset filters triggered via trigger:', resetTrigger);
-      setExcludeEvents(settings.excludeEventsByDefault || false);
-      setExcludeMeetings(settings.excludeMeetingsByDefault || false);
-      setExcludeEventNotes(true);
-      setExcludeBackupNotes(true);
-      setExcludeWatchEvents(true);
-      setExcludeBookmarks(true);
-      setExcludeExpenses(true);
-      setExcludeSensitive(true);
-      setExcludeTrackers(true);
-      // Clear search query and lines
+    if (resetTrigger > 0 && !isControlled) {
+      setExcludeEventsLocal(settings.excludeEventsByDefault || false);
+      setExcludeMeetingsLocal(settings.excludeMeetingsByDefault || false);
+      setExcludeEventNotesLocal(true);
+      setExcludeBackupNotesLocal(true);
+      setExcludeWatchEventsLocal(true);
+      setExcludeBookmarksLocal(true);
+      setExcludeExpensesLocal(true);
+      setExcludeSensitiveLocal(true);
+      setExcludeTrackersLocal(true);
+      setExcludeTimelinesLocal(true);
+      setExcludeBackupDoneMessagesLocal(true);
+      setExcludePeopleLocal(true);
       if (setSearchQuery) setSearchQuery('');
       if (setLines) setLines([{ id: 'line-0', text: '', isTitle: false }]);
     }
-    // We intentionally only depend on resetTrigger.
-    // Using refs or other methods for settings if needed, but for now just trim dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetTrigger]);
 
@@ -150,10 +121,10 @@ const NoteFilters = ({
 
     // If filter is added, uncheck exclude events
     if (filterAdded) {
-      setExcludeEvents(false);
+      handleExcludeEventsChange(false);
     } else {
       // When filter is removed, restore default state from settings
-      setExcludeEvents(settings.excludeEventsByDefault || false);
+      handleExcludeEventsChange(settings.excludeEventsByDefault || false);
     }
 
     setLines((prev) => {
@@ -196,7 +167,8 @@ const NoteFilters = ({
   };
 
   const handleExcludeEventsChange = (checked) => {
-    setExcludeEvents(checked);
+    if (!isControlled) setExcludeEventsLocal(checked);
+    if (onExcludeEventsChange) onExcludeEventsChange(checked);
     // Only update search query if it already contains filter text
     if (searchQuery?.includes('-meta::event::') || searchQuery?.includes('-meta::meeting::')) {
       if (checked) {
@@ -214,7 +186,8 @@ const NoteFilters = ({
   };
 
   const handleExcludeMeetingsChange = (checked) => {
-    setExcludeMeetings(checked);
+    if (!isControlled) setExcludeMeetingsLocal(checked);
+    if (onExcludeMeetingsChange) onExcludeMeetingsChange(checked);
     // Only update search query if it already contains filter text
     if (searchQuery?.includes('-meta::event::') || searchQuery?.includes('-meta::meeting::')) {
       if (checked) {
@@ -232,31 +205,53 @@ const NoteFilters = ({
   };
 
   const handleExcludeEventNotesChange = (checked) => {
-    setExcludeEventNotes(checked);
+    if (!isControlled) setExcludeEventNotesLocal(checked);
+    if (onExcludeEventNotesChange) onExcludeEventNotesChange(checked);
   };
 
   const handleExcludeBackupNotesChange = (checked) => {
-    setExcludeBackupNotes(checked);
+    if (!isControlled) setExcludeBackupNotesLocal(checked);
+    if (onExcludeBackupNotesChange) onExcludeBackupNotesChange(checked);
   };
 
   const handleExcludeWatchEventsChange = (checked) => {
-    setExcludeWatchEvents(checked);
+    if (!isControlled) setExcludeWatchEventsLocal(checked);
+    if (onExcludeWatchEventsChange) onExcludeWatchEventsChange(checked);
   };
 
   const handleExcludeBookmarksChange = (checked) => {
-    setExcludeBookmarks(checked);
+    if (!isControlled) setExcludeBookmarksLocal(checked);
+    if (onExcludeBookmarksChange) onExcludeBookmarksChange(checked);
   };
 
   const handleExcludeExpensesChange = (checked) => {
-    setExcludeExpenses(checked);
+    if (!isControlled) setExcludeExpensesLocal(checked);
+    if (onExcludeExpensesChange) onExcludeExpensesChange(checked);
   };
 
   const handleExcludeSensitiveChange = (checked) => {
-    setExcludeSensitive(checked);
+    if (!isControlled) setExcludeSensitiveLocal(checked);
+    if (onExcludeSensitiveChange) onExcludeSensitiveChange(checked);
   };
 
   const handleExcludeTrackersChange = (checked) => {
-    setExcludeTrackers(checked);
+    if (!isControlled) setExcludeTrackersLocal(checked);
+    if (onExcludeTrackersChange) onExcludeTrackersChange(checked);
+  };
+
+  const handleExcludeTimelinesChange = (checked) => {
+    if (!isControlled) setExcludeTimelinesLocal(checked);
+    if (onExcludeTimelinesChange) onExcludeTimelinesChange(checked);
+  };
+
+  const handleExcludeBackupDoneMessagesChange = (checked) => {
+    if (!isControlled) setExcludeBackupDoneMessagesLocal(checked);
+    if (onExcludeBackupDoneMessagesChange) onExcludeBackupDoneMessagesChange(checked);
+  };
+
+  const handleExcludePeopleChange = (checked) => {
+    if (!isControlled) setExcludePeopleLocal(checked);
+    if (onExcludePeopleChange) onExcludePeopleChange(checked);
   };
 
   // Helper function to filter notes based on search query
@@ -280,6 +275,14 @@ const NoteFilters = ({
   // Calculate tracker notes count (only from notes matching search)
   const trackerNotesCount = notesMatchingSearch.filter(note =>
     note.content && note.content.includes('meta::tracker')
+  ).length;
+
+  const timelineNotesCount = notesMatchingSearch.filter(isTimelineNote).length;
+
+  const backupDoneMessagesCount = notesMatchingSearch.filter(isBackupDoneMessageNote).length;
+
+  const peopleNotesCount = notesMatchingSearch.filter(note =>
+    note.content && note.content.includes('meta::person::')
   ).length;
 
   // Calculate event notes count (only from notes matching search)
@@ -308,34 +311,35 @@ const NoteFilters = ({
   ).length;
 
   const handleClear = () => {
-    setExcludeEvents(false);
-    setExcludeMeetings(false);
-    setExcludeEventNotes(false);
-    setExcludeBackupNotes(false);
-    setExcludeWatchEvents(false);
-    setExcludeBookmarks(false);
-    setExcludeExpenses(false);
-    setExcludeSensitive(false);
-    setExcludeTrackers(false);
+    handleExcludeEventsChange(false);
+    handleExcludeMeetingsChange(false);
+    handleExcludeEventNotesChange(false);
+    handleExcludeBackupNotesChange(false);
+    handleExcludeWatchEventsChange(false);
+    handleExcludeBookmarksChange(false);
+    handleExcludeExpensesChange(false);
+    handleExcludeSensitiveChange(false);
+    handleExcludeTrackersChange(false);
+    handleExcludeTimelinesChange(false);
+    handleExcludeBackupDoneMessagesChange(false);
+    handleExcludePeopleChange(false);
     if (setLines) setLines([{ id: 'line-0', text: '', isTitle: false }]);
     if (setSearchQuery) setSearchQuery('');
   };
 
   const handleReset = () => {
-    // Reset to initial state (on load state)
-
-    // Reset exclude checkboxes to their initial values
-    setExcludeEvents(settings.excludeEventsByDefault || false);
-    setExcludeMeetings(settings.excludeMeetingsByDefault || false);
-    setExcludeEventNotes(true); // Default to true to exclude event notes
-    setExcludeBackupNotes(true); // Default to true to exclude backup notes
-    setExcludeWatchEvents(true); // Default to true to exclude watch events
-    setExcludeBookmarks(true); // Default to true to exclude bookmarks
-    setExcludeExpenses(true); // Default to true to exclude expenses
-    setExcludeSensitive(true); // Default to true to exclude sensitive notes
-    setExcludeTrackers(true); // Default to true to exclude tracker notes
-
-    // Clear search query and lines
+    handleExcludeEventsChange(settings.excludeEventsByDefault || false);
+    handleExcludeMeetingsChange(settings.excludeMeetingsByDefault || false);
+    handleExcludeEventNotesChange(true);
+    handleExcludeBackupNotesChange(true);
+    handleExcludeWatchEventsChange(true);
+    handleExcludeBookmarksChange(true);
+    handleExcludeExpensesChange(true);
+    handleExcludeSensitiveChange(true);
+    handleExcludeTrackersChange(true);
+    handleExcludeTimelinesChange(true);
+    handleExcludeBackupDoneMessagesChange(true);
+    handleExcludePeopleChange(true);
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -542,6 +546,54 @@ const NoteFilters = ({
           {excludeTrackers && trackerNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {trackerNotesCount} hidden
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeTimelines}
+              onChange={(e) => handleExcludeTimelinesChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Timelines
+          </label>
+          {excludeTimelines && timelineNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {timelineNotesCount} hidden
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeBackupDoneMessages}
+              onChange={(e) => handleExcludeBackupDoneMessagesChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Backup Done Messages
+          </label>
+          {excludeBackupDoneMessages && backupDoneMessagesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {backupDoneMessagesCount} hidden
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludePeople}
+              onChange={(e) => handleExcludePeopleChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            People
+          </label>
+          {excludePeople && peopleNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {peopleNotesCount} hidden
             </span>
           )}
         </div>

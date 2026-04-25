@@ -65,7 +65,12 @@ const NoteCard = ({
   noteIndex = -1,
   onSetFocusedNoteIndex,
   settings = {},
-  addNote = null
+  addNote = null,
+  mergeMode = false,
+  selectedMergeNotes = [],
+  setSelectedMergeNotes = () => {},
+  mainMergeNoteId = null,
+  setMainMergeNoteId = () => {},
 }) => {
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
@@ -673,12 +678,12 @@ const NoteCard = ({
           }
         }}
         className={`group flex flex-col cursor-pointer ${
-          focusMode 
-            ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white' 
+          focusMode
+            ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white'
             : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'
         } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''} ${
           isFocused ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
-        }`}
+        } ${mergeMode && selectedMergeNotes.includes(note.id) ? (mainMergeNoteId === note.id ? 'ring-2 ring-purple-600 border-purple-400' : 'ring-2 ring-purple-300 border-purple-300') : ''}`}
         style={{
           backgroundColor: isFocused ? '#eff6ff' : undefined,
           borderColor: isFocused ? '#3b82f6' : undefined,
@@ -689,6 +694,46 @@ const NoteCard = ({
       {testDevMode && (
         <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl z-10">
           DEV MODE ON
+        </div>
+      )}
+
+      {/* Merge mode overlay controls */}
+      {mergeMode && (
+        <div className="absolute top-2 left-2 z-20 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selectedMergeNotes.includes(note.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              setSelectedMergeNotes(prev =>
+                prev.includes(note.id) ? prev.filter(id => id !== note.id) : [...prev, note.id]
+              );
+              // Auto-set as main if first selection
+              if (!selectedMergeNotes.includes(note.id) && selectedMergeNotes.length === 0) {
+                setMainMergeNoteId(note.id);
+              }
+              // Clear main if deselecting main
+              if (mainMergeNoteId === note.id) {
+                setMainMergeNoteId(null);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-gray-300 text-purple-600 cursor-pointer"
+            title="Select for merge"
+          />
+          {selectedMergeNotes.includes(note.id) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMainMergeNoteId(note.id); }}
+              className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-colors ${
+                mainMergeNoteId === note.id
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 border border-gray-300'
+              }`}
+              title="Set as merge target"
+            >
+              {mainMergeNoteId === note.id ? 'Main' : 'Set Main'}
+            </button>
+          )}
         </div>
       )}
       
@@ -703,11 +748,12 @@ const NoteCard = ({
           updateNote={updateNote}
           duplicateUrlNoteIds={duplicateUrlNoteIds}
           duplicateWithinNoteIds={duplicateWithinNoteIds}
-          urlShareSpaceNoteIds={urlShareSpaceNoteIds}
-          focusMode={focusMode}
-          onNavigate={onNavigate}
-          allNotes={allNotes}
-          setSearchQuery={setSearchQuery}
+	              urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+	              focusMode={focusMode}
+	              showCreatedDate={showCreatedDate}
+	              onNavigate={onNavigate}
+	              allNotes={allNotes}
+	              setSearchQuery={setSearchQuery}
         />
         <NoteCardContent
           note={note}
@@ -747,6 +793,7 @@ const NoteCard = ({
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
           allNotes={fullNotesList}
           addNote={addNote}
+          isFocused={isFocused}
         />
         {!focusMode && (
           <div className="flex items-center space-x-4 px-4 py-2">
@@ -771,9 +818,9 @@ const NoteCard = ({
           updateNote={updateNote}
         />
         
-        <NoteCardFooter
-          note={note}
-          showCreatedDate={showCreatedDate}
+	        <NoteCardFooter
+	          note={note}
+	          showCreatedDate={false}
           handleDelete={handleDelete}
           setPopupNoteText={setPopupNoteText}
           setLinkingNoteId={setLinkingNoteId}
@@ -784,6 +831,7 @@ const NoteCard = ({
           updateNote={updateNote}
           focusMode={focusMode}
           settings={settings}
+          mergeMode={mergeMode}
         />
       </div>
     </div>

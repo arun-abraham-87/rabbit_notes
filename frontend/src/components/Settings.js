@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { getSettings, updateSettings, defaultSettings } from '../utils/ApiUtils';
+import { getSettings, updateSettings, defaultSettings, loadAllNotes } from '../utils/ApiUtils';
+import {
+  DASHBOARD_NAV_MENU_SETTING_KEY,
+  loadNoteBackedSetting,
+  normalizeNavbarMenuSettings,
+  saveNoteBackedSetting,
+} from '../utils/NoteBackedSettingsUtils';
+import {
+  applyThemePreference,
+  normalizeThemePreference,
+  saveThemePreference,
+} from '../utils/ThemeUtils';
 
 // Common timezones with their offsets and locations
 export const timeZones = [
@@ -50,6 +61,15 @@ const NAVBAR_PAGES = [
   { id: 'pomodoro', label: 'Pomodoro' },
   { id: 'information', label: 'Information' },
   { id: 'over-the-years', label: 'Over the Years' },
+  { id: 'tiny-habits', label: 'Tiny Habits' },
+  { id: 'life-trackers', label: 'Life Trackers' },
+];
+
+const NAVBAR_PAGE_IDS = NAVBAR_PAGES.map(page => page.id);
+const THEME_OPTIONS = [
+  { id: 'light', label: 'Light', description: 'Bright, classic app colors' },
+  { id: 'dark', label: 'Dark', description: 'Low-glare dark surfaces' },
+  { id: 'system', label: 'System', description: 'Match your device setting' },
 ];
 
 const Settings = ({ onClose, settings, setSettings }) => {
@@ -62,6 +82,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
   const [developerMode, setDeveloperMode] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   const [noteCardOptions, setNoteCardOptions] = useState(defaultSettings.noteCardOptions);
+  const [themePreference, setThemePreference] = useState(() => normalizeThemePreference(settings?.theme));
 
   // Load settings on component mount
   useEffect(() => {
@@ -84,47 +105,24 @@ const Settings = ({ onClose, settings, setSettings }) => {
         if (savedBaseTimezone) {
           setBaseTimezone(savedBaseTimezone);
         }
-        if (savedNavbarPages) {
-          const saved = JSON.parse(savedNavbarPages);
-          // Merge with new pages from NAVBAR_PAGES (default to true for new pages)
-          const merged = {};
-          NAVBAR_PAGES.forEach(page => {
-            merged[page.id] = saved[page.id] !== undefined ? saved[page.id] : true;
-          });
-          setNavbarPagesVisibility(merged);
-        } else {
-          // Default: all true
-          const defaultVis = {};
-          NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
-          setNavbarPagesVisibility(defaultVis);
-        }
-        if (savedMainBarPages) {
-          const saved = JSON.parse(savedMainBarPages);
-          // Merge with new pages from NAVBAR_PAGES (don't add to main bar by default)
-          const merged = {};
-          NAVBAR_PAGES.forEach(page => {
-            merged[page.id] = saved[page.id] !== undefined ? saved[page.id] : false;
-          });
-          setNavbarMainBarPages(merged);
-        } else {
-          // Default: first 10 visible pages on main bar
-          const defaultMainBar = {};
-          NAVBAR_PAGES.slice(0, 10).forEach(page => { defaultMainBar[page.id] = true; });
-          setNavbarMainBarPages(defaultMainBar);
-        }
-        if (savedPagesOrder) {
-          const saved = JSON.parse(savedPagesOrder);
-          // Merge with new pages from NAVBAR_PAGES (add new pages to end)
-          const merged = [...saved];
-          NAVBAR_PAGES.forEach(page => {
-            if (!merged.includes(page.id)) {
-              merged.push(page.id);
-            }
-          });
-          setNavbarPagesOrder(merged);
-        } else {
-          // Default: use original NAVBAR_PAGES order
-          setNavbarPagesOrder(NAVBAR_PAGES.map(p => p.id));
+        const cachedNavbarSettings = normalizeNavbarMenuSettings({
+          visibility: savedNavbarPages ? JSON.parse(savedNavbarPages) : undefined,
+          mainBar: savedMainBarPages ? JSON.parse(savedMainBarPages) : undefined,
+          order: savedPagesOrder ? JSON.parse(savedPagesOrder) : undefined,
+        }, NAVBAR_PAGE_IDS);
+        setNavbarPagesVisibility(cachedNavbarSettings.visibility);
+        setNavbarMainBarPages(cachedNavbarSettings.mainBar);
+        setNavbarPagesOrder(cachedNavbarSettings.order);
+
+        const noteBackedNavbarSettings = await loadNoteBackedSetting(DASHBOARD_NAV_MENU_SETTING_KEY, null);
+        if (noteBackedNavbarSettings) {
+          const normalized = normalizeNavbarMenuSettings(noteBackedNavbarSettings, NAVBAR_PAGE_IDS);
+          setNavbarPagesVisibility(normalized.visibility);
+          setNavbarMainBarPages(normalized.mainBar);
+          setNavbarPagesOrder(normalized.order);
+          localStorage.setItem('navbarPagesVisibility', JSON.stringify(normalized.visibility));
+          localStorage.setItem('navbarMainBarPages', JSON.stringify(normalized.mainBar));
+          localStorage.setItem('navbarPagesOrder', JSON.stringify(normalized.order));
         }
         if (savedQuickPaste !== null) {
           setQuickPasteEnabled(savedQuickPaste === 'true');
@@ -132,6 +130,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
         
         // Set developer mode from settings
         setDeveloperMode(mergedSettings.developerMode || false);
+        setThemePreference(normalizeThemePreference(mergedSettings.theme));
         
         // Load note card options from settings
         if (mergedSettings.noteCardOptions) {
@@ -149,6 +148,10 @@ const Settings = ({ onClose, settings, setSettings }) => {
     
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    setThemePreference(normalizeThemePreference(settings?.theme));
+  }, [settings]);
 
   const handleTimezoneChange = (index, value) => {
     const newTimezones = [...selectedTimezones];
@@ -333,10 +336,17 @@ const Settings = ({ onClose, settings, setSettings }) => {
       localStorage.setItem('navbarMainBarPages', JSON.stringify(navbarMainBarPages));
       localStorage.setItem('navbarPagesOrder', JSON.stringify(navbarPagesOrder));
       localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
+      const { notes } = await loadAllNotes();
+      await saveNoteBackedSetting(DASHBOARD_NAV_MENU_SETTING_KEY, {
+        visibility: navbarPagesVisibility,
+        mainBar: navbarMainBarPages,
+        order: navbarPagesOrder,
+      }, { notes });
       
       // Update settings with developer mode and note card options
       const updatedSettings = {
         ...settings,
+        theme: themePreference,
         developerMode: developerMode,
         noteCardOptions: noteCardOptions
       };
@@ -344,6 +354,8 @@ const Settings = ({ onClose, settings, setSettings }) => {
       
       
       await updateSettings(updatedSettings);
+      saveThemePreference(updatedSettings.theme);
+      applyThemePreference(updatedSettings.theme);
       setSettings(updatedSettings);
       onClose();
     } catch (error) {
@@ -403,16 +415,28 @@ const Settings = ({ onClose, settings, setSettings }) => {
           {/* Theme Settings */}
           <div className="border-b pb-4">
             <h3 className="text-lg font-semibold mb-3 text-gray-700">Theme</h3>
-            <div className="flex items-center space-x-4">
-              <button className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200">
-                Light
-              </button>
-              <button className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200">
-                Dark
-              </button>
-              <button className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200">
-                System
-              </button>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {THEME_OPTIONS.map((option) => {
+                const isActive = themePreference === option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setThemePreference(option.id)}
+                    className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                      isActive
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{option.label}</div>
+                    <div className={`mt-1 text-xs ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {option.description}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

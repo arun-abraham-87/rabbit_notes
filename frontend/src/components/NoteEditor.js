@@ -7,6 +7,7 @@ import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
+import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent, hasReversedUrls, restoreUrlsInText, reverseUrlsInText } from '../utils/SensitiveUrlUtils';
 
 const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, searchQuery = '', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange = true, onExcludeMeetingsChange = true, initialMode = 'view', initialTextMode = false, onImagePaste = null }) => {
   // Component initialized - debug logs removed for cleaner experience
@@ -14,60 +15,9 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
 
   // Check if this note has reversed URLs
-  const hasReversedUrls = contentSource && contentSource.includes('meta::url_reversed');
-
-  // Helper function to reverse a string
-  const reverseString = (str) => {
-    return str.split('').reverse().join('');
-  };
-
-  // Helper function to reverse URLs in text
-  const reverseUrlsInText = (text) => {
-    // Regular expression to match URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-
-    // Regular expression to match markdown links [text](url)
-    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-
-    let result = text;
-
-    // First, handle markdown links
-    result = result.replace(markdownLinkRegex, (match, text, url) => {
-      const reversedUrl = reverseString(url);
-      return `[${text}](${reversedUrl})`;
-    });
-
-    // Then, handle plain URLs
-    result = result.replace(urlRegex, (url) => {
-      return reverseString(url);
-    });
-
-    return result;
-  };
-
-  // Helper function to restore URLs from reversed form
-  const restoreUrlsInText = (text) => {
-    // Regular expression to match reversed URLs (ending with reversed http/https)
-    const reversedUrlRegex = /[^\s()[\]]+\/\/:s?ptth/g;
-
-    // Regular expression to match markdown links with reversed URLs
-    const reversedMarkdownLinkRegex = /\[([^\]]+)\]\(([^)\s]+\/\/:s?ptth)\)/g;
-
-    let result = text;
-
-    // First, handle markdown links with reversed URLs
-    result = result.replace(reversedMarkdownLinkRegex, (match, text, url) => {
-      const originalUrl = reverseString(url);
-      return `[${text}](${originalUrl})`;
-    });
-
-    // Then, handle plain reversed URLs
-    result = result.replace(reversedUrlRegex, (url) => {
-      return reverseString(url);
-    });
-
-    return result;
-  };
+  const noteHasEncodedContent = hasEncodedContent(contentSource);
+  const noteHasReversedUrls = hasReversedUrls(contentSource);
+  const editableContentSource = decodeSensitiveContent(contentSource);
 
   // Function to separate content from meta tags
   const separateContentFromMeta = (content) => {
@@ -86,14 +36,14 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
     return { contentLines, metaLines };
   };
 
-  const { contentLines, metaLines } = separateContentFromMeta(contentSource);
+  const { contentLines, metaLines } = separateContentFromMeta(editableContentSource);
 
   // Process content lines to restore URLs if they were reversed
-  const processedContentLines = hasReversedUrls
+  const processedContentLines = !noteHasEncodedContent && noteHasReversedUrls
     ? contentLines.map(text => restoreUrlsInText(text))
     : contentLines;
 
-  const initialLines = contentSource
+  const initialLines = editableContentSource
     ? [
       // Content lines (with restored URLs if they were reversed)
       ...processedContentLines.map((text, index) => ({
@@ -824,8 +774,11 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
     // Join lines with newlines
     let merged = trimmedLines.join('\n');
 
-    // If this note originally had reversed URLs, re-reverse them before saving
-    if (hasReversedUrls) {
+    // New sensitive notes encode every non-meta line. Older notes without
+    // meta::encoded keep the previous URL-only behavior for compatibility.
+    if (noteHasEncodedContent || hasEncodedContent(merged)) {
+      merged = encodeSensitiveContent(merged);
+    } else if (noteHasReversedUrls) {
       // Separate content from meta tags for processing
       const { contentLines, metaLines } = separateContentFromMeta(merged);
 

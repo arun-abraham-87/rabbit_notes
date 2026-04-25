@@ -24,6 +24,8 @@ import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
 import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 import ConvertToBookmarkModal from './ConvertToBookmarkModal';
+import { encodeSensitiveContent, removeSensitiveMetadata } from '../utils/SensitiveUrlUtils';
+import { reorderMetaTags } from '../utils/MetaTagUtils';
 
 const Tooltip = ({ text, children }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -61,7 +63,8 @@ const NoteFooter = ({
   toggleNoteSelection,
   updateNote,
   focusMode = false,
-  settings = {}
+  settings = {},
+  mergeMode = false,
 }) => {
   // Get note card options configuration, with defaults
   const noteCardOptions = settings?.noteCardOptions || {
@@ -79,6 +82,7 @@ const NoteFooter = ({
     todoLow: { visible: true, location: 'more' },
     pinLines: { visible: true, location: 'more' },
     linkNote: { visible: true, location: 'card' },
+    unclickableLinks: { visible: true, location: 'card' },
     merge: { visible: true, location: 'card' },
     copy: { visible: true, location: 'card' },
     rawNote: { visible: true, location: 'card' },
@@ -105,6 +109,12 @@ const NoteFooter = ({
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
   const isMergeMode = selectedNotes.length > 0;
+  const UNCLICKABLE_LINKS_META_PREFIX = 'meta::unclickable_links::';
+  const isUnclickableLinksEnabled = note.content
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => line.startsWith(UNCLICKABLE_LINKS_META_PREFIX))
+    ?.slice(UNCLICKABLE_LINKS_META_PREFIX.length) === 'on';
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -233,6 +243,19 @@ const NoteFooter = ({
     }
   };
 
+  const handleToggleUnclickableLinks = () => {
+    const cleanedLines = note.content
+      .split('\n')
+      .filter(line => !line.trim().startsWith(UNCLICKABLE_LINKS_META_PREFIX));
+    const nextEnabled = !isUnclickableLinksEnabled;
+    const nextContent = reorderMetaTags([
+      ...cleanedLines,
+      `${UNCLICKABLE_LINKS_META_PREFIX}${nextEnabled ? 'on' : 'off'}`
+    ].join('\n'));
+    updateNote(note.id, nextContent);
+    toast.success(nextEnabled ? 'Links set to copy only' : 'Links are clickable again');
+  };
+
   // Handle pin/unpin note functionality
   const handlePinNote = () => {
     const lines = note.content.split('\n');
@@ -318,73 +341,26 @@ const NoteFooter = ({
     toast.success('All tags removed from note');
   };
 
-  // Helper function to reverse a string
-  const reverseString = (str) => {
-    return str.split('').reverse().join('');
-  };
-
-  // Helper function to find and reverse URLs in text
-  const reverseUrlsInText = (text) => {
-    // Regular expression to match URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
-    // Regular expression to match markdown links [text](url)
-    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    
-    let result = text;
-    
-    // First, handle markdown links
-    result = result.replace(markdownLinkRegex, (match, text, url) => {
-      const reversedUrl = reverseString(url);
-      return `[${text}](${reversedUrl})`;
-    });
-    
-    // Then, handle plain URLs
-    result = result.replace(urlRegex, (url) => {
-      return reverseString(url);
-    });
-    
-    return result;
-  };
-
   const handleSensitiveAction = () => {
     const lines = note.content.split('\n');
     const hasSensitive = lines.some(l => l.trim().startsWith('meta::sensitive::'));
 
     if (hasSensitive) {
-      // Remove the sensitive tag if it exists
-      const without = lines
-        .filter(l => !l.trim().startsWith('meta::sensitive::'))
-        .join('\n')
-        .trim();
-      updateNote(note.id, without);
-      toast.success('Removed sensitive tag');
+      // Removing sensitivity should restore encoded content and remove sensitive metadata.
+      updateNote(note.id, removeSensitiveMetadata(note.content));
+      toast.success('Removed sensitive tag and decoded note');
     } else {
-      // Add the sensitive tag and reverse URLs if it doesn't exist
+      // Add the sensitive tag and encode all non-meta content lines.
       const without = lines
         .filter(l => !l.trim().startsWith('meta::sensitive::'))
         .join('\n')
         .trim();
-      
-      // Reverse URLs in the content
-      const reversedContent = reverseUrlsInText(without);
-      const hasUrls = reversedContent !== without;
-      
+
       const ts = new Date().toISOString();
-      let finalContent = `${reversedContent}\nmeta::sensitive::${ts}`;
-      
-      // Add meta::url_reversed tag if URLs were reversed
-      if (hasUrls) {
-        finalContent += '\nmeta::url_reversed';
-      }
+      const finalContent = encodeSensitiveContent(`${without}\nmeta::sensitive::${ts}`);
       
       updateNote(note.id, finalContent);
-      
-      if (hasUrls) {
-        toast.success('Added sensitive tag and reversed URLs');
-      } else {
-        toast.success('Added sensitive tag');
-      }
+      toast.success('Added sensitive tag and encoded note');
     }
   };
 
@@ -405,7 +381,7 @@ const NoteFooter = ({
       </div>
 
       {!focusMode && (
-      <div className="flex items-center bg-gray-50 rounded-lg">
+      <div className="flex items-center rounded-lg bg-transparent transition-colors duration-200 group-hover:bg-gray-50">
 
 
         {/* Watch, Pin, and Sensitive Group - Keep these in right panel */}
@@ -458,6 +434,7 @@ const NoteFooter = ({
           (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
           (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card')) &&
          ((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
           (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
           (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
@@ -468,6 +445,7 @@ const NoteFooter = ({
 
         {/* Link Group */}
         {((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
           (shouldShowOption('merge') && getOptionLocation('merge') === 'card')) ? (
           <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             {shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card' && (
@@ -484,7 +462,19 @@ const NoteFooter = ({
               </button>
             )}
 
-            {shouldShowOption('merge') && getOptionLocation('merge') === 'card' && (
+            {shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card' && (
+              <button
+                onClick={handleToggleUnclickableLinks}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${isUnclickableLinksEnabled ? 'bg-sky-100 text-sky-700' : 'text-gray-600'
+                  }`}
+                title={isUnclickableLinksEnabled ? 'Make links clickable again' : 'Disable link clicks and show copy buttons'}
+              >
+                <LinkIcon className={`h-4 w-4 ${isUnclickableLinksEnabled ? 'text-sky-500' : 'text-gray-500'}`} />
+                <span>{isUnclickableLinksEnabled ? 'Copy Links' : 'No Click'}</span>
+              </button>
+            )}
+
+            {!mergeMode && shouldShowOption('merge') && getOptionLocation('merge') === 'card' && (
               <button
                 onClick={() => toggleNoteSelection(note.id)}
                 className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${selectedNotes.includes(note.id) ? 'bg-blue-100 text-blue-700' : 'text-gray-600'
@@ -500,6 +490,7 @@ const NoteFooter = ({
 
         {/* Separator */}
         {((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
           (shouldShowOption('merge') && getOptionLocation('merge') === 'card')) &&
          ((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
@@ -599,6 +590,7 @@ const NoteFooter = ({
             (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
             (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card') ||
             (shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+            (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
             (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
             (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
             (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
@@ -609,7 +601,7 @@ const NoteFooter = ({
           const hasMoreOptions = [
             'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
             'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
-            'todoLow', 'pinLines', 'linkNote', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'rawNote', 'edit', 'delete'
           ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
           
           return hasCardOptions && hasMoreOptions;
@@ -623,7 +615,7 @@ const NoteFooter = ({
           const hasMoreOptions = [
             'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
             'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
-            'todoLow', 'pinLines', 'linkNote', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'rawNote', 'edit', 'delete'
           ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
           
           return hasMoreOptions ? (
@@ -850,7 +842,7 @@ const NoteFooter = ({
                         </>
                       )}
                       
-                      {shouldShowOption('merge') && getOptionLocation('merge') === 'more' && (
+                      {!mergeMode && shouldShowOption('merge') && getOptionLocation('merge') === 'more' && (
                         <button
                           onClick={() => {
                             toggleNoteSelection(note.id);

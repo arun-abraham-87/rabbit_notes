@@ -1,6 +1,7 @@
 import React from 'react';
 import { clickableDateRegex } from '../components/NotesList';
 import { formatAndAgeDate } from './DateUtils';
+import { decodeSensitiveUrl, isReversedUrl, REVERSED_URL_PATTERN } from './SensitiveUrlUtils';
 
 // Import the link type indicator function from TextUtils
 const getLinkTypeIndicator = (url) => {
@@ -371,8 +372,10 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
   }
 
   const elements = [];
-  const regex =
-    /(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s)]+)|([^\s]+\/\/[^\s]+ptth)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]/g;
+  const regex = new RegExp(
+    `(\\[([^\\]]+)\\]\\(([^)]+)\\))|(https?:\\/\\/[^\\s)]+)|(${REVERSED_URL_PATTERN.source})|\\[color:(#[0-9a-fA-F]{6}):([^\\]]+)\\]`,
+    'g'
+  );
   let lastIndex = 0;
   let match;
 
@@ -391,8 +394,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
     if (match[1] && match[2]) {
       // [text](url) - handle both regular and reversed URLs
       const url = match[3];
-      const isReversedUrl = url.match(/[^\s]+\/\/[^\s]+ptth/);
-      const originalUrl = isReversedUrl ? url.split('').reverse().join('') : url;
+      const originalUrl = isReversedUrl(url) ? decodeSensitiveUrl(url) : url;
 
       // Check if this is a note navigation link
       const isNoteNavigationLink = originalUrl.startsWith('#/notes?note=');
@@ -407,6 +409,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             title={originalUrl}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               if (onNavigateToNote) {
                 onNavigateToNote(originalUrl);
               } else {
@@ -428,6 +431,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             rel="noopener noreferrer"
             className="text-blue-600 underline"
             title={originalUrl}
+            onClick={(e) => e.stopPropagation()}
           >
             {match[2]}
           </a>
@@ -446,6 +450,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
+            onClick={(e) => e.stopPropagation()}
           >
             {linkIndicator ? (
               <>
@@ -462,6 +467,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
+            onClick={(e) => e.stopPropagation()}
           >
             {match[4]}
           </a>
@@ -472,7 +478,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
       // reversed URL (ends with ptth)
       try {
         const reversedUrl = match[5];
-        const originalUrl = reversedUrl.split('').reverse().join('');
+        const originalUrl = decodeSensitiveUrl(reversedUrl);
 
         const host = new URL(originalUrl).hostname.replace(/^www\./, '');
 
@@ -484,6 +490,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
+            onClick={(e) => e.stopPropagation()}
           >
             {linkIndicator ? (
               <>
@@ -498,12 +505,13 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`reversed-url-fallback-${idx}-${match.index}`}
-            href={match[5].split('').reverse().join('')}
+            href={decodeSensitiveUrl(match[5])}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
+            onClick={(e) => e.stopPropagation()}
           >
-            {match[5].split('').reverse().join('')}
+            {decodeSensitiveUrl(match[5])}
           </a>
         );
       }
@@ -602,12 +610,24 @@ export const getIndentFlags = (contentLines) => {
   return contentLines.map(() => 0);
 };
 
+export const normalizeSubLinePrefix = (line = '') => {
+  if (typeof line !== 'string') return '';
+
+  const leadingSubMarkers = line.match(/^(?:\{meta::sub\}\s*)+/);
+  if (!leadingSubMarkers) return line;
+
+  const subCount = (leadingSubMarkers[0].match(/\{meta::sub\}/g) || []).length;
+  return `${'\t'.repeat(subCount)}${line.slice(leadingSubMarkers[0].length)}`;
+};
 
 export const getRawLines = (content) => {
   ////
   ////
   ////
-  let split_vals = content.split('\n').filter((line) => !line.trim().startsWith('meta::'))
+  let split_vals = content
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('meta::'))
+    .map(normalizeSubLinePrefix);
   
   // Remove trailing empty lines
   while (split_vals.length > 0 && split_vals[split_vals.length - 1].trim() === '') {

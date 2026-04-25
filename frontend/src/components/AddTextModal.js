@@ -2,35 +2,50 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false, initialText = '', noteContent = '' }) => {
+const AddTextModal = ({ isOpen, onClose, onSave, onRemove, noteId, url, isEditing = false, initialText = '', noteContent = '' }) => {
   const [customText, setCustomText] = useState(initialText);
   const [customUrl, setCustomUrl] = useState(url);
   const [availableTextOptions, setAvailableTextOptions] = useState([]);
   const customTextInputRef = useRef(null);
   const customUrlInputRef = useRef(null);
 
+  const toTitleCase = (text) => text
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+
+  const getSelectedTextOption = (text = customText) => (
+    availableTextOptions.find(option => option.value === text)
+  );
+
+  const getContentWithSelectedTextRemoved = (selectedOption) => {
+    if (!selectedOption) return noteContent;
+    return noteContent.replace(selectedOption.sourceText || selectedOption.value, '');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+    console.log('[AddTextModal handleSubmit] customText:', JSON.stringify(customText), 'customUrl:', JSON.stringify(customUrl), 'noteId:', noteId);
+    console.log('[AddTextModal handleSubmit] noteContent (first 200):', noteContent?.slice(0, 200));
+
     if (customText.trim() && customUrl.trim()) {
-      // Check if the custom text was selected from the note
-      const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
-      
-      
+      const selectedOption = getSelectedTextOption(customText);
+      const wasSelectedFromNote = Boolean(selectedOption);
+      console.log('[AddTextModal handleSubmit] wasSelectedFromNote:', wasSelectedFromNote);
+
       if (wasSelectedFromNote) {
-        // Remove the selected text from the note content
-        const updatedContent = noteContent.replace(customText, '');
-        
+        const updatedContent = getContentWithSelectedTextRemoved(selectedOption);
+        console.log('[AddTextModal handleSubmit] calling onSave with updatedContent (selected from note)');
         onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
       } else {
-        // Use original note content (no text removal)
-        
+        console.log('[AddTextModal handleSubmit] calling onSave with original noteContent');
         onSave(noteId, customUrl.trim(), customText.trim(), noteContent);
       }
-      
+
       setCustomText('');
       setCustomUrl('');
       onClose();
+    } else {
+      console.warn('[AddTextModal handleSubmit] SKIPPED - customText or customUrl empty:', { customText, customUrl });
     }
   };
 
@@ -38,6 +53,24 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
     setCustomText('');
     setCustomUrl('');
     onClose();
+  };
+
+  const cleanTextOptionFromLine = (line) => {
+    const withoutFormatting = line
+      .replace(/^\s*[-*]\s+/, '')
+      .replace(/^\{#h[12]#\}/, '')
+      .replace(/^\{#bold#\}/, '')
+      .replace(/^\{#italics#\}/, '')
+      .trim();
+
+    const withoutMarkdownUrls = withoutFormatting.replace(/\[([^\]]+)\]\((?:https?:\/\/|www\.)[^)\s]+\)/gi, '');
+    const withoutRawUrls = withoutMarkdownUrls
+      .replace(/\bhttps?:\/\/[^\s)]+/gi, '')
+      .replace(/\bwww\.[^\s)]+/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return withoutRawUrls;
   };
 
 
@@ -51,12 +84,26 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
       .filter(line => line.length > 0 && !line.startsWith('meta::'))
       .filter(line => line !== url); // Exclude the URL itself
     
-    // Create options from lines
-    return lines.map((line, index) => ({
-      id: index,
-      text: line,
-      value: line
-    }));
+    // Create options from lines, avoiding raw URLs in the selectable text.
+    return lines
+      .map((line) => ({
+        sourceText: cleanTextOptionFromLine(line),
+      }))
+      .filter(option => option.sourceText.length > 0)
+      .filter(option => option.sourceText !== url)
+      .map(option => ({
+        ...option,
+        text: toTitleCase(option.sourceText),
+        value: toTitleCase(option.sourceText),
+      }))
+      .filter((option, index, allOptions) => (
+        allOptions.findIndex(candidate => candidate.value.toLowerCase() === option.value.toLowerCase()) === index
+      ))
+      .sort((a, b) => a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }))
+      .map((option, index) => ({
+        id: index,
+        ...option
+      }));
   };
 
   const handleDropdownSelection = (selectedValue) => {
@@ -115,11 +162,12 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
           
           
           // Check if the custom text was selected from the note
-          const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
+          const selectedOption = getSelectedTextOption(customText);
+          const wasSelectedFromNote = Boolean(selectedOption);
           
           if (wasSelectedFromNote) {
             // Remove the selected text from the note content
-            const updatedContent = noteContent.replace(customText, '');
+            const updatedContent = getContentWithSelectedTextRemoved(selectedOption);
             onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
           } else {
             // Use original note content (no text removal)
@@ -208,11 +256,12 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               
               
               // Check if the custom text was selected from the note
-              const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
+              const selectedOption = getSelectedTextOption(customText);
+              const wasSelectedFromNote = Boolean(selectedOption);
               
               if (wasSelectedFromNote) {
                 // Remove the selected text from the note content
-                const updatedContent = noteContent.replace(customText, '');
+                const updatedContent = getContentWithSelectedTextRemoved(selectedOption);
                 onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
               } else {
                 // Use original note content (no text removal)
@@ -252,11 +301,12 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
                     
                     
                     // Check if the custom text was selected from the note
-                    const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
+                    const selectedOption = getSelectedTextOption(customText);
+                    const wasSelectedFromNote = Boolean(selectedOption);
                     
                     if (wasSelectedFromNote) {
                       // Remove the selected text from the note content
-                      const updatedContent = noteContent.replace(customText, '');
+                      const updatedContent = getContentWithSelectedTextRemoved(selectedOption);
                       onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
                     } else {
                       // Use original note content (no text removal)
@@ -303,11 +353,12 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
                     
                     
                     // Check if the custom text was selected from the note
-                    const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
+                    const selectedOption = getSelectedTextOption(customText);
+                    const wasSelectedFromNote = Boolean(selectedOption);
                     
                     if (wasSelectedFromNote) {
                       // Remove the selected text from the note content
-                      const updatedContent = noteContent.replace(customText, '');
+                      const updatedContent = getContentWithSelectedTextRemoved(selectedOption);
                       onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
                     } else {
                       // Use original note content (no text removal)
@@ -329,7 +380,7 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
           {/* Note Content Selection Section */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Text from Note
+              Select Title from Note
             </label>
             {availableTextOptions.length > 0 ? (
               <div className="space-y-2">
@@ -338,7 +389,7 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
                   onChange={(e) => handleDropdownSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">Choose text from note...</option>
+                  <option value="">Choose title from note...</option>
                   {availableTextOptions.map((option) => (
                     <option key={option.id} value={option.value}>
                       {option.text.length > 50 ? option.text.substring(0, 50) + '...' : option.text}
@@ -346,30 +397,41 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
                   ))}
                 </select>
                 <div className="text-xs text-gray-500">
-                  {availableTextOptions.length} text option{availableTextOptions.length !== 1 ? 's' : ''} available from note
+                  {availableTextOptions.length} title option{availableTextOptions.length !== 1 ? 's' : ''} available from note
                 </div>
               </div>
             ) : (
               <div className="text-sm text-gray-500 italic">
-                No text options available from note
+                No title options available from note
               </div>
             )}
           </div>
           
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              {isEditing ? 'Update Link' : 'Add Link'} (⌘+Enter)
-            </button>
+          <div className="flex justify-between items-center">
+            {isEditing && onRemove && (
+              <button
+                type="button"
+                onClick={() => { onRemove(noteId, customUrl.trim()); onClose(); }}
+                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400"
+              >
+                Remove custom text
+              </button>
+            )}
+            <div className="flex gap-3 ml-auto">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                {isEditing ? 'Update Link' : 'Add Link'} (⌘+Enter)
+              </button>
+            </div>
           </div>
         </form>
       </div>

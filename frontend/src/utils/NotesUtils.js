@@ -66,6 +66,25 @@ export const buildSuggestionsFromNotes = (allNotes, objList = []) => {
     ];
 };
 
+export const isTimelineNote = (note) => Boolean(
+    note?.content && note.content.includes('meta::timeline')
+);
+
+export const isBackupDoneMessageNote = (note) => {
+    const content = note?.content || '';
+    if (!content) return false;
+
+    const normalizedContent = content.toLowerCase();
+    const firstVisibleLine = content
+        .split('\n')
+        .map(line => line.trim())
+        .find(line => line && !line.startsWith('meta::'))?.toLowerCase() || '';
+
+    return normalizedContent.includes('meta::backup_done') ||
+        normalizedContent.includes('meta::backup_done_message') ||
+        /^backup\b.*\b(done|performed|completed)\b/.test(firstVisibleLine);
+};
+
 // Extract image IDs from meta::image:: tags in note content
 export const extractImageIds = (noteContent) => {
   if (!noteContent) return [];

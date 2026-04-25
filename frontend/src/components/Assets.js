@@ -1,48 +1,108 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils';
+
+const ASSETS_META = 'meta::assets_data';
+
+const DEFAULT_ASSETS = [{ id: 1, name: '', amount: '', conversion: 1 }];
+
+function parseAssetsNote(notes) {
+  const note = notes.find(n =>
+    typeof n.content === 'string' && n.content.split('\n').some(l => l.trim() === ASSETS_META)
+  );
+  if (!note) return null;
+  try {
+    const lines = note.content.split('\n');
+    const jsonLine = lines.find(l => l.startsWith('data::'));
+    const meLine = lines.find(l => l.startsWith('monthly_expense::'));
+    const assets = jsonLine ? JSON.parse(jsonLine.replace('data::', '')) : DEFAULT_ASSETS;
+    const monthlyExpense = meLine ? meLine.replace('monthly_expense::', '') : '';
+    return { noteId: note.id, assets, monthlyExpense };
+  } catch {
+    return null;
+  }
+}
+
+function buildAssetsContent(assets, monthlyExpense) {
+  return [
+    'Assets data',
+    `data::${JSON.stringify(assets)}`,
+    `monthly_expense::${monthlyExpense}`,
+    ASSETS_META,
+  ].join('\n');
+}
 
 const Assets = () => {
-  const [assets, setAssets] = useState(() => {
-    const savedAssets = localStorage.getItem('assets');
-    return savedAssets ? JSON.parse(savedAssets) : [
-      { id: 1, name: '', amount: '', conversion: 1 }
-    ];
-  });
+  const [assets, setAssets] = useState(DEFAULT_ASSETS);
+  const [monthlyExpense, setMonthlyExpense] = useState('');
+  const [noteId, setNoteId] = useState(null);
+  const saveTimerRef = useRef(null);
 
-  const [monthlyExpense, setMonthlyExpense] = useState(() => {
-    return localStorage.getItem('monthlyExpense') || '';
-  });
-
-  // Save to localStorage whenever assets or monthlyExpense changes
+  // Load from note on mount
   useEffect(() => {
-    localStorage.setItem('assets', JSON.stringify(assets));
-    localStorage.setItem('monthlyExpense', monthlyExpense);
-  }, [assets, monthlyExpense]);
+    loadAllNotes().then(notes => {
+      const parsed = parseAssetsNote(notes);
+      if (parsed) {
+        setNoteId(parsed.noteId);
+        setAssets(parsed.assets);
+        setMonthlyExpense(parsed.monthlyExpense);
+      } else {
+        // Migrate from localStorage if present
+        const savedAssets = localStorage.getItem('assets');
+        const savedExpense = localStorage.getItem('monthlyExpense');
+        if (savedAssets) {
+          try { setAssets(JSON.parse(savedAssets)); } catch { /* ignore */ }
+        }
+        if (savedExpense) setMonthlyExpense(savedExpense);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Debounced save to note
+  const save = (nextAssets, nextExpense, existingNoteId) => {
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const content = buildAssetsContent(nextAssets, nextExpense);
+      try {
+        if (existingNoteId) {
+          await updateNoteById(existingNoteId, content);
+        } else {
+          const created = await createNote(content);
+          setNoteId(created.id);
+        }
+      } catch { /* silently fail */ }
+    }, 600);
+  };
+
+  const updateAssets = (nextAssets) => {
+    setAssets(nextAssets);
+    save(nextAssets, monthlyExpense, noteId);
+  };
+
+  const updateExpense = (val) => {
+    setMonthlyExpense(val);
+    save(assets, val, noteId);
+  };
 
   const addNewRow = () => {
     const newId = Math.max(...assets.map(a => a.id), 0) + 1;
-    setAssets([...assets, { id: newId, name: '', amount: '', conversion: 1 }]);
+    updateAssets([...assets, { id: newId, name: '', amount: '', conversion: 1 }]);
   };
 
   const deleteRow = (id) => {
-    if (assets.length > 1) {
-      setAssets(assets.filter(asset => asset.id !== id));
-    }
+    if (assets.length > 1) updateAssets(assets.filter(asset => asset.id !== id));
   };
 
   const updateAsset = (id, field, value) => {
-    setAssets(assets.map(asset => 
-      asset.id === id ? { ...asset, [field]: value } : asset
-    ));
+    updateAssets(assets.map(asset => asset.id === id ? { ...asset, [field]: value } : asset));
   };
 
-  const calculateTotal = () => {
-    return assets.reduce((total, asset) => {
+  const calculateTotal = () =>
+    assets.reduce((total, asset) => {
       const amount = parseFloat(asset.amount) || 0;
       const conversion = parseFloat(asset.conversion) || 1;
       return total + (amount * conversion);
     }, 0);
-  };
 
   const calculateMonthsToSurvive = () => {
     const total = calculateTotal();
@@ -137,7 +197,7 @@ const Assets = () => {
             <input
               type="number"
               value={monthlyExpense}
-              onChange={(e) => setMonthlyExpense(e.target.value)}
+              onChange={(e) => updateExpense(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
               step="0.01"
@@ -165,4 +225,4 @@ const Assets = () => {
   );
 };
 
-export default Assets; 
+export default Assets;

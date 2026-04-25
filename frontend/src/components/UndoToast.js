@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 
 const DURATION = 10;
 const RADIUS = 9;
@@ -10,9 +11,9 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  * Props:
  *   label   – string shown next to the timer
  *   onUndo  – called when Undo is clicked (should revert the change)
- *   onClose – called by react-toastify to close the toast (pass via closeToast)
+ *   toastId – id used to dismiss this toast after undo
  */
-const UndoToast = ({ label, onUndo, closeToast }) => {
+const UndoToast = ({ label, onUndo, toastId }) => {
   const [remaining, setRemaining] = useState(DURATION);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ const UndoToast = ({ label, onUndo, closeToast }) => {
 
   const handleUndo = () => {
     onUndo();
-    closeToast();
+    if (toastId) toast.dismiss(toastId);
   };
 
   return (

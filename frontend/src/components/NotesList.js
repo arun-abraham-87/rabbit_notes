@@ -45,9 +45,11 @@ import RawNoteModal from './RawNoteModal';
 import LinkSelectionPopup from './LinkSelectionPopup';
 import { toast } from 'react-toastify';
 import UndoToast from './UndoToast';
+import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent, hasReversedUrls } from '../utils/SensitiveUrlUtils';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
+const SEARCH_RENDER_BATCH_SIZE = 50;
 
 const NotesList = ({
   objList,
@@ -69,6 +71,11 @@ const NotesList = ({
   setBulkDeleteMode = () => { },
   refreshTags = () => { },
   onReturnToSearch = () => { },
+  mergeMode = false,
+  selectedMergeNotes = [],
+  setSelectedMergeNotes = () => { },
+  mainMergeNoteId = null,
+  setMainMergeNoteId = () => { },
 }) => {
   // Debug logging for developer mode
 
@@ -84,6 +91,19 @@ const NotesList = ({
   const [pasteText, setPasteText] = useState('');
   const [newNoteText, setNewNoteText] = useState('');
   const safeNotes = allNotes || [];
+  const isSearchActive = Boolean(searchQuery && searchQuery.trim());
+  const [visibleSearchCount, setVisibleSearchCount] = useState(SEARCH_RENDER_BATCH_SIZE);
+  useEffect(() => {
+    setVisibleSearchCount(SEARCH_RENDER_BATCH_SIZE);
+  }, [searchQuery, safeNotes.length]);
+  const renderedNotes = useMemo(() => (
+    isSearchActive ? safeNotes.slice(0, visibleSearchCount) : safeNotes
+  ), [isSearchActive, safeNotes, visibleSearchCount]);
+  const hiddenSearchResultCount = isSearchActive
+    ? Math.max(safeNotes.length - renderedNotes.length, 0)
+    : 0;
+  const renderedPinnedNotes = useMemo(() => renderedNotes.filter(note => note.pinned), [renderedNotes]);
+  const renderedRegularNotes = useMemo(() => renderedNotes.filter(note => !note.pinned), [renderedNotes]);
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
   const [editingInlineDate, setEditingInlineDate] = useState({
     noteId: null,
@@ -473,7 +493,37 @@ const NotesList = ({
     try {
       const notesToMerge = allNotes.filter(note => selectedNotes.includes(note.id));
       if (notesToMerge.length === 0) return;
-      const mergedContent = notesToMerge.map(note => note.content).join('\n\n');
+      const anySensitive = notesToMerge.some(note =>
+        note.content?.includes('meta::sensitive::') || hasEncodedContent(note.content) || hasReversedUrls(note.content)
+      );
+      let mergedContent = notesToMerge.map(note => note.content).join('\n\n');
+
+      if (anySensitive) {
+        const decodedNotes = notesToMerge.map(note => decodeSensitiveContent(note.content));
+        const contentBlocks = decodedNotes.map(content => (
+          content
+            .split('\n')
+            .filter(line => !line.trim().startsWith('meta::'))
+            .join('\n')
+            .trim()
+        )).filter(Boolean);
+        const metaLines = [...new Set(decodedNotes.flatMap(content => (
+          content
+            .split('\n')
+            .filter(line => line.trim().startsWith('meta::'))
+            .filter(line => !['meta::encoded', 'meta::url_reversed'].includes(line.trim()))
+        )))];
+
+        if (!metaLines.some(line => line.trim().startsWith('meta::sensitive::'))) {
+          metaLines.push('meta::sensitive::');
+        }
+
+        mergedContent = encodeSensitiveContent([
+          contentBlocks.join('\n\n'),
+          ...metaLines,
+        ].filter(Boolean).join('\n'));
+      }
+
       const allTags = notesToMerge.flatMap(note => note.tags || []);
       const uniqueTags = [...new Set(allTags)];
       for (const note of notesToMerge) {
@@ -492,7 +542,7 @@ const NotesList = ({
     urlShareSpaceNoteIds,
     urlToNotesMap,
     duplicatedUrlColors,
-  } = findDuplicatedUrls(safeNotes);
+  } = useMemo(() => findDuplicatedUrls(renderedNotes), [renderedNotes]);
 
 
   useEffect(() => {
@@ -1435,25 +1485,15 @@ const NotesList = ({
           Note line copied
         </div>
       )}
-      {selectedNotes.length > 1 && (
-        <div className="mb-4">
-          <button
-            onClick={handleMergeNotes}
-            className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-indigo-700"
-          >
-            Merge Selected Notes
-          </button>
-        </div>
-      )}
 
       {/* Only show pinned section when on notes page */}
       {activePage === 'notes' ? (
         <>
-          {safeNotes.filter(note => note.pinned).length > 0 && (
+          {renderedPinnedNotes.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Pinned Notes</h2>
               <div className="grid grid-cols-1 gap-4">
-                {safeNotes.filter(note => note.pinned).map((note, index) => (
+                {renderedPinnedNotes.map((note, index) => (
                   <NoteCard
                     key={note.id}
                     note={note}
@@ -1514,6 +1554,11 @@ const NotesList = ({
                     settings={settings}
                     addNote={addNotes}
                     setShowCopyToast={setShowCopyToast}
+                    mergeMode={mergeMode}
+                    selectedMergeNotes={selectedMergeNotes}
+                    setSelectedMergeNotes={setSelectedMergeNotes}
+                    mainMergeNoteId={mainMergeNoteId}
+                    setMainMergeNoteId={setMainMergeNoteId}
                   />
                 ))}
               </div>
@@ -1522,7 +1567,7 @@ const NotesList = ({
 
           {/* Regular notes section */}
           <div className="space-y-4">
-            {safeNotes.filter(note => !note.pinned).length === 0 ? (
+            {safeNotes.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {searchQuery ? (
                   <p>No matching notes found for "{searchQuery}"</p>
@@ -1532,7 +1577,7 @@ const NotesList = ({
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {safeNotes.filter(note => !note.pinned).map((note, index) => (
+                {renderedRegularNotes.map((note, index) => (
                   <NoteCard
                     key={note.id}
                     note={note}
@@ -1589,16 +1634,42 @@ const NotesList = ({
                     setSearchQuery={setSearchQuery}
                     focusedNoteIndex={focusedNoteIndex}
                     setFocusedNoteIndex={setFocusedNoteIndex}
-                    noteIndex={safeNotes.filter(note => note.pinned).length + index}
+                    noteIndex={renderedPinnedNotes.length + index}
                     onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                     settings={settings}
                     addNote={addNotes}
                     setShowCopyToast={setShowCopyToast}
+                    mergeMode={mergeMode}
+                    selectedMergeNotes={selectedMergeNotes}
+                    setSelectedMergeNotes={setSelectedMergeNotes}
+                    mainMergeNoteId={mainMergeNoteId}
+                    setMainMergeNoteId={setMainMergeNoteId}
                   />
                 ))}
               </div>
             )}
           </div>
+          {hiddenSearchResultCount > 0 && (
+            <div className="mt-4 flex items-center justify-center gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-blue-800">
+              <span>
+                Showing {renderedNotes.length} of {safeNotes.length} matching notes
+              </span>
+              <button
+                type="button"
+                onClick={() => setVisibleSearchCount(count => count + SEARCH_RENDER_BATCH_SIZE)}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+              >
+                Show next {Math.min(SEARCH_RENDER_BATCH_SIZE, hiddenSearchResultCount)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibleSearchCount(safeNotes.length)}
+                className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200 transition-colors hover:bg-blue-50"
+              >
+                Show all
+              </button>
+            </div>
+          )}
         </>
       ) : (
         // When not on notes page, render all notes without pinned/unpinned sections
@@ -1613,7 +1684,7 @@ const NotesList = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {safeNotes.map((note, index) => (
+              {renderedNotes.map((note, index) => (
                 <NoteCard
                   key={note.id}
                   note={note}
@@ -1677,6 +1748,27 @@ const NotesList = ({
                   setShowCopyToast={setShowCopyToast}
                 />
               ))}
+            </div>
+          )}
+          {hiddenSearchResultCount > 0 && (
+            <div className="mt-4 flex items-center justify-center gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-blue-800">
+              <span>
+                Showing {renderedNotes.length} of {safeNotes.length} matching notes
+              </span>
+              <button
+                type="button"
+                onClick={() => setVisibleSearchCount(count => count + SEARCH_RENDER_BATCH_SIZE)}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+              >
+                Show next {Math.min(SEARCH_RENDER_BATCH_SIZE, hiddenSearchResultCount)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibleSearchCount(safeNotes.length)}
+                className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200 transition-colors hover:bg-blue-50"
+              >
+                Show all
+              </button>
             </div>
           )}
         </>
@@ -1934,13 +2026,14 @@ const NotesList = ({
           updateNote={updateNoteCallback}
           showUndoToast={(label, originalContent) => {
             const noteId = rightClickNoteId;
-            toast(({ closeToast }) => (
+            const toastId = `undo-${noteId}-${Date.now()}`;
+            toast((
               <UndoToast
                 label={label}
                 onUndo={() => updateNoteCallback(noteId, originalContent)}
-                closeToast={closeToast}
+                toastId={toastId}
               />
-            ), { autoClose: 10000, closeButton: false, icon: false, style: { padding: '8px 12px' } });
+            ), { toastId, autoClose: 10000, closeButton: false, icon: false, style: { padding: '8px 12px' } });
           }}
           setRightClickText={setRightClickText}
           setRightClickNoteId={setRightClickNoteId}

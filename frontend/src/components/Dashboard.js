@@ -4,10 +4,9 @@ import { AlertsProvider, TodayEventsBar, BackupAlert } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
 import { loadAllNotes, createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils.js';
-import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon, ArrowTrendingUpIcon, CurrencyDollarIcon, SunIcon, CloudIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
-import BookmarkedLinks from './BookmarkedLinks.js';
 import EventManager from './EventManager.js';
 import FlaggedReviewDues from './FlaggedReviewDues.js';
 import StockPrice from './Stocks.js';
@@ -24,13 +23,33 @@ import CustomCalendar from './CustomCalendar.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
 import { DEFAULT_APP_FONT, applyAppFont } from '../utils/FontUtils';
+import { withTimerMeta } from '../utils/TimerUtils';
+import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
+import {
+  DASHBOARD_EVENT_FILTERS_SETTING_KEY,
+  readNoteBackedSettingFromNotes,
+  saveNoteBackedSetting,
+} from '../utils/NoteBackedSettingsUtils';
+import { CheckIcon, FireIcon, ExclamationTriangleIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoliday }) => {
+const AddOptionsPopup = ({ isOpen, onClose, onAddNote, onAddWatch, onAddSuperCritical, onAddTimer, onAddEvent, onAddDeadline, onAddHoliday }) => {
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === 'e' || e.key === 'E') {
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        onAddNote();
+        onClose();
+      } else if (e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
+        onAddWatch();
+        onClose();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        onAddSuperCritical();
+        onClose();
+      } else if (e.key === 'e' || e.key === 'E') {
         e.preventDefault();
         onAddEvent();
         onClose();
@@ -52,7 +71,7 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onAddEvent, onAddDeadline, onAddHoliday, onClose]);
+  }, [isOpen, onAddNote, onAddWatch, onAddSuperCritical, onAddEvent, onAddDeadline, onAddHoliday, onClose]);
 
   if (!isOpen) return null;
 
@@ -71,7 +90,136 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
           </button>
         </div>
 
-        <div className="p-6 space-y-3">
+        <div className="p-6 space-y-3 max-h-[75vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              onAddNote();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold">
+                N
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Note</h4>
+                <p className="text-sm text-gray-600">Create a plain note</p>
+              </div>
+            </div>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">N</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onAddWatch();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
+                ⏱
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Watch Review</h4>
+                <p className="text-sm text-gray-600">Create a watched review note</p>
+              </div>
+            </div>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">W</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onAddSuperCritical();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
+                !!!
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Super Critical Review</h4>
+                <p className="text-sm text-gray-600">Watched note marked super critical</p>
+              </div>
+            </div>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">S</span>
+          </button>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <h4 className="mb-2 text-sm font-semibold text-gray-900">Add Timer Review</h4>
+            <div className="text-xs text-gray-500 mb-1 font-medium">Monthly on day</div>
+            <div className="mb-2 flex flex-wrap gap-1">
+              {Array.from({ length: 31 }, (_, index) => index + 1).map(day => (
+                <button
+                  key={`timer-monthly-${day}`}
+                  type="button"
+                  onClick={() => {
+                    onAddTimer('monthly', day, false);
+                    onClose();
+                  }}
+                  className="w-6 rounded bg-white py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mb-1 font-medium">Weekly on</div>
+            <div className="flex flex-wrap gap-1">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                <button
+                  key={`timer-weekly-${day}`}
+                  type="button"
+                  onClick={() => {
+                    onAddTimer('weekly', index + 1, false);
+                    onClose();
+                  }}
+                  className="rounded bg-white px-1.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <h4 className="mb-2 text-sm font-semibold text-gray-900">Add Only Once Timer</h4>
+            <div className="text-xs text-gray-500 mb-1 font-medium">Monthly on day</div>
+            <div className="mb-2 flex flex-wrap gap-1">
+              {Array.from({ length: 31 }, (_, index) => index + 1).map(day => (
+                <button
+                  key={`once-timer-monthly-${day}`}
+                  type="button"
+                  onClick={() => {
+                    onAddTimer('monthly', day, true);
+                    onClose();
+                  }}
+                  className="w-6 rounded bg-white py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mb-1 font-medium">Weekly on</div>
+            <div className="flex flex-wrap gap-1">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                <button
+                  key={`once-timer-weekly-${day}`}
+                  type="button"
+                  onClick={() => {
+                    onAddTimer('weekly', index + 1, true);
+                    onClose();
+                  }}
+                  className="rounded bg-white px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={() => {
               onAddEvent();
@@ -207,10 +355,385 @@ const AlertsHelpPopup = ({ isOpen, onClose }) => {
   );
 };
 
+// ─── Tiny Habits Dashboard Widget ─────────────────────────────────────────────
+function toYMD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+const API_HABITS = 'http://localhost:5001/api/habits';
+const TINY_HABIT_TAG_FALLBACK = 'Untagged';
+
+const normalizeTinyHabitTag = (tag) => (typeof tag === 'string' ? tag.trim() : '');
+const getTinyHabitTagLabel = (habit) => normalizeTinyHabitTag(habit?.tag) || TINY_HABIT_TAG_FALLBACK;
+const normalizeTinyHabit = (habit) => ({
+  ...habit,
+  tag: normalizeTinyHabitTag(habit?.tag),
+  emoji: habit?.emoji || '✅',
+  color: habit?.color || 'blue',
+});
+
+const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
+  const [habits, setHabits] = React.useState([]);
+  const [completions, setCompletions] = React.useState({});
+  const [adding, setAdding] = React.useState(false);
+  const [newName, setNewName] = React.useState('');
+  const [newTag, setNewTag] = React.useState('');
+  const [editingId, setEditingId] = React.useState(null);
+  const [editName, setEditName] = React.useState('');
+  const [editTag, setEditTag] = React.useState('');
+  const [hideDone, setHideDone] = React.useState(false);
+  const [groupByTag, setGroupByTag] = React.useState(true);
+  const [selectedDate, setSelectedDate] = React.useState(toYMD(new Date()));
+  const today = toYMD(new Date());
+  const isToday = selectedDate === today;
+
+  const shiftDate = (n) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    setSelectedDate(toYMD(d));
+  };
+
+  const fmtDate = (ymd) => {
+    const d = new Date(ymd + 'T00:00:00');
+    return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
+  const load = React.useCallback(() => {
+    Promise.all([
+      fetch(API_HABITS).then(r => r.json()).catch(() => []),
+      fetch(`${API_HABITS}/completions`).then(r => r.json()).catch(() => ({})),
+    ]).then(([h, c]) => {
+      setHabits(Array.isArray(h) ? h.filter(x => x.active && x.frequency === 'daily').map(normalizeTinyHabit) : []);
+      setCompletions(typeof c === 'object' ? c : {});
+    });
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  const toggle = async (habitId) => {
+    const prev = !!(completions[selectedDate]?.[habitId]);
+    setCompletions(c => {
+      const next = { ...c };
+      if (!next[selectedDate]) next[selectedDate] = {};
+      if (prev) { const d = { ...next[selectedDate] }; delete d[habitId]; next[selectedDate] = d; }
+      else next[selectedDate] = { ...next[selectedDate], [habitId]: { completedAt: new Date().toISOString() } };
+      return next;
+    });
+    await fetch(`${API_HABITS}/completions/${selectedDate}/${habitId}`, { method: 'POST' }).catch(() => {});
+  };
+
+  const handleAdd = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      await fetch(API_HABITS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, tag: normalizeTinyHabitTag(newTag), frequency: 'daily', emoji: '✅', color: 'blue' }),
+      });
+      setNewName('');
+      setNewTag('');
+      setAdding(false);
+      load();
+    } catch { /* ignore */ }
+  };
+
+  const handleEditSave = async (id) => {
+    const name = editName.trim();
+    if (!name) return;
+    try {
+      await fetch(`${API_HABITS}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, tag: normalizeTinyHabitTag(editTag) }),
+      });
+      setEditingId(null);
+      setEditTag('');
+      load();
+    } catch { /* ignore */ }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this habit?')) return;
+    try {
+      await fetch(`${API_HABITS}/${id}`, { method: 'DELETE' });
+      load();
+    } catch { /* ignore */ }
+  };
+
+  const [doneCollapsed, setDoneCollapsed] = React.useState(true);
+  const doneCount = habits.filter(h => completions[selectedDate]?.[h.id]).length;
+  const pct = habits.length > 0 ? Math.round((doneCount / habits.length) * 100) : 0;
+  const pendingHabits = habits.filter(h => !completions[selectedDate]?.[h.id]);
+  const doneHabits = habits.filter(h => completions[selectedDate]?.[h.id]);
+  const visibleHabits = hideDone ? pendingHabits : habits;
+  const hasTaggedHabits = habits.some(h => h.tag);
+
+  const groupHabits = (list) => {
+    if (!groupByTag || !hasTaggedHabits) return [{ label: null, habits: list }];
+
+    const groupedHabits = list.reduce((acc, habit) => {
+      const label = getTinyHabitTagLabel(habit);
+      if (!acc[label]) acc[label] = [];
+      acc[label].push(habit);
+      return acc;
+    }, {});
+
+    return Object.keys(groupedHabits)
+      .sort((a, b) => {
+        if (a === TINY_HABIT_TAG_FALLBACK) return 1;
+        if (b === TINY_HABIT_TAG_FALLBACK) return -1;
+        return a.localeCompare(b);
+      })
+      .map(label => ({ label, habits: groupedHabits[label] }));
+  };
+
+  const visibleGroups = groupHabits(visibleHabits);
+  const doneGroups = groupHabits(doneHabits);
+
+  const renderHabitRow = (habit, doneSection = false) => {
+    const isDone = !!(completions[selectedDate]?.[habit.id]);
+    const isEditing = editingId === habit.id && !doneSection;
+
+    return (
+      <div key={habit.id} className="flex items-center gap-2 group">
+        <button
+          onClick={() => toggle(habit.id)}
+          className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-gray-400'}`}
+        >
+          {isDone && <CheckIcon className="h-3 w-3" />}
+        </button>
+        {isEditing ? (
+          <>
+            <div className="flex-1 space-y-1">
+              <input
+                autoFocus
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleEditSave(habit.id);
+                  if (e.key === 'Escape') setEditingId(null);
+                }}
+                className="w-full text-sm border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+              />
+              <input
+                value={editTag}
+                onChange={e => setEditTag(e.target.value)}
+                placeholder="Tag (optional)"
+                className="w-full text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+              />
+            </div>
+            <button onClick={() => handleEditSave(habit.id)} className="text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Save</button>
+            <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:text-gray-600"><XMarkIcon className="h-3.5 w-3.5" /></button>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm truncate ${isDone ? 'line-through text-gray-400' : 'text-gray-700'}`}>{habit.name}</div>
+              {habit.tag && (
+                <div className="mt-0.5">
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                    {habit.tag}
+                  </span>
+                </div>
+              )}
+            </div>
+            {!doneSection && (
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => {
+                    setEditingId(habit.id);
+                    setEditName(habit.name);
+                    setEditTag(habit.tag || '');
+                  }}
+                  className="p-0.5 text-gray-400 hover:text-gray-700 transition-colors"
+                  title="Edit"
+                >
+                  <PencilSquareIcon className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => handleDelete(habit.id)} className="p-0.5 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                  <TrashIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 mt-2 border-b border-gray-200 pb-1 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Tiny Habits</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setActivePage('tiny-habits')} className="text-xs text-blue-500 hover:text-blue-700 transition-colors">See all →</button>
+          {onHide && (
+            <button onClick={onHide} className="text-xs text-gray-400 hover:text-gray-600 transition-colors" title="Hide panel">‹ hide</button>
+          )}
+        </div>
+      </div>
+      <div className="bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
+
+        {/* Date nav */}
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => shiftDate(-1)} className="p-0.5 text-gray-400 hover:text-gray-700 transition-colors">
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
+              {isToday ? 'Today' : fmtDate(selectedDate)}
+            </span>
+            {!isToday && (
+              <button
+                onClick={() => setSelectedDate(today)}
+                className="text-[10px] text-gray-400 hover:text-blue-500 border border-gray-200 rounded px-1 py-0.5 transition-colors"
+              >
+                reset
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => shiftDate(1)}
+            disabled={selectedDate >= today}
+            className="p-0.5 text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Progress bar + hide done toggle */}
+        {habits.length > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+              <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-xs font-semibold text-gray-600">{doneCount}/{habits.length}</span>
+            <button
+              onClick={() => setHideDone(h => !h)}
+              className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${hideDone ? 'bg-gray-700 text-white border-gray-700' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}
+              title={hideDone ? 'Show all' : 'Hide done'}
+            >
+              {hideDone ? 'show all' : 'hide done'}
+            </button>
+            {hasTaggedHabits && (
+              <button
+                onClick={() => setGroupByTag(current => !current)}
+                className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${groupByTag ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}
+                title={groupByTag ? 'Grouped by tag' : 'Flat list'}
+              >
+                {groupByTag ? 'grouped by tag' : 'group by tag'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Habit rows */}
+        <div className="space-y-1.5">
+          {visibleGroups.map(({ label, habits: groupedHabits }) => (
+            <div key={label || 'all'} className="space-y-1.5">
+              {label && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    {label === TINY_HABIT_TAG_FALLBACK ? label : `#${label}`}
+                  </span>
+                  <div className="flex-1 border-t border-gray-100" />
+                </div>
+              )}
+              {groupedHabits.map(habit => renderHabitRow(habit))}
+            </div>
+          ))}
+          {habits.length === 0 && !adding && (
+            <div className="text-xs text-gray-400 py-1">No habits yet.</div>
+          )}
+          {hideDone && pendingHabits.length === 0 && doneHabits.length > 0 && (
+            <div className="text-xs text-gray-400 py-1">All done for today! 🎉</div>
+          )}
+        </div>
+
+        {/* Collapsed done section (only when hideDone is on) */}
+        {hideDone && doneHabits.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-gray-100">
+            <button
+              onClick={() => setDoneCollapsed(c => !c)}
+              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors w-full"
+            >
+              {doneCollapsed ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />}
+              Done ({doneHabits.length})
+            </button>
+            {!doneCollapsed && (
+              <div className="mt-1.5 space-y-1.5">
+                {doneGroups.map(({ label, habits: groupedHabits }) => (
+                  <div key={label || 'done-all'} className="space-y-1.5">
+                    {label && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                          {label === TINY_HABIT_TAG_FALLBACK ? label : `#${label}`}
+                        </span>
+                        <div className="flex-1 border-t border-gray-100" />
+                      </div>
+                    )}
+                    {groupedHabits.map(habit => renderHabitRow(habit, true))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Full-width add */}
+        {adding ? (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 space-y-2">
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAdd();
+                    if (e.key === 'Escape') setAdding(false);
+                  }}
+                  placeholder="New habit name…"
+                  className="w-full text-sm border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                />
+                <input
+                  value={newTag}
+                  onChange={e => setNewTag(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAdd();
+                    if (e.key === 'Escape') setAdding(false);
+                  }}
+                  placeholder="Single tag (optional)"
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                />
+              </div>
+              <button onClick={handleAdd} className="text-xs px-2.5 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Add</button>
+              <button onClick={() => setAdding(false)} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="h-4 w-4" /></button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setAdding(true); setNewName(''); setNewTag(''); }}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
+          >
+            <PlusIcon className="h-3.5 w-3.5" />
+            Add habit
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = ({ notes, setNotes, setActivePage }) => {
-  const { isPinned, togglePinned } = useLeftPanel();
+  const { isPinned, isVisible, togglePinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
   const location = useLocation();
+  const SUPER_CRITICAL_REVIEW_META = 'meta::review_super_critical';
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -224,6 +747,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [eventNotesHasOverflow, setEventNotesHasOverflow] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
+  const [showHabitsPanel, setShowHabitsPanel] = useState(() => {
+    try { return localStorage.getItem('showHabitsPanel') !== 'false'; } catch { return true; }
+  });
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
   const [showAddOptionsPopup, setShowAddOptionsPopup] = useState(false);
   const [showAlertsHelpPopup, setShowAlertsHelpPopup] = useState(false);
@@ -240,10 +766,20 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   const [lastLoginTime, setLastLoginTime] = useState(null);
-  const [activePopup, setActivePopup] = useState(null); // Track which popup is active: 'stock', 'exchange', 'weather', or null
+  const [activePopup, setActivePopup] = useState(null);
+  const [dashboardDataRefreshTick, setDashboardDataRefreshTick] = useState(0);
   const [showFontSelector, setShowFontSelector] = useState(false);
   const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
+  const [showQuickSuperCriticalAdd, setShowQuickSuperCriticalAdd] = useState(false);
+  const [quickSuperCriticalTitle, setQuickSuperCriticalTitle] = useState('');
+  const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+  const [calendarPopupStyle, setCalendarPopupStyle] = useState({ top: 0, left: 16, width: 1100 });
   const fontSelectorRef = useRef(null);
+  const quickSuperCriticalInputRef = useRef(null);
+  const loadedDashboardFilterDefaultsRef = useRef(false);
+  const dateTriggerRef = useRef(null);
+  const calendarPopupRef = useRef(null);
+  const calendarHoverTimeoutRef = useRef(null);
 
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -261,6 +797,48 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     applyAppFont(selectedFont);
     localStorage.setItem('appFont', selectedFont);
   }, [selectedFont]);
+
+  useEffect(() => {
+    if (loadedDashboardFilterDefaultsRef.current || !Array.isArray(notes)) return;
+    const noteBackedFilters = readNoteBackedSettingFromNotes(notes, DASHBOARD_EVENT_FILTERS_SETTING_KEY, null);
+    if (Array.isArray(noteBackedFilters) && noteBackedFilters.length > 0) {
+      setActiveFilters(noteBackedFilters);
+      localStorage.setItem('defaultEventFilters', JSON.stringify(noteBackedFilters));
+    } else {
+      try {
+        const cachedFilters = JSON.parse(localStorage.getItem('defaultEventFilters') || 'null');
+        if (Array.isArray(cachedFilters) && cachedFilters.length > 0) {
+          saveNoteBackedSetting(DASHBOARD_EVENT_FILTERS_SETTING_KEY, cachedFilters, { setNotes })
+            .catch(error => console.warn('Failed to migrate cached dashboard filters to note:', error));
+        }
+      } catch (error) {
+        console.warn('Failed to read cached dashboard filters:', error);
+      }
+    }
+    loadedDashboardFilterDefaultsRef.current = true;
+  }, [notes, setNotes]);
+
+  useEffect(() => {
+    if (showQuickSuperCriticalAdd) {
+      quickSuperCriticalInputRef.current?.focus();
+    }
+  }, [showQuickSuperCriticalAdd]);
+
+  useEffect(() => () => {
+    if (calendarHoverTimeoutRef.current) {
+      clearTimeout(calendarHoverTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleDashboardDataUpdated = () => setDashboardDataRefreshTick(tick => tick + 1);
+    document.addEventListener('exchangeRatesUpdated', handleDashboardDataUpdated);
+    document.addEventListener('weatherUpdated', handleDashboardDataUpdated);
+    return () => {
+      document.removeEventListener('exchangeRatesUpdated', handleDashboardDataUpdated);
+      document.removeEventListener('weatherUpdated', handleDashboardDataUpdated);
+    };
+  }, []);
 
   // Close font selector on outside click
   useEffect(() => {
@@ -346,6 +924,73 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     month: 'long',
     day: 'numeric'
   });
+
+  const getNoteTitle = (note) => (
+    (note?.content || '')
+      .split('\n')
+      .find(line => line.trim() && !line.trim().startsWith('meta::'))
+      ?.replace(/^\{#h[12]#\}/, '')
+      ?.replace(/^\{#bold#\}/, '')
+      ?.trim() || 'Untitled review'
+  );
+
+  const removeMetaLine = (content, metaLine) => (
+    (content || '')
+      .split('\n')
+      .filter(line => line.trim() !== metaLine)
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
+
+  const superCriticalReviews = (notes || []).filter(note =>
+    note?.content?.includes(SUPER_CRITICAL_REVIEW_META)
+  );
+
+  const handleUnmarkSuperCriticalReview = async (note) => {
+    const updatedContent = removeMetaLine(note?.content, SUPER_CRITICAL_REVIEW_META);
+
+    try {
+      const response = await updateNoteById(note.id, updatedContent);
+      const nextContent = response && response.content ? response.content : updatedContent;
+      setNotes(prevNotes => prevNotes.map(existingNote => (
+        existingNote.id === note.id
+          ? { ...existingNote, content: nextContent }
+          : existingNote
+      )));
+    } catch (error) {
+      console.error('Error unmarking super critical review:', error);
+      alert('Failed to update review: ' + error.message);
+    }
+  };
+
+  const handleDeleteSuperCriticalReview = async (noteId) => {
+    if (!window.confirm('Delete this super critical review?')) return;
+
+    try {
+      await deleteNoteById(noteId);
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+    } catch (error) {
+      console.error('Error deleting super critical review:', error);
+      alert('Failed to delete review: ' + error.message);
+    }
+  };
+
+  const scrollToReviewDue = (noteId) => {
+    const scrollToTarget = () => {
+      const target = document.querySelector(`[data-review-id="${noteId}"]`) ||
+        document.querySelector('[data-section="review-overdue"]');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    if (!document.querySelector(`[data-review-id="${noteId}"]`)) {
+      document.dispatchEvent(new CustomEvent('showReviewTimerCards'));
+      setTimeout(scrollToTarget, 100);
+      return;
+    }
+
+    scrollToTarget();
+  };
 
   // Function to format timezone time in compact form
   const formatTimezoneTime = (timeZone) => {
@@ -463,7 +1108,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     return () => clearTimeout(timer);
   }, [events, notes]);
 
-  // Add keyboard shortcut for 'c' key to open note editor without watch option
+  // Add keyboard shortcut for 'c' key to open the add/action popup.
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Only handle keys when not in an input/textarea and no modifier keys
@@ -475,7 +1120,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
         if (e.key === 'c') {
           e.preventDefault();
           e.stopPropagation();
-          openEditor('add', '', null, []); // No meta tags, so watch option is not selected
+          setShowAddOptionsPopup(true);
+        } else if (e.key === 'q') {
+          e.preventDefault();
+          e.stopPropagation();
+          openEditor('add', '', null, []);
         } else if (e.key === 'r') {
           e.preventDefault();
           e.stopPropagation();
@@ -654,6 +1303,26 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     fetchNotes();
   }, [setNotes]);
 
+  useEffect(() => {
+    if (!showCalendarPopup) return;
+
+    updateCalendarPopupPosition();
+
+    if (calendarPopupRef.current) {
+      calendarPopupRef.current.scrollTop = 0;
+    }
+
+    const handleViewportChange = () => updateCalendarPopupPosition();
+
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [showCalendarPopup, isVisible]);
+
   if (loading) {
     return (
       <div className="p-4 w-full">
@@ -665,9 +1334,69 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   }
 
   // Handler functions for add options
+  const getWatchMetaTags = () => {
+    const formattedDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    return [`meta::watch::${formattedDate}`];
+  };
+
+  const handleAddNote = () => {
+    openEditor('add', '', null, []);
+  };
+
+  const handleAddWatch = () => {
+    openEditor('add', '', null, getWatchMetaTags());
+  };
+
+  const handleAddSuperCriticalReview = () => {
+    openEditor('add', '', null, [...getWatchMetaTags(), SUPER_CRITICAL_REVIEW_META]);
+  };
+
+  const handleQuickAddSuperCriticalReview = async () => {
+    const title = quickSuperCriticalTitle.trim();
+    if (!title) return;
+
+    const content = [
+      title,
+      ...getWatchMetaTags(),
+      getDummyCadenceLine(),
+      SUPER_CRITICAL_REVIEW_META,
+    ].join('\n');
+
+    try {
+      const newNote = await createNote(content);
+      setNotes(prev => [newNote, ...prev]);
+      setQuickSuperCriticalTitle('');
+      setShowQuickSuperCriticalAdd(false);
+    } catch (error) {
+      console.error('Error creating super critical review note:', error);
+    }
+  };
+
+  const handleAddTimerReview = (cadenceType, cadenceValue, once = false) => {
+    const timerTags = withTimerMeta('', cadenceType, cadenceValue, { once })
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+    openEditor('add', '', null, [...getWatchMetaTags(), ...timerTags]);
+  };
+
   const handleAddEvent = () => {
     // Open EditEventModal for adding new event
     setEditingEvent(null);
+    setIsAddingDeadline(false);
+    setIsAddingHoliday(false);
+    setShowEditEventModal(true);
+  };
+
+  const formatEventDateContent = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `event_description:\nevent_date:${year}-${month}-${day}T12:00`;
+  };
+
+  const handleAddCalendarEventForDate = (date) => {
+    setEditingEvent({ content: formatEventDateContent(date) });
     setIsAddingDeadline(false);
     setIsAddingHoliday(false);
     setShowEditEventModal(true);
@@ -687,6 +1416,43 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     setIsAddingDeadline(false);
     setIsAddingHoliday(true);
     setShowEditEventModal(true);
+  };
+
+  const updateCalendarPopupPosition = () => {
+    if (!dateTriggerRef.current) return;
+
+    const triggerRect = dateTriggerRef.current.getBoundingClientRect();
+    const viewportPadding = 16;
+    const leftPanelWidth = isVisible ? 320 : 0;
+    const availableWidth = Math.max(360, window.innerWidth - leftPanelWidth - (viewportPadding * 2));
+    const popupWidth = Math.min(1100, availableWidth);
+    const minLeft = leftPanelWidth + viewportPadding;
+    const maxLeft = Math.max(minLeft, window.innerWidth - popupWidth - viewportPadding);
+    const idealLeft = triggerRect.left + (triggerRect.width / 2) - (popupWidth / 2);
+
+    setCalendarPopupStyle({
+      top: triggerRect.bottom + 8,
+      left: Math.min(Math.max(idealLeft, minLeft), maxLeft),
+      width: popupWidth,
+    });
+  };
+
+  const beginCalendarHover = () => {
+    if (calendarHoverTimeoutRef.current) {
+      clearTimeout(calendarHoverTimeoutRef.current);
+    }
+    calendarHoverTimeoutRef.current = setTimeout(() => {
+      updateCalendarPopupPosition();
+      setShowCalendarPopup(true);
+    }, 250);
+  };
+
+  const endCalendarHover = () => {
+    if (calendarHoverTimeoutRef.current) {
+      clearTimeout(calendarHoverTimeoutRef.current);
+      calendarHoverTimeoutRef.current = null;
+    }
+    setShowCalendarPopup(false);
   };
 
   // Get base timezone for display
@@ -740,15 +1506,110 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           />
         </div>
       ) : (
-        <>
-          {/* Bookmarked Links - Topmost Item */}
-          {!isPinned && (
+        <div className="flex gap-6 items-start">
+          {/* ── Main content column ── */}
+          <div className="flex-1 min-w-0">
+          {/* Super Critical Reviews */}
+          {superCriticalReviews.length > 0 && !isPinned && (
             <div className="mb-4">
-              <BookmarkedLinks
-                key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note && note.content && note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
-                notes={notes}
-                setNotes={setNotes}
-              />
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50/80 p-3 shadow-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wide text-red-700">
+                    Super critical reviews ({superCriticalReviews.length})
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickSuperCriticalAdd(prev => !prev);
+                      if (showQuickSuperCriticalAdd) {
+                        setQuickSuperCriticalTitle('');
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100"
+                  >
+                    <PlusIcon className="h-3 w-3" />
+                    Add
+                  </button>
+                </div>
+                {showQuickSuperCriticalAdd && (
+                  <div className="mb-3 rounded-lg border border-red-200 bg-white/80 p-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={quickSuperCriticalInputRef}
+                        value={quickSuperCriticalTitle}
+                        onChange={(e) => setQuickSuperCriticalTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleQuickAddSuperCriticalReview();
+                          if (e.key === 'Escape') {
+                            setShowQuickSuperCriticalAdd(false);
+                            setQuickSuperCriticalTitle('');
+                          }
+                        }}
+                        placeholder="Super critical review title"
+                        className="flex-1 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleQuickAddSuperCriticalReview}
+                        className="rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowQuickSuperCriticalAdd(false);
+                          setQuickSuperCriticalTitle('');
+                        }}
+                        className="px-2 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="mt-2 text-[11px] text-red-700/80">
+                      Creates a watched super-critical review with the default minimum review cadence.
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {superCriticalReviews.map(note => (
+                    <div key={note.id} className="group relative">
+                      <button
+                        type="button"
+                        onClick={() => scrollToReviewDue(note.id)}
+                        className="max-w-xs truncate rounded-full border border-red-200 bg-white px-3 py-1 text-left text-xs font-semibold text-red-800 shadow-sm transition-colors hover:bg-red-100 pr-24"
+                        title="Jump to this review due card"
+                      >
+                        {getNoteTitle(note)}
+                      </button>
+                      <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnmarkSuperCriticalReview(note);
+                          }}
+                          className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 transition-colors hover:bg-amber-100"
+                          title="Remove super critical marker"
+                        >
+                          Unmark
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSuperCriticalReview(note.id);
+                          }}
+                          className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100"
+                          title="Delete review"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -763,12 +1624,23 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             <div className="flex flex-col items-center">
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
-                <div className="relative group/date">
+                <div
+                  ref={dateTriggerRef}
+                  className="relative"
+                  onMouseEnter={beginCalendarHover}
+                  onMouseLeave={endCalendarHover}
+                >
                   <h1 className="text-3xl font-bold cursor-pointer">{formattedDate}</h1>
 
-                  {/* Calendar dropdown popup - appears on hover */}
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-[1100px] bg-white rounded-lg shadow-xl border border-gray-200 z-50 opacity-0 invisible group-hover/date:opacity-100 group-hover/date:visible transition-all duration-200 max-h-[80vh] overflow-y-auto">
-                    <CustomCalendar allNotes={notes} />
+                  {/* Calendar dropdown popup - appears on hover after a short delay */}
+                  <div
+                    ref={calendarPopupRef}
+                    style={calendarPopupStyle}
+                    className={`fixed z-[70] max-h-[80vh] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl transition-all duration-200 ${
+                      showCalendarPopup ? 'visible opacity-100' : 'invisible opacity-0'
+                    }`}
+                  >
+                    <CustomCalendar allNotes={notes} onAddEventForDate={handleAddCalendarEventForDate} />
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -829,7 +1701,6 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   if (c) { const d = JSON.parse(c); stockPrice = d.price; stockSymbol = d.symbol || ''; }
                 } catch (e) { }
 
-                // Compute market status
                 const getMarketInfo = () => {
                   const now = new Date();
                   const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
@@ -850,9 +1721,8 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     return { open: true, label: 'Open' };
                   }
                   let minsUntil = currentMin < openMin ? openMin - currentMin : (24 * 60 - currentMin) + openMin;
-                  if (currentMin >= closeMin) {
-                    // Check if tomorrow is weekend
-                    if (day === 5) { minsUntil += 2 * 24 * 60; }
+                  if (currentMin >= closeMin && day === 5) {
+                    minsUntil += 2 * 24 * 60;
                   }
                   const h = Math.floor(minsUntil / 60);
                   const m = minsUntil % 60;
@@ -860,11 +1730,14 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 };
                 const marketInfo = getMarketInfo();
 
+                void dashboardDataRefreshTick;
+
                 let usdToInr = null, audToInr = null;
                 try {
                   const c = localStorage.getItem('exchangeRatesData');
                   if (c) ({ usdToInr, audToInr } = JSON.parse(c));
                 } catch (e) { }
+                const inrToAud = audToInr ? 1 / audToInr : null;
 
                 let weather = null;
                 try {
@@ -873,9 +1746,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 } catch (e) { }
 
                 const weatherCondition = weather
-                  ? ((weather.rain > 0 || weather.precipitation > 0) ? 'Showers' : weather.temperature > 25 ? 'Sunny' : 'Partly Cloudy')
+                  ? ((weather.rain > 0 || weather.precipitation > 0) ? 'Rainy' : (weather.todayRainSum > 0 || weather.todayPrecipSum > 0) ? 'Showers' : weather.temperature > 25 ? 'Sunny' : 'Cloudy')
                   : null;
-                const isSunny = weatherCondition === 'Sunny';
+                const tomorrowCondition = weather
+                  ? ((weather.tomorrowRainSum > 0 || weather.tomorrowPrecipSum > 0) ? 'Showers' : weather.tomorrowMax > 25 ? 'Sunny' : 'Cloudy')
+                  : null;
 
                 return (
                   <div className="mb-6 w-full">
@@ -929,21 +1804,36 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           onMouseEnter={() => setActivePopup('exchange')}
                           onMouseLeave={() => { if (activePopup === 'exchange') setActivePopup(null); }}
                         >
-                          <button className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
+                          <div className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
                             <div className="text-left min-w-0 flex-1">
                               <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">Exchange Rates</div>
-                              <div className="flex items-baseline gap-3 leading-tight">
-                                <div className="text-sm font-semibold text-gray-900">
-                                  ₹{usdToInr != null ? usdToInr.toFixed(2) : '—'}
-                                  <span className="text-[10px] font-normal text-gray-500 ml-1">USD</span>
-                                </div>
-                                <div className="text-sm font-semibold text-gray-900">
-                                  ₹{audToInr != null ? audToInr.toFixed(2) : '—'}
-                                  <span className="text-[10px] font-normal text-gray-500 ml-1">AUD</span>
-                                </div>
+                              <div className="text-sm font-semibold text-gray-900 leading-snug">
+                                1 USD = <span className="text-green-700">₹{usdToInr != null ? usdToInr.toFixed(2) : '—'}</span> INR
+                              </div>
+                              <div className="text-sm font-semibold text-gray-900 leading-snug">
+                                1 AUD = <span className="text-green-700">₹{audToInr != null ? audToInr.toFixed(2) : '—'}</span> INR
+                              </div>
+                              <div className="text-sm font-semibold text-gray-900 leading-snug">
+                                1 INR = <span className="text-green-700">A${inrToAud != null ? inrToAud.toFixed(4) : '—'}</span> AUD
                               </div>
                             </div>
-                          </button>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('refreshExchangeRates')); }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  document.dispatchEvent(new CustomEvent('refreshExchangeRates'));
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
+                              title="Refresh exchange rates"
+                            >
+                              <ArrowPathIcon className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
                           <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                             <ExchangeRates forceExpanded={true} />
                           </div>
@@ -955,20 +1845,39 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           onMouseEnter={() => setActivePopup('weather')}
                           onMouseLeave={() => { if (activePopup === 'weather') setActivePopup(null); }}
                         >
-                          <button className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
+                          <div className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
                             <div className="text-left min-w-0 flex-1">
                               <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">Weather</div>
                               {weather ? (
-                                <div className="flex items-baseline gap-2 leading-tight">
-                                  <div className="text-base font-semibold text-gray-900">{weather.temperature?.toFixed(1)}°</div>
-                                  <div className="text-[11px] text-gray-500">feels {weather.apparentTemperature?.toFixed(1)}°</div>
-                                  <div className="text-[11px] text-gray-500 ml-auto">↑{weather.todayMax?.toFixed(0)}° ↓{weather.todayMin?.toFixed(0)}°</div>
-                                </div>
+                                <>
+                                  <div className="text-sm font-semibold text-gray-900 leading-snug">
+                                    Today's weather: {weather.temperature?.toFixed(1)}° feels {weather.apparentTemperature?.toFixed(1)}°{weatherCondition ? `, ${weatherCondition}` : ''}
+                                  </div>
+                                  <div className="text-[11px] text-gray-500 leading-snug">
+                                    Tomorrow: ↑{weather.tomorrowMax?.toFixed(0) ?? '—'}° ↓{weather.tomorrowMin?.toFixed(0) ?? '—'}°{tomorrowCondition ? `, ${tomorrowCondition}` : ''}
+                                  </div>
+                                </>
                               ) : (
-                                <div className="text-base font-semibold text-gray-900 leading-tight">—</div>
+                                <div className="text-sm font-semibold text-gray-900 leading-tight">—</div>
                               )}
                             </div>
-                          </button>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('refreshWeather')); }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  document.dispatchEvent(new CustomEvent('refreshWeather'));
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
+                              title="Refresh weather"
+                            >
+                              <ArrowPathIcon className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
                           <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                             <Weather forceExpanded={true} />
                           </div>
@@ -1050,16 +1959,21 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     );
                   })}
 
-                  {/* Set as Default button */}
-                  <button
-                    onClick={() => {
-                      localStorage.setItem('defaultEventFilters', JSON.stringify(activeFilters));
-                    }}
-                    className="px-2 py-1 text-xs text-blue-600 border border-blue-200 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                    title="Save current selection as default"
-                  >
-                    Set Default
-                  </button>
+	                  {/* Set as Default button */}
+	                  <button
+	                    onClick={async () => {
+	                      localStorage.setItem('defaultEventFilters', JSON.stringify(activeFilters));
+	                      try {
+	                        await saveNoteBackedSetting(DASHBOARD_EVENT_FILTERS_SETTING_KEY, activeFilters, { setNotes });
+	                      } catch (error) {
+	                        console.warn('Failed to save note-backed dashboard filter settings:', error);
+	                      }
+	                    }}
+	                    className="px-2 py-1 text-xs text-blue-600 border border-blue-200 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+	                    title="Save current selection as a note-backed default"
+	                  >
+	                    Set Default
+	                  </button>
 
                   {/* Text Filter Input with Clear Button */}
                   <div className="relative">
@@ -1277,7 +2191,29 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           <div className="mb-4">
             <TrackedInfoCards notes={notes} setNotes={setNotes} />
           </div>
-        </>
+          </div>{/* end main column */}
+
+          {/* ── Right panel ── */}
+          <div className="flex-shrink-0 sticky top-4">
+            {showHabitsPanel ? (
+              <div className="w-72">
+                <TinyHabitsDashboardWidget
+                  setActivePage={setActivePage}
+                  onHide={() => { setShowHabitsPanel(false); localStorage.setItem('showHabitsPanel', 'false'); }}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => { setShowHabitsPanel(true); localStorage.setItem('showHabitsPanel', 'true'); }}
+                className="writing-mode-vertical text-xs text-gray-400 hover:text-blue-500 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg px-2 py-3 transition-colors"
+                title="Show Tiny Habits"
+                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+              >
+                Tiny Habits ›
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Timezone Popup */}
@@ -1290,6 +2226,10 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
       <AddOptionsPopup
         isOpen={showAddOptionsPopup}
         onClose={() => setShowAddOptionsPopup(false)}
+        onAddNote={handleAddNote}
+        onAddWatch={handleAddWatch}
+        onAddSuperCritical={handleAddSuperCriticalReview}
+        onAddTimer={handleAddTimerReview}
         onAddEvent={handleAddEvent}
         onAddDeadline={handleAddDeadline}
         onAddHoliday={handleAddHoliday}
@@ -1307,7 +2247,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           isOpen={showEditEventModal}
           note={editingEvent}
           onSave={async (content) => {
-            if (editingEvent) {
+            if (editingEvent?.id) {
               // Update existing event
               const note = notes.find(n => n.id === editingEvent.id);
               if (note) {

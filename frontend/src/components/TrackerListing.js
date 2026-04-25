@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { loadNotes, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { loadAllNotes, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -137,7 +137,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await loadNotes();
+      const response = await loadAllNotes();
       const notes = Array.isArray(response) ? response : (response?.notes || []);
       setAllNotes(notes);
 
@@ -190,7 +190,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
         if (link && answerValue && date) {
           // Find the tracker by ID, handling type mismatches (string vs number)
-          const tracker = trackerNotes.find(t => {
+          let tracker = trackerNotes.find(t => {
             const tId = String(t.id);
             const linkId = String(link);
             return tId === linkId;
@@ -379,7 +379,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
   const handleWatchToggle = async (tracker) => {
     try {
-      const freshNotes = await loadNotes();
+      const freshNotes = await loadAllNotes();
       const allNotesList = Array.isArray(freshNotes) ? freshNotes : (freshNotes?.notes || []);
       const note = allNotesList.find(n => String(n.id) === String(tracker.id));
       if (!note) return;
@@ -601,7 +601,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
       // Also check API for any additional notes
       try {
-        const response = await loadNotes();
+        const response = await loadAllNotes();
         const notes = Array.isArray(response) ? response : (response?.notes || []);
 
         const matchingNotesFromAPI = notes.filter(note => {
@@ -764,7 +764,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
       // Always check the API to find the latest note (even if found in cache)
       try {
         console.log('[handleToggleDay] Searching API for existing notes', { trackerId, dateStr });
-        const response = await loadNotes();
+        const response = await loadAllNotes();
         const notes = Array.isArray(response) ? response : (response?.notes || []);
 
         // Find ALL tracker answer notes with matching date and tracker link

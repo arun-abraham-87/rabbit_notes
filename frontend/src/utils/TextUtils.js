@@ -1,4 +1,6 @@
 import React from 'react';
+import { decodeSensitiveContent, decodeSensitiveUrl, hasReversedUrls as contentHasReversedUrls, isReversedUrl, normalizeLegacySensitiveMarkdownLinks } from './SensitiveUrlUtils';
+import { normalizeSubLinePrefix } from './genUtils';
 
 /**
  * Comprehensive function to parse and format note content
@@ -7,12 +9,13 @@ import React from 'react';
  * @param {string} params.searchTerm - Search term for highlighting
  * @returns {Array<React.ReactElement>} Array of formatted React elements
  */
-export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, allNotes = [], onNavigateToNote = null }) => {
+export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, allNotes = [], onNavigateToNote = null, lastClickedUrl = null, onLinkClick = null, unclickableLinks = false, onCopyUrl = null }) => {
   
   if (!content) return [];
+  const displayContent = decodeSensitiveContent(content);
 
   // First, detect code blocks marked with triple backticks (```)
-  const allLines = content.split('\n');
+  const allLines = displayContent.split('\n');
   const codeBlockRanges = [];
   const singleLineCodeBlocks = new Set(); // Track single-line code blocks
   let inCodeBlock = false;
@@ -105,7 +108,7 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
   const lines = allLines
     .map((line, originalIndex) => {
       // Strip leading tabs (sub-line indentation)
-      let rest = line.replace(/^\t+/, '');
+      let rest = normalizeSubLinePrefix(line).replace(/^\t+/, '');
 
       // Extract ALL leading formatting prefixes in any order:
       // {#h1#}, {#h2#}, {#bold#}, {#italics#}, {<color>}
@@ -190,9 +193,13 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
         lineIndex,
         onAddText,
         onEditText,
-        noteContent: content,
+        noteContent: displayContent,
         allNotes,
-        onNavigateToNote
+        onNavigateToNote,
+        lastClickedUrl,
+        onLinkClick,
+        unclickableLinks,
+        onCopyUrl
       });
     }
 
@@ -213,9 +220,13 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
         lineIndex,
         onAddText,
         onEditText,
-        noteContent: content,
+        noteContent: displayContent,
         allNotes,
-        onNavigateToNote
+        onNavigateToNote,
+        lastClickedUrl,
+        onLinkClick,
+        unclickableLinks,
+        onCopyUrl
       });
     }
 
@@ -541,22 +552,16 @@ const getDisplayLinkIndicator = (url, displayText = '') => {
 /**
  * Parse inline formatting (bold, links, colors)
  */
-const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText, noteContent, allNotes = [], onNavigateToNote = null }) => {
+const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText, noteContent, allNotes = [], onNavigateToNote = null, lastClickedUrl = null, onLinkClick = null, unclickableLinks = false, onCopyUrl = null }) => {
   
   
   
   
   // Check if this note has reversed URLs
-  const hasReversedUrls = noteContent && noteContent.includes('meta::url_reversed');
-  
-  
-  // Helper function to reverse a string
-  const reverseString = (str) => {
-    return str.split('').reverse().join('');
-  };
+  const hasReversedUrls = contentHasReversedUrls(noteContent);
 
   // Strip any remaining formatting prefixes (bold/italic/color/h1/h2) from content
-  let processedContent = content;
+  let processedContent = normalizeLegacySensitiveMarkdownLinks(content);
   let changed = true;
   while (changed) {
     changed = false;
@@ -580,19 +585,68 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     .replace(/\{#italics#\}/g, '')
     .replace(/\{#h1#\}/g, '')
     .replace(/\{#h2#\}/g, '')
-    .replace(/\{<[^}]+>\}/g, '');
+    .replace(/\{<[^}]+>\}/g, '')
+    .replace(/\{#tags:[^#]*?#\}/g, '');
 
   const elements = [];
   let currentText = '';
   let isBold = false;
   let isItalic = false;
 
+  const getHostnameOrNull = (url) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return null;
+    }
+  };
+
+  const renderUrlLink = ({ key, url, children, title = null, showTextButton = null, onTextButtonClick = null, textButtonLabel = 'Add text', textButtonClassName = 'px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150' }) => (
+    <span key={key} className="inline-flex items-center gap-1">
+      {unclickableLinks ? (
+        <>
+          <span className={url === lastClickedUrl ? "font-bold text-red-600" : "text-blue-600"} title={title || url}>
+            {children}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onCopyUrl?.(url); }}
+            className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            title="Copy decoded URL"
+          >
+            Copy
+          </button>
+        </>
+      ) : (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={url === lastClickedUrl ? "font-bold underline text-red-600 hover:text-red-800" : "text-blue-600 underline hover:text-blue-800"}
+          onClick={(e) => { e.stopPropagation(); onLinkClick?.(url); }}
+          title={title || url}
+        >
+          {children}
+        </a>
+      )}
+      {showTextButton && !unclickableLinks && (
+        <button
+          onClick={onTextButtonClick}
+          className={textButtonClassName}
+          title={textButtonLabel === 'Edit' ? 'Edit link text' : 'Add custom text for this link'}
+        >
+          {textButtonLabel}
+        </button>
+      )}
+    </span>
+  );
+
   // Check if this is a reversed URL (ends with ptth)
   const testString = processedContent.trim();
   
   
  
-  const isReversedUrl = testString.match(/^[^\s]+\/\/[^\s]+ptth$/);
+  const isStandaloneReversedUrl = isReversedUrl(testString);
   
   
 
@@ -601,59 +655,41 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
   if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
     
     const url = processedContent.trim();
-    const hostname = new URL(url).hostname;
+    const hostname = getHostnameOrNull(url);
+    if (!hostname) {
+      elements.push(...highlightSearchTerm(processedContent, searchTerm, `text-${lineIndex}-invalid-url`));
+      return elements;
+    }
     
-    let urlElement = (
-      <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {hostname}
-        </a>
-        <button
-          onClick={() => onAddText && onAddText(url)}
-          className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
-          title="Add custom text for this link"
-        >
-          Add text
-        </button>
-      </span>
-    );
+    let urlElement = renderUrlLink({
+      key: `url-${lineIndex}`,
+      url,
+      children: hostname,
+      showTextButton: true,
+      onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(url); }
+    });
     elements.push(urlElement);
-  } else if (isReversedUrl && hasReversedUrls) {
+  } else if (isStandaloneReversedUrl) {
     
     // Handle reversed URL
     const reversedUrl = processedContent.trim();
-    const originalUrl = reverseString(reversedUrl);
+    const originalUrl = decodeSensitiveUrl(reversedUrl);
     
     
-    const hostname = new URL(originalUrl).hostname;
+    const hostname = getHostnameOrNull(originalUrl);
+    if (!hostname) {
+      elements.push(...highlightSearchTerm(processedContent, searchTerm, `text-${lineIndex}-invalid-reversed-url`));
+      return elements;
+    }
     
     
-    let urlElement = (
-      <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
-        <a
-          href={originalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {hostname}
-        </a>
-        <button
-          onClick={() => onAddText && onAddText(originalUrl)}
-          className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
-          title="Add custom text for this link"
-        >
-          Add text
-        </button>
-      </span>
-    );
+    let urlElement = renderUrlLink({
+      key: `url-${lineIndex}`,
+      url: originalUrl,
+      children: hostname,
+      showTextButton: true,
+      onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(originalUrl); }
+    });
     
     elements.push(urlElement);
   } else {
@@ -742,25 +778,24 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
                     tempElements.push(...highlightSearchTerm(beforeText, searchTerm, `text-${lineIndex}-before-wiki-${i}-${j}`));
                   }
                 }
-                const isReversedUrlInMarkdown = hasReversedUrls && beforeLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
-                const originalUrl = isReversedUrlInMarkdown ? reverseString(beforeLink.url) : beforeLink.url;
+                const isReversedUrlInMarkdown = isReversedUrl(beforeLink.url);
+                const originalUrl = isReversedUrlInMarkdown ? decodeSensitiveUrl(beforeLink.url) : beforeLink.url;
+                if (!getHostnameOrNull(originalUrl)) {
+                  tempElements.push(...highlightSearchTerm(beforeLink.fullMatch, searchTerm, `text-${lineIndex}-invalid-before-wiki-${i}-${j}`));
+                  beforeLastIndex = beforeLink.endIndex;
+                  continue;
+                }
                 const linkIndicator = getDisplayLinkIndicator(originalUrl, beforeLink.customText);
                 tempElements.push(
-                  <span key={`url-${lineIndex}-before-wiki-${i}-${j}`} className="inline-flex items-center gap-1">
-                    <a
-                      href={originalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline hover:text-blue-800"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {linkIndicator ? (
-                        <>
-                          {beforeLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-                        </>
-                      ) : beforeLink.customText}
-                    </a>
-                  </span>
+                  renderUrlLink({
+                    key: `url-${lineIndex}-before-wiki-${i}-${j}`,
+                    url: originalUrl,
+                    children: linkIndicator ? (
+                      <>
+                        {beforeLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                      </>
+                    ) : beforeLink.customText
+                  })
                 );
                 beforeLastIndex = beforeLink.endIndex;
               }
@@ -833,25 +868,24 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
                 elements.push(...highlightSearchTerm(beforeText, searchTerm, `text-${lineIndex}-after-wiki-${j}`));
               }
             }
-            const isReversedUrlInMarkdown = hasReversedUrls && afterLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
-            const originalUrl = isReversedUrlInMarkdown ? reverseString(afterLink.url) : afterLink.url;
+            const isReversedUrlInMarkdown = isReversedUrl(afterLink.url);
+            const originalUrl = isReversedUrlInMarkdown ? decodeSensitiveUrl(afterLink.url) : afterLink.url;
+            if (!getHostnameOrNull(originalUrl)) {
+              elements.push(...highlightSearchTerm(afterLink.fullMatch, searchTerm, `text-${lineIndex}-invalid-after-wiki-${j}`));
+              afterLastIndex = afterLink.endIndex;
+              continue;
+            }
             const linkIndicator = getDisplayLinkIndicator(originalUrl, afterLink.customText);
             elements.push(
-              <span key={`url-${lineIndex}-after-wiki-${j}`} className="inline-flex items-center gap-1">
-                <a
-                  href={originalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline hover:text-blue-800"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {linkIndicator ? (
-                    <>
-                      {afterLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-                    </>
-                  ) : afterLink.customText}
-                </a>
-              </span>
+              renderUrlLink({
+                key: `url-${lineIndex}-after-wiki-${j}`,
+                url: originalUrl,
+                children: linkIndicator ? (
+                  <>
+                    {afterLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                  </>
+                ) : afterLink.customText
+              })
             );
             afterLastIndex = afterLink.endIndex;
           }
@@ -880,8 +914,13 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         }
         
         // Check if this is a reversed URL in markdown
-        const isReversedUrlInMarkdown = hasReversedUrls && linkMatch.url.match(/[^\s]+\/\/[^\s]+ptth/);
-        const originalUrl = isReversedUrlInMarkdown ? reverseString(linkMatch.url) : linkMatch.url;
+        const isReversedUrlInMarkdown = isReversedUrl(linkMatch.url);
+        const originalUrl = isReversedUrlInMarkdown ? decodeSensitiveUrl(linkMatch.url) : linkMatch.url;
+        if (!getHostnameOrNull(originalUrl)) {
+          elements.push(...highlightSearchTerm(linkMatch.fullMatch, searchTerm, `text-${lineIndex}-invalid-link-${i}`));
+          lastIndex = linkMatch.endIndex;
+          continue;
+        }
         
         
         
@@ -890,30 +929,19 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         
         // Add the markdown link
         const linkIndicator = getDisplayLinkIndicator(originalUrl, linkMatch.customText);
-        const linkElement = (
-          <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
-            <a
-              href={originalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {linkIndicator ? (
-                <>
-                  {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-                </>
-              ) : linkMatch.customText}
-            </a>
-            <button
-              onClick={() => onEditText && onEditText(originalUrl, linkMatch.customText)}
-              className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
-              title="Edit link text"
-            >
-              Edit
-            </button>
-          </span>
-        );
+        const linkElement = renderUrlLink({
+          key: `url-${lineIndex}-${i}`,
+          url: originalUrl,
+          children: linkIndicator ? (
+            <>
+              {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+            </>
+          ) : linkMatch.customText,
+          showTextButton: true,
+          onTextButtonClick: (e) => { e.stopPropagation(); onEditText && onEditText(originalUrl, linkMatch.customText); },
+          textButtonLabel: 'Edit',
+          textButtonClassName: 'px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150'
+        });
         elements.push(linkElement);
         
         lastIndex = linkMatch.endIndex;
@@ -1002,26 +1030,21 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
             urlEnd++;
           }
           const url = processedContent.slice(i, urlEnd);
-          const hostname = new URL(url).hostname;
+          const hostname = getHostnameOrNull(url);
+          if (!hostname) {
+            currentText += url;
+            i = urlEnd - 1;
+            continue;
+          }
           
           elements.push(
-            <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
-              >
-                {hostname}
-              </a>
-              <button
-                onClick={() => onAddText && onAddText(url)}
-                className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
-                title="Add custom text for this link"
-              >
-                Add text
-              </button>
-            </span>
+            renderUrlLink({
+              key: `url-${lineIndex}-${i}`,
+              url,
+              children: hostname,
+              showTextButton: true,
+              onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(url); }
+            })
           );
           i = urlEnd - 1;
           continue;

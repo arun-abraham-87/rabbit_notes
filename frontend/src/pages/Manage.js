@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { loadAllNotes, updateNoteById, listJournals, loadJournal, createNote, exportAllNotes } from '../utils/ApiUtils';
 import JSZip from 'jszip';
+import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent } from '../utils/SensitiveUrlUtils';
 
 const Manage = () => {
   const [activeTab, setActiveTab] = useState('notes');
@@ -208,87 +209,33 @@ const Manage = () => {
     }
   };
 
-  // Helper function to reverse a string
-  const reverseString = (str) => {
-    return str.split('').reverse().join('');
-  };
-
-  // Helper function to find and reverse URLs in text
-  const reverseUrlsInText = (text) => {
-    // Regular expression to match URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
-    // Regular expression to match markdown links [text](url)
-    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    
-    let result = text;
-    
-    // First, handle markdown links
-    result = result.replace(markdownLinkRegex, (match, text, url) => {
-      const reversedUrl = reverseString(url);
-      return `[${text}](${reversedUrl})`;
-    });
-    
-    // Then, handle plain URLs
-    result = result.replace(urlRegex, (url) => {
-      return reverseString(url);
-    });
-    
-    return result;
-  };
-
-  // Helper function to check if text has unreversed URLs (starting with http)
-  const hasUnreversedUrls = (text) => {
-    // Regular expression to match URLs starting with http
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
-    // Regular expression to match markdown links [text](url) where url starts with http
-    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
-    
-    // Check for plain URLs starting with http
-    const plainUrls = text.match(urlRegex);
-    if (plainUrls && plainUrls.some(url => url.startsWith('http'))) {
-      return true;
-    }
-    
-    // Check for markdown links with URLs starting with http
-    const markdownMatches = text.match(markdownLinkRegex);
-    if (markdownMatches && markdownMatches.some(match => match.includes('http'))) {
-      return true;
-    }
-    
-    return false;
-  };
-
-  // Function to find sensitive notes and reverse their URLs
+  // Function to find sensitive notes and encode their content
   const handleReverseUrls = async () => {
-    // Find all notes with meta::sensitive:: tag that have unreversed URLs
+    // Find all sensitive notes that have not been upgraded to full-line encoding.
     const sensitiveNotes = notes.filter(note => 
-      note.content.includes('meta::sensitive::') && hasUnreversedUrls(note.content)
+      note.content.includes('meta::sensitive::') && !hasEncodedContent(note.content)
     );
 
     if (sensitiveNotes.length === 0) {
-      toast.info('No sensitive notes with unreversed URLs found');
+      toast.info('No unencoded sensitive notes found');
       return;
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to reverse URLs in ${sensitiveNotes.length} sensitive notes?`
+      `Are you sure you want to encode all content lines in ${sensitiveNotes.length} sensitive notes?`
     );
 
     if (confirmed) {
       try {
         let processedCount = 0;
         for (const note of sensitiveNotes) {
-          const reversedContent = reverseUrlsInText(note.content);
-          if (reversedContent !== note.content) {
-            // Add meta::url_reversed tag to the reversed content
-            const contentWithTag = reversedContent + '\nmeta::url_reversed';
-            await updateNoteById(note.id, contentWithTag);
+          const encodedContent = encodeSensitiveContent(decodeSensitiveContent(note.content));
+          if (encodedContent !== note.content) {
+            await updateNoteById(note.id, encodedContent);
             processedCount++;
           }
         }
-        toast.success(`Successfully reversed URLs in ${processedCount} sensitive notes`);
+        toast.success(`Successfully encoded ${processedCount} sensitive notes`);
         
         // Refresh notes after processing
         const data = await loadAllNotes('', null);
@@ -388,7 +335,7 @@ const Manage = () => {
                         : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
-                    Reverse URLs (Sensitive)
+                    Encode Sensitive Notes
                   </button>
                 </nav>
               </div>
@@ -881,30 +828,29 @@ const Manage = () => {
                   <div className="space-y-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                        Reverse URLs in Sensitive Notes
+                        Encode Sensitive Notes
                       </h3>
                       <p className="text-blue-700 mb-4">
                         This feature will find all notes with the <code className="bg-blue-100 px-1 rounded">meta::sensitive::</code> tag 
-                        that contain URLs starting with "http" (unreversed URLs). Notes with already reversed URLs (ending in "ptth") 
-                        will be excluded. Reversed notes will have the <code className="bg-blue-100 px-1 rounded">meta::url_reversed</code> tag added. This includes:
+                        that do not yet have the <code className="bg-blue-100 px-1 rounded">meta::encoded</code> tag. It encodes every non-meta line and adds compatibility metadata.
                       </p>
                       <ul className="list-disc list-inside text-blue-700 space-y-1">
-                        <li>Plain URLs: <code className="bg-blue-100 px-1 rounded">https://example.com</code> → <code className="bg-blue-100 px-1 rounded">moc.elpmaxe//:sptth</code></li>
-                        <li>Markdown links: <code className="bg-blue-100 px-1 rounded">[Link Text](https://example.com)</code> → <code className="bg-blue-100 px-1 rounded">[Link Text](moc.elpmaxe//:sptth)</code></li>
+                        <li>Plain text lines are encoded using the sensitive-note transform.</li>
+                        <li>Older notes without <code className="bg-blue-100 px-1 rounded">meta::encoded</code> keep URL-only decoding for backward compatibility.</li>
                       </ul>
                     </div>
 
                     {/* Find sensitive notes */}
                     {(() => {
                       const sensitiveNotes = notes.filter(note => 
-                        note.content.includes('meta::sensitive::') && hasUnreversedUrls(note.content)
+                        note.content.includes('meta::sensitive::') && !hasEncodedContent(note.content)
                       );
                       
                       return (
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-800">
-                              Sensitive Notes with Unreversed URLs: {sensitiveNotes.length}
+                              Unencoded Sensitive Notes: {sensitiveNotes.length}
                             </h3>
                             <button
                               onClick={handleReverseUrls}
@@ -915,7 +861,7 @@ const Manage = () => {
                                   : 'bg-red-600 hover:bg-red-700'
                               }`}
                             >
-                              Reverse URLs in All Sensitive Notes
+                              Encode All Sensitive Notes
                             </button>
                           </div>
 
@@ -925,9 +871,7 @@ const Manage = () => {
                                 Preview of Sensitive Notes:
                               </h4>
                               {sensitiveNotes.map((note) => {
-                                const reversedContent = reverseUrlsInText(note.content);
-                                const hasUrls = reversedContent !== note.content;
-                                const contentWithTag = hasUrls ? reversedContent + '\nmeta::url_reversed' : note.content;
+                                const contentWithTag = encodeSensitiveContent(decodeSensitiveContent(note.content));
                                 
                                 return (
                                   <div
@@ -936,11 +880,9 @@ const Manage = () => {
                                   >
                                     <div className="text-sm text-gray-600 mb-2">
                                       Note ID: {note.id}
-                                      {hasUrls && (
-                                        <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
-                                          Contains URLs
-                                        </span>
-                                      )}
+                                      <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                                        Will encode content lines
+                                      </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                       {/* Original Content */}
@@ -953,7 +895,7 @@ const Manage = () => {
 
                                       {/* Reversed Content */}
                                       <div>
-                                        <div className="text-sm font-medium text-gray-700 mb-2">After URL Reversal:</div>
+                                        <div className="text-sm font-medium text-gray-700 mb-2">After Encoding:</div>
                                         <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm max-h-40 overflow-y-auto">
                                           {contentWithTag}
                                         </div>
@@ -967,8 +909,8 @@ const Manage = () => {
 
                           {sensitiveNotes.length === 0 && (
                             <div className="text-center py-8 text-gray-500">
-                              <p>No sensitive notes with unreversed URLs found.</p>
-                              <p className="mt-2 text-sm">Notes with <code className="bg-gray-100 px-1 rounded">meta::sensitive::</code> tag and URLs starting with "http" will appear here.</p>
+                              <p>No unencoded sensitive notes found.</p>
+                              <p className="mt-2 text-sm">Sensitive notes without <code className="bg-gray-100 px-1 rounded">meta::encoded</code> will appear here.</p>
                             </div>
                           )}
                         </div>

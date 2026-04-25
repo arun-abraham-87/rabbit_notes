@@ -123,7 +123,14 @@ const Weather = ({ forceExpanded = false }) => {
           wind: processedData.current.wind_speed_10m,
           todayMax: processedData.daily.temperature_2m_max?.[0],
           todayMin: processedData.daily.temperature_2m_min?.[0],
+          todayRainSum: processedData.daily.rain_sum?.[0],
+          todayPrecipSum: processedData.daily.precipitation_sum?.[0],
+          tomorrowMax: processedData.daily.temperature_2m_max?.[1],
+          tomorrowMin: processedData.daily.temperature_2m_min?.[1],
+          tomorrowRainSum: processedData.daily.rain_sum?.[1],
+          tomorrowPrecipSum: processedData.daily.precipitation_sum?.[1],
         }));
+        document.dispatchEvent(new CustomEvent('weatherUpdated'));
       } catch (e) { }
     } catch (err) {
       console.error('Error fetching weather:', err);
@@ -142,6 +149,14 @@ const Weather = ({ forceExpanded = false }) => {
     setIsRefreshing(true);
     await fetchWeather();
   };
+
+  useEffect(() => {
+    const handleExternalRefresh = () => {
+      handleRefresh();
+    };
+    document.addEventListener('refreshWeather', handleExternalRefresh);
+    return () => document.removeEventListener('refreshWeather', handleExternalRefresh);
+  });
 
   const formatTime = (date, timezone = 'Australia/Sydney') => {
     return new Intl.DateTimeFormat('en-US', {

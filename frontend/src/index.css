@@ -2,6 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8fafc;
+  --app-surface-soft: #f1f5f9;
+  --app-border: #dbe3ee;
+  --app-border-strong: #cbd5e1;
+  --app-text: #111827;
+  --app-text-muted: #4b5563;
+  --app-text-soft: #6b7280;
+  --app-accent: #2563eb;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+html.dark {
+  --app-bg: #0f172a;
+  --app-surface: #111827;
+  --app-surface-muted: #172033;
+  --app-surface-soft: #1e293b;
+  --app-border: #334155;
+  --app-border-strong: #475569;
+  --app-text: #e5eefc;
+  --app-text-muted: #cbd5e1;
+  --app-text-soft: #94a3b8;
+  --app-accent: #60a5fa;
+}
+
+.bg-background {
+  background-color: var(--app-bg);
+}
+
+.bg-card {
+  background-color: var(--app-surface);
+}
+
+.text-card-foreground {
+  color: var(--app-text);
+}
+
+.text-primary {
+  color: var(--app-accent);
+}
+
+.border-border,
+.border-input {
+  border-color: var(--app-border);
+}
+
+html.dark .bg-white,
+html.dark .bg-card,
+html.dark .bg-background {
+  background-color: var(--app-surface) !important;
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-slate-50 {
+  background-color: var(--app-surface-muted) !important;
+}
+
+html.dark .bg-gray-100,
+html.dark .bg-gray-100\/80 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html.dark .bg-gray-200 {
+  background-color: #273449 !important;
+}
+
+html.dark .border,
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-200\/80,
+html.dark .border-gray-300,
+html.dark .border-slate-200 {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .text-black,
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-card-foreground {
+  color: var(--app-text) !important;
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-600,
+html.dark .text-gray-500 {
+  color: var(--app-text-muted) !important;
+}
+
+html.dark .text-gray-400,
+html.dark .text-gray-300 {
+  color: var(--app-text-soft) !important;
+}
+
+html.dark .placeholder\:text-gray-300::placeholder,
+html.dark .placeholder\:text-gray-400::placeholder,
+html.dark .placeholder\:text-gray-500::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--app-text-soft) !important;
+}
+
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-slate-50:hover {
+  background-color: #1f2937 !important;
+}
+
+html.dark .hover\:bg-gray-100:hover,
+html.dark .hover\:bg-gray-100\/80:hover,
+html.dark .hover\:bg-gray-200:hover {
+  background-color: #273449 !important;
+}
+
+html.dark .hover\:text-black:hover,
+html.dark .hover\:text-gray-900:hover,
+html.dark .hover\:text-gray-800:hover,
+html.dark .hover\:text-gray-700:hover,
+html.dark .hover\:text-gray-600:hover {
+  color: #f8fafc !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+html.dark option {
+  background-color: var(--app-surface);
+  color: var(--app-text);
+}
+
+html.dark pre,
+html.dark code,
+html.dark kbd {
+  color: var(--app-text);
+}
+
+html.dark pre,
+html.dark .react-calendar,
+html.dark .react-flow__attribution {
+  background-color: var(--app-surface-muted);
+}
+
+html.dark .shadow-sm,
+html.dark .shadow,
+html.dark .shadow-md,
+html.dark .shadow-lg,
+html.dark .shadow-xl {
+  --tw-shadow-color: rgba(2, 6, 23, 0.45);
+}
+
+html.dark ::selection {
+  background: rgba(96, 165, 250, 0.3);
+}
+
 
 pre {
 font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
@@ -13,7 +188,7 @@ font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe U
 
 #noteEnter div{
     padding:5px;
-    background:#ddd;
+    background: var(--app-surface-soft);
 }
 
 .no-scrollbar {

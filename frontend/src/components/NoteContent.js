@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useNotes } from '../contexts/NotesContext';
+import InlineTagEditor, { parseLineTags, setLineTags, tagColor } from './InlineTagEditor';
 import InlineEditor from './InlineEditor';
 import NoteImages from './NoteImages';
 import { PlusIcon } from '@heroicons/react/24/solid';
@@ -7,7 +9,7 @@ import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import {
     parseNoteContent
 } from '../utils/TextUtils';
-import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
+import { renderLineWithClickableDates, getIndentFlags, getRawLines, normalizeSubLinePrefix } from '../utils/genUtils';
 import { extractImageIds } from '../utils/NotesUtils';
 import AddTextModal from './AddTextModal';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
@@ -15,7 +17,42 @@ import { checkText } from '../utils/languageTool';
 import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { saveNoteToHistory } from '../utils/NoteHistoryUtils';
-import UndoToast from './UndoToast';
+import { decodeSensitiveContent, decodeSensitiveUrl, encodeSensitiveContent, encodeSensitiveLine, getStoredUrlForContent, hasEncodedContent, hasReversedUrls, isReversedUrl, REVERSED_URL_GLOBAL_PATTERN, restoreUrlsInText, reverseUrlsInText } from '../utils/SensitiveUrlUtils';
+
+const GIBBERISH_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%&!?*~^';
+
+function scrambleLine(line) {
+    // Keep rough length and structure; replace non-space chars with random gibberish
+    return line.split('').map(ch => {
+        if (ch === ' ' || ch === '\t') return ch;
+        return GIBBERISH_CHARS[Math.floor(Math.random() * GIBBERISH_CHARS.length)];
+    }).join('');
+}
+
+function SensitiveScrambleOverlay({ content }) {
+    const lines = content.split('\n').filter(l => !l.trim().startsWith('meta::'));
+    const scrambled = React.useMemo(
+        () => lines.map(l => l.trim() === '' ? '' : scrambleLine(l)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [] // compute once when overlay mounts; don't regenerate on every render
+    );
+    return (
+        <div className="absolute inset-0 z-20 rounded-md overflow-hidden bg-gray-50 p-4 select-none pointer-events-none">
+            <div className="text-sm leading-relaxed font-mono text-gray-400 whitespace-pre-wrap break-all opacity-80">
+                {scrambled.map((line, i) => (
+                    <div key={i} className={line === '' ? 'h-4' : ''}>
+                        {line || null}
+                    </div>
+                ))}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-white/80 text-gray-500 text-xs font-medium px-3 py-1.5 rounded-full shadow border border-gray-200">
+                    🔒 Sensitive — hover to reveal
+                </span>
+            </div>
+        </div>
+    );
+}
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -61,10 +98,12 @@ export default function NoteContent({
     highlightedLineIndex = -1,
     highlightedLineText = '',
     wasOpenedFromSuperEdit = false,
-    setShowCopyToast = null
+    setShowCopyToast = null,
+    isFocused = false
 }) {
     const navigate = useNavigate();
-    
+    const { lastClickedUrl, setLastClickedUrl } = useNotes();
+
     // Navigation handler for note links
     const handleNoteNavigation = (url) => {
         if (url.startsWith('#/notes?note=')) {
@@ -80,7 +119,11 @@ export default function NoteContent({
     const [urlForText, setUrlForText] = React.useState('');
     const [isEditing, setIsEditing] = React.useState(false);
     const [currentCustomText, setCurrentCustomText] = React.useState('');
-    
+    const [editingTagsIdx, setEditingTagsIdx] = useState(null);
+    const [activeLineTagFilter, setActiveLineTagFilter] = useState(null);
+    const [cardHovered, setCardHovered] = useState(false);
+    const [dragSelectState, setDragSelectState] = useState(null);
+
     // Drag and drop state
     const [draggedLineIndex, setDraggedLineIndex] = useState(null);
     const [dragOverLineIndex, setDragOverLineIndex] = useState(null);
@@ -112,21 +155,28 @@ export default function NoteContent({
     const [highlightedQuickAccessSection, setHighlightedQuickAccessSection] = useState(null);
     const [sectionActionPopup, setSectionActionPopup] = useState(null);
     const [sectionAppendText, setSectionAppendText] = useState('');
+    const [undoAction, setUndoAction] = useState(null);
     const hoverTimeoutRef = useRef(null);
     const contextMenuPinnedSectionRef = useRef(null);
     const quickAccessHighlightTimeoutRef = useRef(null);
+    const undoTimeoutRef = useRef(null);
+    const dragSelectStartRef = useRef(null);
+    const dragSelectMovedRef = useRef(false);
+    const suppressNextLineClickRef = useRef(false);
 
+    const TAGS_VISIBLE_META_PREFIX = 'meta::tags_visible::';
     const QUICK_ACCESS_META_PREFIX = 'meta::quick_access::';
     const H2_COLLAPSED_META_PREFIX = 'meta::h2_collapsed_sections::';
     const H2_INDENT_META_PREFIX = 'meta::h2_indent::';
     const H2_SECTION_SPACING_META_PREFIX = 'meta::h2_section_spacing::';
+    const UNCLICKABLE_LINKS_META_PREFIX = 'meta::unclickable_links::';
 
     const getPersistedQuickAccess = (content = '') => {
         const metaLine = content
             .split('\n')
             .map(line => line.trim())
             .find(line => line.startsWith(QUICK_ACCESS_META_PREFIX));
-        return metaLine ? metaLine.slice(QUICK_ACCESS_META_PREFIX.length) === 'open' : false;
+        return metaLine ? metaLine.slice(QUICK_ACCESS_META_PREFIX.length) === 'open' : true;
     };
 
     const getPersistedCollapsedSectionLabels = (content = '') => {
@@ -164,6 +214,22 @@ export default function NoteContent({
         return metaLine.slice(H2_SECTION_SPACING_META_PREFIX.length) === 'on';
     };
 
+    const getPersistedTagsVisible = (content = '') => {
+        const metaLine = content.split('\n').map(l => l.trim()).find(l => l.startsWith(TAGS_VISIBLE_META_PREFIX));
+        if (!metaLine) return true; // default visible
+        return metaLine.slice(TAGS_VISIBLE_META_PREFIX.length) === 'on';
+    };
+
+    const getPersistedUnclickableLinks = (content = '') => {
+        const metaLine = content.split('\n').map(l => l.trim()).find(l => l.startsWith(UNCLICKABLE_LINKS_META_PREFIX));
+        return metaLine ? metaLine.slice(UNCLICKABLE_LINKS_META_PREFIX.length) === 'on' : false;
+    };
+
+    const withPersistedTagsVisible = (content, visible) => {
+        const cleaned = content.split('\n').filter(l => !l.trim().startsWith(TAGS_VISIBLE_META_PREFIX));
+        return reorderMetaTags([...cleaned, `${TAGS_VISIBLE_META_PREFIX}${visible ? 'on' : 'off'}`].join('\n'));
+    };
+
     const withPersistedH2IndentState = (content, indentEnabled) => {
         const cleanedLines = content
             .split('\n')
@@ -188,7 +254,7 @@ export default function NoteContent({
 
     const getVisibleH2Sections = (content = '') => content
         .split('\n')
-        .map((line, actualIndex) => ({ line, actualIndex }))
+        .map((line, actualIndex) => ({ line: normalizeSubLinePrefix(line), actualIndex }))
         .filter(({ line }) => !line.trim().startsWith('meta::'))
         .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
         .filter(({ line }) => line && line.trim().startsWith('{#h2#}'))
@@ -297,8 +363,47 @@ export default function NoteContent({
             if (quickAccessHighlightTimeoutRef.current) {
                 clearTimeout(quickAccessHighlightTimeoutRef.current);
             }
+            if (undoTimeoutRef.current) {
+                clearTimeout(undoTimeoutRef.current);
+            }
         };
     }, []);
+
+    useEffect(() => {
+        const handlePointerUp = () => {
+            if (dragSelectStartRef.current == null) return;
+            if (dragSelectMovedRef.current) {
+                suppressNextLineClickRef.current = true;
+                setBulkDeleteMode(true);
+                setBulkDeleteNoteId(note.id);
+                setTimeout(() => {
+                    suppressNextLineClickRef.current = false;
+                }, 150);
+            }
+            dragSelectStartRef.current = null;
+            dragSelectMovedRef.current = false;
+            setDragSelectState(null);
+        };
+
+        const handleKeyDown = (e) => {
+            if (e.key !== 'Escape') return;
+            dragSelectStartRef.current = null;
+            dragSelectMovedRef.current = false;
+            setDragSelectState(null);
+            setSelectedRows(new Set());
+            if (bulkDeleteMode && bulkDeleteNoteId === note.id) {
+                setBulkDeleteMode(false);
+                setBulkDeleteNoteId(null);
+            }
+        };
+
+        document.addEventListener('pointerup', handlePointerUp);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('pointerup', handlePointerUp);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [bulkDeleteMode, bulkDeleteNoteId, note.id]);
 
     useEffect(() => {
         const content = note?.content || '';
@@ -440,6 +545,7 @@ export default function NoteContent({
     }
 
     const handleAddText = (url) => {
+        console.log('[handleAddText] url:', JSON.stringify(url));
         setUrlForText(url);
         setIsEditing(false);
         setCurrentCustomText('');
@@ -447,75 +553,105 @@ export default function NoteContent({
     };
 
     const handleEditText = (url, customText) => {
+        console.log('[handleEditText] url:', JSON.stringify(url), 'customText:', JSON.stringify(customText));
         setUrlForText(url);
         setIsEditing(true);
         setCurrentCustomText(customText);
         setShowAddTextModal(true);
     };
 
+    const prepareContentForTextLinkEdit = (content = '') => {
+        if (hasEncodedContent(content)) return decodeSensitiveContent(content);
+        if (hasReversedUrls(content)) return content
+            .split('\n')
+            .map(line => line.trim().startsWith('meta::') ? line : restoreUrlsInText(line))
+            .join('\n');
+        return content;
+    };
+
+    const restoreContentAfterTextLinkEdit = (content = '', originalContent = '') => {
+        if (hasEncodedContent(originalContent)) return encodeSensitiveContent(content);
+        if (hasReversedUrls(originalContent)) return content
+            .split('\n')
+            .map(line => line.trim().startsWith('meta::') ? line : reverseUrlsInText(line))
+            .join('\n');
+        return content;
+    };
+
     const handleSaveText = async (noteId, url, customText, updatedContent = null) => {
+        console.log('[handleSaveText] CALLED', { noteId, url, customText, updatedContentLength: updatedContent?.length, isEditing });
         try {
             let finalContent;
-            
-            if (updatedContent !== null) {
-                // Use the provided updated content (when text was selected from note)
-                // But still need to replace the URL with markdown format
-                const lines = updatedContent.split('\n');
-                
-                // Find the line containing the URL and replace it with markdown format
-                const updatedLines = lines.map(line => {
-                    if (isEditing) {
-                        // For editing, replace existing markdown link
-                        const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
-                        if (markdownRegex.test(line)) {
-                            return line.replace(markdownRegex, `[${customText}](${url})`);
-                        }
-                    } else {
-                        // For adding, replace plain URL with markdown format
-                        if (line.trim() === url) {
-                            return `[${customText}](${url})`;
-                        }
+
+            const originalContent = note.content;
+            const sourceContent = prepareContentForTextLinkEdit(updatedContent !== null ? updatedContent : originalContent);
+            console.log('[handleSaveText] sourceContent (first 300 chars):', sourceContent?.slice(0, 300));
+            const lines = sourceContent.split('\n');
+            console.log('[handleSaveText] total lines:', lines.length);
+            const storedUrl = url;
+            const escapedStoredUrl = storedUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            console.log('[handleSaveText] hasReversedUrls:', hasReversedUrls(sourceContent), 'searchUrl:', JSON.stringify(storedUrl));
+
+            const updatedLines = lines.map((line, i) => {
+                if (isEditing) {
+                    const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${escapedStoredUrl}\\)`);
+                    const matches = markdownRegex.test(line);
+                    if (matches) {
+                        console.log(`[handleSaveText] isEditing=true, MATCH on line ${i}:`, JSON.stringify(line));
+                        return line.replace(markdownRegex, `[${customText}](${storedUrl})`);
                     }
-                    return line;
-                });
-                
-                // Join lines back together
-                finalContent = updatedLines.join('\n');
-            } else {
-                // Use the original logic for URL replacement
-                const lines = note.content.split('\n');
-                
-                // Find the line containing the URL and replace it with markdown format
-                const updatedLines = lines.map(line => {
-                    if (isEditing) {
-                        // For editing, replace existing markdown link
-                        const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
-                        if (markdownRegex.test(line)) {
-                            return line.replace(markdownRegex, `[${customText}](${url})`);
-                        }
-                    } else {
-                        // For adding, replace plain URL with markdown format
-                        if (line.trim() === url) {
-                            return `[${customText}](${url})`;
-                        }
+                } else {
+                    if (line.includes(storedUrl)) {
+                        console.log(`[handleSaveText] isEditing=false, MATCH on line ${i}:`, JSON.stringify(line));
+                        return line.replace(storedUrl, `[${customText}](${storedUrl})`);
                     }
-                    return line;
-                });
-                
-                // Join lines back together
-                finalContent = updatedLines.join('\n');
+                }
+                return line;
+            });
+
+            const anyChanged = updatedLines.some((l, i) => l !== lines[i]);
+            console.log('[handleSaveText] any lines changed?', anyChanged);
+            if (!anyChanged) {
+                console.warn('[handleSaveText] NO LINES MATCHED. url was:', JSON.stringify(url));
+                console.warn('[handleSaveText] All lines:', lines.map((l, i) => `${i}: ${JSON.stringify(l)}`));
             }
-            
+
+            finalContent = restoreContentAfterTextLinkEdit(updatedLines.join('\n'), originalContent);
             const reorderedContent = reorderMetaTags(finalContent);
-            
-            // Update the note
+            console.log('[handleSaveText] calling updateNote with noteId:', noteId);
             await updateNote(noteId, reorderedContent);
-            
+            console.log('[handleSaveText] updateNote done');
+
             setShowAddTextModal(false);
             setIsEditing(false);
             setCurrentCustomText('');
         } catch (error) {
-            console.error('Error saving custom text:', error);
+            console.error('[handleSaveText] ERROR:', error);
+        }
+    };
+
+    const handleRemoveText = async (noteId, url) => {
+        try {
+            const sourceContent = note.content;
+            const storedUrl = getStoredUrlForContent(url, sourceContent);
+            const escapedStoredUrl = storedUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const lines = sourceContent.split('\n');
+            const updatedLines = lines.map(line => {
+                // Match [anyText](url) and replace with plain stored URL
+                const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${escapedStoredUrl}\\)`);
+                if (markdownRegex.test(line)) {
+                    return line.replace(markdownRegex, storedUrl);
+                }
+                return line;
+            });
+            const originalContent = sourceContent;
+            await updateNote(noteId, reorderMetaTags(updatedLines.join('\n')));
+            showUndoToast('Custom text removed', originalContent);
+            setShowAddTextModal(false);
+            setIsEditing(false);
+            setCurrentCustomText('');
+        } catch (error) {
+            console.error('Error removing custom text:', error);
         }
     };
 
@@ -572,10 +708,11 @@ export default function NoteContent({
         }
     };
 
+    const displayContent = decodeSensitiveContent(note.content);
     const rawLines = getRawLines(note.content);
-    const visibleLineEntries = note.content
+    const visibleLineEntries = displayContent
         .split('\n')
-        .map((line, actualIndex) => ({ line, actualIndex }))
+        .map((line, actualIndex) => ({ line: normalizeSubLinePrefix(line), actualIndex }))
         .filter(({ line }) => !line.trim().startsWith('meta::'));
     const h2Sections = visibleLineEntries
         .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
@@ -608,13 +745,23 @@ export default function NoteContent({
     };
 
     const h2ContentLineEntries = getH2ContentLineEntries();
-    const areH2ContentsIndented = h2ContentLineEntries.length > 0 &&
-        h2ContentLineEntries.every(({ line }) => line.startsWith('\t'));
     const persistedH2IndentState = getPersistedH2IndentState(note.content);
-    const isH2IndentEnabled = persistedH2IndentState ?? areH2ContentsIndented;
+    const isH2IndentEnabled = persistedH2IndentState ?? true;
     const h2IndentButtonLabel = isH2IndentEnabled ? 'Remove H2 indent' : 'Indent H2 content';
-    const isH2SectionSpacingEnabled = getPersistedH2SectionSpacingState(note.content) === true;
+    const isH2SectionSpacingEnabled = getPersistedH2SectionSpacingState(note.content) ?? true;
     const h2SectionSpacingButtonLabel = isH2SectionSpacingEnabled ? 'Remove section space' : 'Add space after section';
+    const tagsVisible = getPersistedTagsVisible(note.content);
+    const isSensitive = note.content.includes('meta::sensitive::');
+    const isDragDisabled = focusMode || isSensitive;
+    const isRightClickMenuOpenForNote = rightClickNoteId === note.id;
+    const showScramble = isSensitive && !cardHovered && !isRightClickMenuOpenForNote && !isFocused;
+    const unclickableLinks = getPersistedUnclickableLinks(note.content);
+    const allLineTags = [...new Set(
+        visibleLineEntries.flatMap(({ line }) => parseLineTags(line))
+    )].sort((a, b) => a.localeCompare(b));
+    const activeVisibleLineTagFilter = tagsVisible && allLineTags.includes(activeLineTagFilter)
+        ? activeLineTagFilter
+        : null;
 
     const getSectionLineActualIndices = (sectionActualIndex, includeBlankLines = true) => {
         const section = h2Sections.find(({ actualIndex }) => actualIndex === sectionActualIndex);
@@ -748,6 +895,41 @@ export default function NoteContent({
                 >
                     spacing
                 </button>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const sectionIndices = getSectionLineActualIndices(actualIndex, false);
+                        const allLines = note.content.split('\n');
+                        const urls = new Set();
+                        sectionIndices.forEach(i => {
+                            const line = allLines[i] || '';
+                            // markdown links
+                            let m;
+                            const mr = /\[([^\]]+)\]\(([^)]+)\)/g;
+                            while ((m = mr.exec(line)) !== null) {
+                                const u = isReversedUrl(m[2]) ? decodeSensitiveUrl(m[2]) : m[2];
+                                urls.add(u);
+                            }
+                            // plain urls
+                            const pr = /https?:\/\/[^\s)"\]]+/g;
+                            while ((m = pr.exec(line)) !== null) {
+                                urls.add(m[0]);
+                            }
+                            // reversed plain urls
+                            if (hasReversedUrls(note.content)) {
+                                const reversedUrlRegex = new RegExp(REVERSED_URL_GLOBAL_PATTERN);
+                                while ((m = reversedUrlRegex.exec(line)) !== null) urls.add(decodeSensitiveUrl(m[0]));
+                            }
+                        });
+                        urls.forEach(url => window.open(url, '_blank', 'noopener,noreferrer'));
+                    }}
+                    className="rounded px-1 py-0.5 text-[10px] font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
+                    title="Open all links in this section"
+                >
+                    open all
+                </button>
             </span>
         );
     };
@@ -784,7 +966,7 @@ export default function NoteContent({
         if (nextSpacingEnabled) {
             sectionEndIndices.forEach(endIndex => {
                 if (endIndex + 1 >= lines.length || (lines[endIndex + 1] || '').trim() !== '') {
-                    lines.splice(endIndex + 1, 0, '');
+                    lines.splice(endIndex + 1, 0, ' ');
                 }
             });
         } else {
@@ -796,6 +978,24 @@ export default function NoteContent({
         }
 
         await updateNote(note.id, withPersistedH2SectionSpacingState(lines.join('\n'), nextSpacingEnabled));
+    };
+
+    const handleToggleTagsVisible = async () => {
+        if (tagsVisible) {
+            setEditingTagsIdx(null);
+            setActiveLineTagFilter(null);
+        }
+        await updateNote(note.id, withPersistedTagsVisible(note.content, !tagsVisible));
+    };
+
+    const handleCopyUrl = async (url) => {
+        try {
+            await navigator.clipboard.writeText(url);
+            toast.success('URL copied');
+        } catch (error) {
+            console.error('Error copying URL:', error);
+            toast.error('Failed to copy URL');
+        }
     };
 
     const scrollToSection = (actualIndex) => {
@@ -852,7 +1052,39 @@ export default function NoteContent({
         return { collapsedLineIndices: hidden, collapsedSectionPreview: preview, parentH2Map: pMap };
     })();
 
-    const contentLines = parseNoteContent({ 
+    const isVisibleLineIndexInCollapsedSection = (visibleIndex) => {
+        if (activeVisibleLineTagFilter) return false;
+
+        const entry = visibleLineEntries[visibleIndex];
+        if (!entry) return false;
+
+        const trimmed = entry.line.trim();
+        if (trimmed.startsWith('{#h1#}') || trimmed.startsWith('{#h2#}')) {
+            return false;
+        }
+
+        for (let vi = visibleIndex - 1; vi >= 0; vi--) {
+            const previous = visibleLineEntries[vi];
+            if (!previous) continue;
+
+            const previousTrimmed = previous.line.trim();
+            if (previousTrimmed.startsWith('{#h1#}')) {
+                return false;
+            }
+            if (previousTrimmed.startsWith('{#h2#}')) {
+                if (!collapsedSections.has(previous.actualIndex)) {
+                    return false;
+                }
+
+                const allCollapsed = h2Sections.length > 0 && h2Sections.every(s => collapsedSections.has(s.actualIndex));
+                return !(allCollapsed && hoveredSection === previous.actualIndex);
+            }
+        }
+
+        return false;
+    };
+
+    const contentLines = parseNoteContent({
         content: note.content, // Pass full content including meta tags for URL reversal detection
         searchTerm: searchQuery,
         onAddText: handleAddText,
@@ -860,8 +1092,43 @@ export default function NoteContent({
         allNotes: allNotes,
         onNavigateToNote: (noteId) => {
             navigate(`/notes?note=${noteId}`);
-        }
+        },
+        lastClickedUrl,
+        onLinkClick: setLastClickedUrl,
+        unclickableLinks,
+        onCopyUrl: handleCopyUrl
     });
+
+    const displayedLineIndices = (() => {
+        if (!activeVisibleLineTagFilter) {
+            return contentLines.map((_, idx) => idx);
+        }
+
+        const included = new Set();
+        visibleLineEntries.forEach(({ line, actualIndex }, idx) => {
+            if (!parseLineTags(line).includes(activeVisibleLineTagFilter)) return;
+
+            const parentH2ActualIndex = parentH2Map[actualIndex];
+            if (parentH2ActualIndex !== undefined && parentH2ActualIndex !== actualIndex) {
+                const parentH2VisibleIndex = visibleLineEntries.findIndex(entry => entry.actualIndex === parentH2ActualIndex);
+                if (parentH2VisibleIndex !== -1) {
+                    included.add(parentH2VisibleIndex);
+                }
+            }
+
+            included.add(idx);
+        });
+
+        return [...included].sort((a, b) => a - b);
+    })();
+
+    const displayedContentLines = displayedLineIndices
+        .map(idx => ({
+            line: contentLines[idx],
+            idx,
+            actualIndex: visibleLineEntries[idx]?.actualIndex ?? idx
+        }))
+        .filter(({ line }) => line !== undefined);
     
     // Extract image IDs from meta tags
     const imageIds = extractImageIds(note.content);
@@ -989,6 +1256,8 @@ export default function NoteContent({
         clean = clean.replace(/^\{#bold#\}/, '');
         // Remove {#italics#} prefix
         clean = clean.replace(/^\{#italics#\}/, '');
+        // Convert legacy sub-line markers to indentation
+        clean = normalizeSubLinePrefix(clean);
         // Remove bullet prefix
         clean = clean.replace(/^- /, '');
         return clean;
@@ -996,8 +1265,27 @@ export default function NoteContent({
 
     const getCopyableLineText = (idx) => {
         const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
-        const rawLine = note.content.split('\n')[actualIdx] || '';
-        return stripLineFormatting(rawLine).replace(/^\t+/, '');
+        const displayLine = displayContent.split('\n')[actualIdx] || '';
+        const cleanLine = stripLineFormatting(displayLine)
+            .replace(/^\t+/, '')
+            .replace(/\{#tags:[^#]*?#\}/g, '')
+            .trim();
+
+        const markdownOnlyMatch = cleanLine.match(/^!?\[[^\]]+\]\(([^)]+)\)$/);
+        if (markdownOnlyMatch) {
+            const url = markdownOnlyMatch[1];
+            return isReversedUrl(url) ? decodeSensitiveUrl(url) : url;
+        }
+
+        if (/^https?:\/\/\S+$/.test(cleanLine)) {
+            return cleanLine;
+        }
+
+        if (isReversedUrl(cleanLine)) {
+            return decodeSensitiveUrl(cleanLine);
+        }
+
+        return cleanLine;
     };
 
     const handleCopyLine = async (e, idx) => {
@@ -1015,6 +1303,70 @@ export default function NoteContent({
             console.error('Error copying line:', error);
             toast.error('Failed to copy line');
         }
+    };
+
+    const handleSaveLineTags = (idx, tags) => {
+        const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+        const allLines = note.content.split('\n');
+        const originalContent = note.content;
+        allLines[actualIdx] = setLineTags(allLines[actualIdx], tags);
+        updateNote(note.id, reorderMetaTags(allLines.join('\n')));
+        showUndoToast('Tags updated', originalContent);
+    };
+
+    const renderLineTags = (idx) => {
+        if (!tagsVisible) return null;
+        const rawLines = getRawLines(note.content);
+        const rawLine = rawLines[idx];
+        const tags = parseLineTags(rawLine);
+        if (tags.length === 0) return null;
+        return (
+            <span className="inline-flex flex-wrap gap-0.5 ml-1">
+                {tags.map(tag => (
+                    <span key={tag} className={`group/tag inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[10px] font-medium ${tagColor(tag)}`}>
+                        {tag}
+                        <button
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onClick={(e) => { e.stopPropagation(); handleSaveLineTags(idx, tags.filter(t => t !== tag)); }}
+                            className="opacity-0 group-hover/tag:opacity-100 hover:opacity-70 transition-opacity"
+                        >
+                            <span style={{fontSize:'8px', lineHeight:1}}>✕</span>
+                        </button>
+                    </span>
+                ))}
+            </span>
+        );
+    };
+
+    const renderTagButton = (idx) => {
+        if (!tagsVisible) return null;
+        const rawLines = getRawLines(note.content);
+        const rawLine = rawLines[idx];
+        const visibleText = getCopyableLineText(idx).trim();
+        if (!visibleText || /^-{4,}$/.test(visibleText)) return null;
+        return (
+            <div className="relative flex-shrink-0">
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setEditingTagsIdx(editingTagsIdx === idx ? null : idx); }}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    data-no-inline-edit="true"
+                    className="ml-1 flex-shrink-0 rounded p-1 text-gray-300 opacity-0 transition-all duration-150 hover:bg-gray-100 hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-gray-300 text-xs font-bold"
+                    title="Add tags"
+                >
+                    #
+                </button>
+                {editingTagsIdx === idx && (
+                    <InlineTagEditor
+                        lineIdx={idx}
+                        rawLine={rawLine}
+                        noteContent={note.content}
+                        onSave={(tags) => handleSaveLineTags(idx, tags)}
+                        onClose={() => setEditingTagsIdx(null)}
+                    />
+                )}
+            </div>
+        );
     };
 
     const renderCopyLineButton = (idx) => {
@@ -1074,43 +1426,134 @@ export default function NoteContent({
         return result;
     };
 
-    // Show a 10-second undo toast. Call AFTER saving history and performing the update.
+    // Show a short-lived in-card undo action. Call AFTER performing the update.
     const showUndoToast = (label, originalContent) => {
-        toast(({ closeToast }) => (
-            <UndoToast
-                label={label}
-                onUndo={() => updateNote(note.id, originalContent)}
-                closeToast={closeToast}
-            />
-        ), {
-            autoClose: 10000,
-            closeButton: false,
-            icon: false,
-            style: { padding: '8px 12px' },
+        if (undoTimeoutRef.current) {
+            clearTimeout(undoTimeoutRef.current);
+        }
+
+        setUndoAction({
+            label,
+            originalContent,
+            createdAt: Date.now()
         });
+
+        undoTimeoutRef.current = setTimeout(() => {
+            setUndoAction(null);
+            undoTimeoutRef.current = null;
+        }, 10000);
+    };
+
+    const handleUndoAction = async () => {
+        if (!undoAction) return;
+
+        if (undoTimeoutRef.current) {
+            clearTimeout(undoTimeoutRef.current);
+            undoTimeoutRef.current = null;
+        }
+
+        const contentToRestore = undoAction.originalContent;
+        setUndoAction(null);
+        await updateNote(note.id, contentToRestore);
     };
 
     const handleTextClick = (idx) => {
+        if (suppressNextLineClickRef.current) return;
         // Save note to history when inline editing starts
         saveNoteToHistory(note);
 
-        // Get the original line content for editing
+        // Get the underlying line content for editing by actual index. Visible
+        // indices can differ from stored indices because meta lines are hidden.
+        const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
         const rawLines = getRawLines(note.content);
-        const originalLine = rawLines[idx];
-        if (!originalLine) return;
+        const rawLine = rawLines[actualIdx];
+        if (!rawLine && rawLine !== '') return;
 
-        setEditingLine({ noteId: note.id, lineIndex: idx, formatting: extractLineFormatting(originalLine) });
-        setEditedLineContent(stripLineFormatting(originalLine));
+        // For display/editing use decoded content so sensitive notes show plain text.
+        const decodedLines = getRawLines(displayContent);
+        const displayLine = decodedLines[actualIdx] ?? rawLine;
+
+        setEditingLine({ noteId: note.id, lineIndex: idx, formatting: extractLineFormatting(displayLine) });
+        setEditedLineContent(stripLineFormatting(displayLine));
+    };
+
+    const isInteractiveLineTarget = (target) => Boolean(
+        target?.closest?.('a, button, input, textarea, select, label, img, svg, [role="button"], [data-no-inline-edit="true"]')
+    );
+
+    const isInteractiveLineEvent = (event) => {
+        if (isInteractiveLineTarget(event.target)) return true;
+
+        const path = typeof event.nativeEvent?.composedPath === 'function'
+            ? event.nativeEvent.composedPath()
+            : [];
+
+        return path.some(node => {
+            if (!node || !node.tagName) return false;
+            const tagName = node.tagName.toLowerCase();
+            return ['a', 'button', 'input', 'textarea', 'select', 'label', 'img', 'svg'].includes(tagName) ||
+                node.getAttribute?.('role') === 'button' ||
+                node.getAttribute?.('data-no-inline-edit') === 'true';
+        });
+    };
+
+    const getSingleMarkdownLinkUrl = (idx) => {
+        const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+        const rawLines = getRawLines(note.content);
+        const originalLine = rawLines[actualIdx] || '';
+        const match = originalLine.trim().match(/^!?\[[^\]]+\]\(([^)]+)\)$/);
+        if (!match) return null;
+
+        const url = match[1];
+        return hasReversedUrls(note.content) && isReversedUrl(url)
+            ? decodeSensitiveUrl(url)
+            : url;
+    };
+
+    const getImageMarkdownUrl = (idx) => {
+        const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+        const rawLines = getRawLines(note.content);
+        const originalLine = rawLines[actualIdx] || '';
+        const match = originalLine.match(/!?\[[^\]]*Image[^\]]*\]\(([^)]+)\)/i);
+        return match?.[1] || null;
     };
 
     const handleLineRowClick = (e, idx, isUrlOnly = false) => {
-        const interactiveTarget = e.target.closest('button, input, textarea, select, label');
-        if (interactiveTarget) return;
-        if (!isUrlOnly && e.target.closest('a')) return;
+        if (suppressNextLineClickRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (isInteractiveLineEvent(e)) return;
+
+        const imageMarkdownUrl = getImageMarkdownUrl(idx);
+        if (imageMarkdownUrl) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(imageMarkdownUrl, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        const markdownLinkUrl = getSingleMarkdownLinkUrl(idx);
+        if (markdownLinkUrl) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(markdownLinkUrl, '_blank', 'noopener,noreferrer');
+            return;
+        }
 
         if (isUrlOnly) {
             e.preventDefault();
             e.stopPropagation();
+            // Open plain URL lines directly
+            const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+            const rawLines = getRawLines(note.content);
+            const rawUrl = (rawLines[actualIdx] || '').trim();
+            const openUrl = hasReversedUrls(note.content) && isReversedUrl(rawUrl)
+                ? decodeSensitiveUrl(rawUrl)
+                : rawUrl;
+            window.open(openUrl, '_blank', 'noopener,noreferrer');
+            return;
         }
 
         handleTextClick(idx);
@@ -1122,10 +1565,18 @@ export default function NoteContent({
         const formatting = editingLine?.formatting || {};
         if (isH1) formatting.isH1 = true;
         if (isH2) formatting.isH2 = true;
-        lines[idx] = restoreLineFormatting(newText, formatting);
+        const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+        let restoredText = restoreLineFormatting(newText, formatting);
+        // Re-encode according to the note's storage format.
+        if (hasEncodedContent(note.content)) {
+            restoredText = encodeSensitiveLine(restoredText);
+        } else if (hasReversedUrls(note.content)) {
+            restoredText = reverseUrlsInText(restoredText);
+        }
+        lines[actualIdx] = restoredText;
         const updatedContent = lines.join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
-        
+
         const originalContent = note.content;
         await updateNote(note.id, reorderedContent);
         setEditingLine({ noteId: null, lineIndex: null });
@@ -1382,6 +1833,40 @@ export default function NoteContent({
             newSelectedRows.add(idx);
         }
         setSelectedRows(newSelectedRows);
+    };
+
+    const getDragSelectRange = (start, end) => {
+        const first = Math.min(start, end);
+        const last = Math.max(start, end);
+        const range = new Set();
+        for (let i = first; i <= last; i += 1) {
+            range.add(i);
+        }
+        return range;
+    };
+
+    const isDragSelectBlocked = (e) => (
+        focusMode ||
+        multiMoveMode ||
+        codeBlockMode ||
+        editingLine?.noteId === note.id ||
+        e.button !== 0 ||
+        isInteractiveLineEvent(e) ||
+        e.target.closest('a,button,input,select,textarea,[role="button"],[data-no-drag-select="true"]')
+    );
+
+    const handleLinePointerDown = (e, idx) => {
+        if (isDragSelectBlocked(e)) return;
+        dragSelectStartRef.current = idx;
+        dragSelectMovedRef.current = false;
+        setDragSelectState({ start: idx, end: idx });
+    };
+
+    const handleLinePointerEnter = (idx) => {
+        if (dragSelectStartRef.current == null) return;
+        if (dragSelectStartRef.current !== idx) dragSelectMovedRef.current = true;
+        setSelectedRows(getDragSelectRange(dragSelectStartRef.current, idx));
+        setDragSelectState({ start: dragSelectStartRef.current, end: idx });
     };
 
     const selectAllRows = () => {
@@ -1812,8 +2297,10 @@ export default function NoteContent({
     const handleBulkDelete = async () => {
         const originalContent = note.content;
         const lines = note.content.split('\n');
-        const selectedIndices = Array.from(selectedRows).sort((a, b) => b - a);
-        selectedIndices.forEach(idx => lines.splice(idx, 1));
+        const selectedIndices = Array.from(selectedRows)
+            .map(idx => visibleLineEntries[idx]?.actualIndex ?? idx)
+            .sort((a, b) => b - a);
+        selectedIndices.forEach(actualIdx => lines.splice(actualIdx, 1));
         await updateNote(note.id, reorderMetaTags(lines.join('\n')));
         setBulkDeleteMode(false);
         setSelectedRows(new Set());
@@ -1897,7 +2384,11 @@ export default function NoteContent({
 
     // Drag and drop handlers
     const handleDragStart = (e, lineIndex) => {
-        if (focusMode) return; // Disable drag in focus mode
+        if (isDragDisabled) return; // Disable drag in focus mode and sensitive notes.
+        if (!multiMoveMode && !e.target.closest('[data-line-drag-handle="true"]')) {
+            e.preventDefault();
+            return;
+        }
         
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', lineIndex.toString());
@@ -1919,7 +2410,7 @@ export default function NoteContent({
     };
 
     const handleDragOver = (e, lineIndex) => {
-        if (focusMode) return;
+        if (isDragDisabled) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         // If already locked as sub-line target, keep it
@@ -1931,7 +2422,7 @@ export default function NoteContent({
     };
 
     const handleDragEnter = (e, lineIndex) => {
-        if (focusMode) return;
+        if (isDragDisabled) return;
         e.preventDefault();
         // Only clear if we're entering a new line (not a child of current)
         if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
@@ -1953,7 +2444,7 @@ export default function NoteContent({
     };
 
     const handleDragLeave = (e) => {
-        if (focusMode) return;
+        if (isDragDisabled) return;
         // Only clear if we're truly leaving the element (not just entering a child)
         if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
         clearSubLineTimer();
@@ -1964,7 +2455,7 @@ export default function NoteContent({
     };
 
     const handleDrop = (e, targetLineIndex) => {
-        if (focusMode) return;
+        if (isDragDisabled) return;
         e.preventDefault();
 
         try {
@@ -2056,7 +2547,14 @@ export default function NoteContent({
                 const formatting = editingLine?.formatting || {};
                 if (isH1) formatting.isH1 = true;
                 if (isH2) formatting.isH2 = true;
-                lines[idx] = restoreLineFormatting(editedLineContent, formatting);
+                const currentActualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
+                let savedText = restoreLineFormatting(editedLineContent, formatting);
+                if (hasEncodedContent(note.content)) {
+                    savedText = encodeSensitiveLine(savedText);
+                } else if (hasReversedUrls(note.content)) {
+                    savedText = reverseUrlsInText(savedText);
+                }
+                lines[currentActualIdx] = savedText;
                 updateNote(note.id, reorderMetaTags(lines.join('\n')));
                 // Open adjacent line for editing
                 handleTextClick(targetIdx);
@@ -2108,6 +2606,28 @@ export default function NoteContent({
         </div>
     );
 
+    const renderLineDragHandle = () => {
+        if (isDragDisabled || multiMoveMode) return null;
+        return (
+            <span
+                data-line-drag-handle="true"
+                data-no-drag-select="true"
+                draggable
+                className="mr-1 cursor-grab select-none rounded px-1 text-[10px] leading-none text-gray-300 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-500 active:cursor-grabbing group-hover:opacity-100"
+                title="Drag to reorder"
+                onPointerDown={(e) => e.stopPropagation()}
+            >
+                ⋮⋮
+            </span>
+        );
+    };
+
+    const getDragSelectClass = (idx) => {
+        const isSelected = selectedRows.has(idx);
+        const isActiveRange = dragSelectState && idx >= Math.min(dragSelectState.start, dragSelectState.end) && idx <= Math.max(dragSelectState.start, dragSelectState.end);
+        return isSelected || isActiveRange ? 'bg-blue-50 border-l-2 border-blue-400' : '';
+    };
+
     const renderLine = (line, idx) => {
         // Check if this line contains only a URL
         let isUrlOnly = false;
@@ -2140,15 +2660,18 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
+                    draggable={!isDragDisabled && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
                     onDragStart={(e) => multiMoveMode ? handleMultiMoveDragStart(e) : handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={multiMoveMode ? handleMultiMoveDragEnd : handleDragEnd}
+                    onPointerDown={(e) => handleLinePointerDown(e, idx)}
+                    onPointerEnter={() => handleLinePointerEnter(idx)}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     onClickCapture={(e) => {
+                        if (isInteractiveLineEvent(e)) return;
                         if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                     }}
                     onDoubleClickCapture={(e) => {
@@ -2178,6 +2701,7 @@ export default function NoteContent({
                             !focusMode ? 'hover:bg-gray-50' : ''
                         } ${
                             multiMoveMode && multiMoveSelectedRows.has(idx) ? 'bg-blue-50 border-l-2 border-blue-400 cursor-grab' : ''
+                        } ${getDragSelectClass(idx)
                         }`}
                     style={{ ...getCodeBlockContainerStyle(idx), paddingLeft: `calc(${indentLevel * 2}rem + 2rem)` }}
                 >
@@ -2205,6 +2729,7 @@ export default function NoteContent({
                             className="mr-2"
                         />
                     )}
+                    {renderLineDragHandle()}
                     {shouldIndent && !isH1 && !isH2 && !isCodeBlock && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (() => {
                         // Check if line is blank by checking the raw line content
                         const rawLines = getRawLines(note.content);
@@ -2249,27 +2774,23 @@ export default function NoteContent({
                         {React.cloneElement(line, {
                             onContextMenu: (e) => handleRightClick(e, idx),
                             onClickCapture: (e) => {
+                                if (isInteractiveLineEvent(e)) return;
                                 if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                             },
                             onDoubleClickCapture: (e) => {
                                 if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                             },
-                            onClick: () => handleTextClick(idx),
+                            onClick: (e) => {
+                                handleTextClick(idx);
+                            },
                             className: `${line.props.className || ''} ${
                                 rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                             }`,
                         })}
+                        {!focusMode && renderLineTags(idx)}
                         {isH2 && !focusMode && renderSectionHeaderActions(visibleLineEntries[idx]?.actualIndex ?? idx)}
                         {!focusMode && renderCopyLineButton(idx)}
-                        {!focusMode && isFirstLine && !isH1 && (
-                            <button
-                                onClick={() => handleConvertToH1(note, line.props.children)}
-                                className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
-                                title="Convert to H1"
-                            >
-                                H1
-                            </button>
-                        )}
+                        {!focusMode && renderTagButton(idx)}
                         {!focusMode && !isFirstLine && isH1 && (
                             <button
                                 onClick={() => handleMoveH1ToTop(idx)}
@@ -2304,17 +2825,20 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode}
+	                    draggable={!isDragDisabled}
                     onDragStart={(e) => handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={handleDragEnd}
+                    onPointerDown={(e) => handleLinePointerDown(e, idx)}
+                    onPointerEnter={() => handleLinePointerEnter(idx)}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`w-full py-4 relative group ${
                         dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
-                    } ${!focusMode ? 'hover:bg-gray-50' : ''}`}
+                    } ${!focusMode ? 'hover:bg-gray-50' : ''} ${getDragSelectClass(idx)}`}
+                    style={{ paddingLeft: (indentFlags[idx] || 0) > 0 ? `calc(${(indentFlags[idx] || 0) * 2}rem + 2rem)` : undefined }}
                 >
                     <div className="relative flex items-center w-full">
                         <hr className="border-t border-gray-300 w-full" />
@@ -2334,13 +2858,15 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
+	                    draggable={!isDragDisabled && (multiMoveMode ? multiMoveSelectedRows.has(idx) : true)}
                     onDragStart={(e) => multiMoveMode ? handleMultiMoveDragStart(e) : handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={multiMoveMode ? handleMultiMoveDragEnd : handleDragEnd}
+                    onPointerDown={(e) => handleLinePointerDown(e, idx)}
+                    onPointerEnter={() => handleLinePointerEnter(idx)}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     onMouseEnter={() => {
                         const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
@@ -2362,8 +2888,9 @@ export default function NoteContent({
                         dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : subLineDropTarget === idx ? 'border-r-4 border-amber-400 bg-amber-50' : ''
                     } ${
                         !focusMode ? 'hover:bg-gray-50' : ''
-                    }`}
+                    } ${getDragSelectClass(idx)}`}
                 >
+                    {renderLineDragHandle()}
                 </div>
             );
         }
@@ -2374,15 +2901,18 @@ export default function NoteContent({
         return (
             <div
                 key={idx}
-                draggable={!focusMode && !multiMoveMode}
+	                draggable={!isDragDisabled && !multiMoveMode}
                 onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDragEnter={(e) => handleDragEnter(e, idx)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, idx)}
                 onDragEnd={handleDragEnd}
+                onPointerDown={(e) => handleLinePointerDown(e, idx)}
+                onPointerEnter={() => handleLinePointerEnter(idx)}
                 onContextMenu={(e) => handleRightClick(e, idx)}
                 onClickCapture={(e) => {
+                    if (isInteractiveLineEvent(e)) return;
                     if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                 }}
                 onDoubleClickCapture={(e) => {
@@ -2402,7 +2932,7 @@ export default function NoteContent({
                         dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : subLineDropTarget === idx ? 'border-r-4 border-amber-400 bg-amber-50' : ''
                     } ${
                         !focusMode ? 'hover:bg-gray-50' : ''
-                    }`}
+                    } ${getDragSelectClass(idx)}`}
                 style={{ ...getCodeBlockContainerStyle(idx), paddingLeft: `${(indentFlags[idx] || 0) * 2}rem` }}
             >
                 {bulkDeleteMode && bulkDeleteNoteId === note.id && (
@@ -2429,6 +2959,7 @@ export default function NoteContent({
                         className="mr-2"
                     />
                 )}
+                {renderLineDragHandle()}
                                 {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
@@ -2488,7 +3019,8 @@ export default function NoteContent({
                                 } else {
                                     // For regular text, wrap with click handler
                                     return (
-                                        <div 
+                                        <div
+                                            onClick={() => handleTextClick(idx)}
                                             className="cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded inline-flex min-w-0"
                                         >
                                             {content}
@@ -2496,25 +3028,10 @@ export default function NoteContent({
                                     );
                                 }
                             })()}
+                            {!focusMode && renderLineTags(idx)}
                             {isH2 && !focusMode && renderSectionHeaderActions(visibleLineEntries[idx]?.actualIndex ?? idx)}
                             {!focusMode && renderCopyLineButton(idx)}
-                            {!focusMode && (() => {
-                                // Check if this line contains only a URL (same logic as above)
-                                const rawLines = getRawLines(note.content);
-                                const originalLine = rawLines[idx];
-                                const urlRegex = /^(https?:\/\/[^\s]+)$/;
-                                const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
-                                const isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
-                                return !isUrlOnly;
-                            })() && isFirstLine && !isFirstLineH1 && (
-                                <button
-                                    onClick={() => handleConvertToH1(note, lineContent)}
-                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                    title="Convert to H1"
-                                >
-                                    H1
-                                </button>
-                            )}
+                            {!focusMode && renderTagButton(idx)}
                             {!focusMode && (() => {
                                 // Check if this line contains only a URL (same logic as above)
                                 const rawLines = getRawLines(note.content);
@@ -2582,17 +3099,35 @@ export default function NoteContent({
     };
 
     return (
-        <div 
+        <div
+            onMouseEnter={() => isSensitive && setCardHovered(true)}
             onMouseLeave={() => {
+                if (isSensitive) setCardHovered(false);
                 if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                 if (contextMenuPinnedSectionRef.current !== null) return;
                 setHoveredSection(null);
             }}
             className={`relative ${
-            focusMode 
-                ? 'bg-transparent p-2 border-0' 
+            focusMode
+                ? 'bg-transparent p-2 border-0'
                 : 'bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed'
         }`}>
+            {showScramble && <SensitiveScrambleOverlay content={note.content} />}
+            {undoAction && !focusMode && (
+                <div className="absolute right-2 top-2 z-30 flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 shadow-sm">
+                    <span className="max-w-[180px] truncate text-xs font-medium text-amber-800">
+                        {undoAction.label}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={handleUndoAction}
+                        className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        title="Undo last note change"
+                    >
+                        Undo
+                    </button>
+                </div>
+            )}
             {sectionActionPopup && !focusMode && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
@@ -2651,8 +3186,10 @@ export default function NoteContent({
                     </div>
                 </div>
             )}
-	            {h2Sections.length > 0 && !focusMode && (
+	            {!focusMode && (
 	                <div className="flex justify-end gap-2 mb-1">
+                    {h2Sections.length > 0 && (
+                        <>
 	                    <button
 	                        onClick={() => {
 	                            const nextQuickAccessState = !showSectionQuickAccess;
@@ -2698,6 +3235,17 @@ export default function NoteContent({
                         {h2SectionSpacingButtonLabel}
                     </button>
                     <button
+                        onClick={handleToggleTagsVisible}
+                        className={`text-xs px-1 py-0.5 rounded transition-colors ${
+                            tagsVisible
+                                ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
+                                : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                        title={tagsVisible ? 'Hide line tags' : 'Show line tags'}
+                    >
+                        {tagsVisible ? 'Hide tags' : 'Show tags'}
+                    </button>
+                    <button
                         onClick={() => {
                             const allCollapsed = h2Sections.every(s => collapsedSections.has(s.actualIndex));
                             if (allCollapsed) {
@@ -2714,6 +3262,8 @@ export default function NoteContent({
                     >
                         {h2Sections.every(s => collapsedSections.has(s.actualIndex)) ? '▶▶ expand all' : '▼▼ collapse all'}
                     </button>
+                        </>
+                    )}
                 </div>
             )}
             {showSectionQuickAccess && h2Sections.length > 0 && !focusMode && (
@@ -2735,15 +3285,64 @@ export default function NoteContent({
                     </div>
                 </div>
             )}
+            {tagsVisible && allLineTags.length > 0 && !focusMode && (
+                <div className="mb-3 rounded-lg border border-sky-100 bg-white/80 px-3 py-2 shadow-sm">
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-sky-400">
+                        Tags
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => setActiveLineTagFilter(null)}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                activeVisibleLineTagFilter
+                                    ? 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                    : 'border-sky-200 bg-sky-100 text-sky-800'
+                            }`}
+                            title="Show all note lines"
+                        >
+                            All
+                        </button>
+                        {allLineTags.map(tag => (
+                            <button
+                                key={`line-tag-filter-${tag}`}
+                                type="button"
+                                onClick={() => setActiveLineTagFilter(activeVisibleLineTagFilter === tag ? null : tag)}
+                                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeVisibleLineTagFilter === tag
+                                        ? 'border-sky-300 bg-sky-100 text-sky-800'
+                                        : `${tagColor(tag)} border-transparent hover:opacity-80`
+                                }`}
+                                title={`Show lines tagged ${tag}`}
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                        {activeVisibleLineTagFilter && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveLineTagFilter(null)}
+                                className="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+                                title="Clear selected tag filter"
+                            >
+                                Clear selection
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
             <div className="whitespace-pre-wrap break-words break-all">
-                {contentLines.map((line, idx) => {
-                    const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
-                    const isHidden = collapsedLineIndices.has(actualIdx);
+                {displayedContentLines.map(({ line, idx, actualIndex }) => {
+                    const actualIdx = actualIndex;
+                    const isHidden = !activeVisibleLineTagFilter && (
+                        collapsedLineIndices.has(actualIdx) ||
+                        isVisibleLineIndexInCollapsedSection(idx)
+                    );
                     const isQuickAccessHighlighted = highlightedQuickAccessSection === actualIdx;
                     
                     return (
                         <div 
-                            key={`anim-wrap-${idx}`}
+                            key={`anim-wrap-${actualIdx}`}
                             id={`note-${note.id}-line-${actualIdx}`}
                             className={`grid scroll-mt-20 transition-all ease-[cubic-bezier(0.4,0,0.2,1)] duration-700 relative ${
                                 isHidden ? 'grid-rows-[0fr] opacity-0 mt-0 pointer-events-none' : 'grid-rows-[1fr] opacity-100 mt-1 pointer-events-auto'
@@ -2751,14 +3350,7 @@ export default function NoteContent({
                                 isQuickAccessHighlighted ? 'animate-pulse [&_*]:!text-red-600' : ''
                             }`}
                         >
-                            {/* Insertion point highlight */}
-                            {insertionPoint && insertionPoint.idx === actualIdx && (
-                                <div className={`absolute left-0 right-0 h-1 bg-blue-500 z-50 rounded-full transition-all ${
-                                    insertionPoint.position === 'above' ? '-top-1' : '-bottom-1'
-                                }`} />
-                            )}
-                            {/* Changed overflow-hidden to overflow-visible to prevent clipping of the insertion buttons flyout */}
-                            <div className="overflow-visible min-h-0">
+                            <div className="overflow-hidden min-h-0">
                                 {renderLine(line, idx)}
                             </div>
                         </div>
@@ -3027,7 +3619,7 @@ export default function NoteContent({
                                     → Move to Note
                                 </button>
                                 <button
-                                    draggable={true}
+	                                    draggable={!isDragDisabled}
                                     onDragStart={handleMultiMoveDragStart}
                                     onDragEnd={handleMultiMoveDragEnd}
                                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg cursor-move hover:bg-blue-700 active:bg-blue-800 transition-all duration-150 border-2 border-dashed border-blue-300 shadow-md hover:shadow-lg"
@@ -3176,7 +3768,11 @@ export default function NoteContent({
                             onSave={(newText) => {
                                 if (newText.trim()) {
                                     const lines = note.content.split('\n');
-                                    lines.push(newText.trim());
+                                    // Encode the new line if the note uses sensitive URL encoding
+                                    const lineToAdd = hasReversedUrls(note.content)
+                                        ? reverseUrlsInText(newText.trim())
+                                        : newText.trim();
+                                    lines.push(lineToAdd);
                                     updateNote(note.id, lines.join('\n'));
                                 }
                                 setAddingLineNoteId(null);
@@ -3205,11 +3801,12 @@ export default function NoteContent({
                 isOpen={showAddTextModal}
                 onClose={() => setShowAddTextModal(false)}
                 onSave={handleSaveText}
+                onRemove={handleRemoveText}
                 noteId={note.id}
                 url={urlForText}
                 isEditing={isEditing}
                 initialText={currentCustomText}
-                noteContent={note.content}
+                noteContent={prepareContentForTextLinkEdit(note.content)}
             />
         </div>
     );

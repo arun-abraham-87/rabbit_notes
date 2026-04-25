@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateNoteById } from '../utils/ApiUtils';
+import { deleteNoteById, updateNoteById } from '../utils/ApiUtils';
 import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon, MoonIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
@@ -9,6 +9,13 @@ import AddTextModal from './AddTextModal';
 import { checkNeedsReview, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
 import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff, handleCadenceChange } from '../utils/CadenceHelpUtils';
+import { getTimerStatus, removeTimerMetaLines, withTimerMeta } from '../utils/TimerUtils';
+
+const SUPER_CRITICAL_REVIEW_META = 'meta::review_super_critical';
+
+const hasTimerCadence = (note) => (
+  !!note?.content?.split('\n').some(l => l.trim().startsWith('meta::timer_cadence::'))
+);
 
 // Link type indicator function
 const getLinkTypeIndicator = (url) => {
@@ -281,14 +288,30 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [snoozeToast, setSnoozeToast] = useState(null);
+  const [hideTimerReviews, setHideTimerReviews] = useState(() => localStorage.getItem('dashboardHideReviewTimers') !== 'false');
+
+  useEffect(() => {
+    localStorage.setItem('dashboardHideReviewTimers', hideTimerReviews ? 'true' : 'false');
+  }, [hideTimerReviews]);
+
+  useEffect(() => {
+    const handleShowTimerReviews = () => setHideTimerReviews(false);
+    document.addEventListener('showReviewTimerCards', handleShowTimerReviews);
+    return () => document.removeEventListener('showReviewTimerCards', handleShowTimerReviews);
+  }, []);
 
   useEffect(() => {
     const overdue = findwatchitemsOverdue(notes).filter(note => !note.content.includes('meta::reminder'));
     
     // Sort overdue notes to prioritize those with meta::review_overdue_priority tag
     const sortedOverdue = overdue.sort((a, b) => {
+      const aIsSuperCritical = a.content.includes(SUPER_CRITICAL_REVIEW_META);
+      const bIsSuperCritical = b.content.includes(SUPER_CRITICAL_REVIEW_META);
       const aHasPriority = a.content.includes('meta::review_overdue_priority');
       const bHasPriority = b.content.includes('meta::review_overdue_priority');
+
+      if (aIsSuperCritical && !bIsSuperCritical) return -1;
+      if (!aIsSuperCritical && bIsSuperCritical) return 1;
       
       if (aHasPriority && !bHasPriority) return -1; // a comes first
       if (!aHasPriority && bHasPriority) return 1;  // b comes first
@@ -304,6 +327,28 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     const snoozed = allWatchNotes.filter(note => !overdue.some(overdueNote => overdueNote.id === note.id));
     setSnoozedNotes(snoozed);
   }, [notes]);
+
+  useEffect(() => {
+    const cleanupExpiredOnceTimers = async () => {
+      const timersToCleanup = (notes || []).filter(note => getTimerStatus(note)?.shouldCleanup);
+      if (timersToCleanup.length === 0) return;
+
+      const updates = await Promise.all(timersToCleanup.map(async note => {
+        const updatedContent = removeTimerMetaLines(note.content);
+        await updateNoteById(note.id, updatedContent);
+        return { id: note.id, content: updatedContent };
+      }));
+
+      setNotes(prevNotes => prevNotes.map(note => {
+        const update = updates.find(item => item.id === note.id);
+        return update ? { ...note, content: update.content } : note;
+      }));
+    };
+
+    cleanupExpiredOnceTimers().catch(error => {
+      console.error('Error cleaning up expired one-time timers:', error);
+    });
+  }, [notes, setNotes]);
 
   const filterNotesBySearch = (notes) => {
     if (!searchText.trim()) return notes;
@@ -321,7 +366,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     });
   };
 
-  const filteredOverdueNotes = filterNotesBySearch(overdueNotes);
+  const searchedOverdueNotes = filterNotesBySearch(overdueNotes).filter(note => !getTimerStatus(note)?.shouldCleanup);
+  const hiddenTimerReviewsCount = hideTimerReviews ? searchedOverdueNotes.filter(hasTimerCadence).length : 0;
+  const filteredOverdueNotes = hideTimerReviews
+    ? searchedOverdueNotes.filter(note => !hasTimerCadence(note))
+    : searchedOverdueNotes;
   const filteredSnoozedNotes = filterNotesBySearch(snoozedNotes);
 
 
@@ -520,11 +569,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   const handleUnfollow = async (note) => {
     try {
-      // Remove meta::watch and meta::review_overdue_priority so the note
-      // disappears from both the watchlist and the flagged reviews section.
+      // Remove watch-related dashboard tags so the note disappears from review sections.
       const updatedContent = note.content
         .split('\n')
-        .filter(line => !line.trim().startsWith('meta::watch') && !line.trim().startsWith('meta::review_overdue_priority'))
+        .filter(line =>
+          !line.trim().startsWith('meta::watch') &&
+          !line.trim().startsWith('meta::review_overdue_priority') &&
+          line.trim() !== SUPER_CRITICAL_REVIEW_META
+        )
         .join('\n')
         .trim();
       
@@ -601,17 +653,31 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     }
   };
 
-  const handleSetTimer = async (note, cadenceType, cadenceValue) => {
+  const handleToggleSuperCritical = async (note) => {
     try {
-      // Remove any existing timer cadence, then add new one
-      let updatedContent = note.content
+      const hasSuperCritical = note.content.includes(SUPER_CRITICAL_REVIEW_META);
+      const lines = note.content
         .split('\n')
-        .filter(l => !l.trim().startsWith('meta::timer_cadence::'))
-        .join('\n');
-      updatedContent = updatedContent.trim() + `\nmeta::timer_cadence::${cadenceType}::${cadenceValue}`;
+        .filter(line => line.trim() !== SUPER_CRITICAL_REVIEW_META);
+      const updatedContent = hasSuperCritical
+        ? lines.join('\n')
+        : `${lines.join('\n').trim()}\n${SUPER_CRITICAL_REVIEW_META}`;
+
       await updateNoteById(note.id, updatedContent);
       setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
-      Alerts.success('Timer set');
+      Alerts.success(hasSuperCritical ? 'Removed super critical' : 'Marked super critical');
+    } catch (error) {
+      console.error('Error toggling super critical review:', error);
+      Alerts.error('Failed to update super critical tag');
+    }
+  };
+
+  const handleSetTimer = async (note, cadenceType, cadenceValue, once = false) => {
+    try {
+      const updatedContent = withTimerMeta(note.content, cadenceType, cadenceValue, { once });
+      await updateNoteById(note.id, updatedContent);
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      Alerts.success(once ? 'One-time timer set' : 'Timer set');
     } catch (error) {
       Alerts.error('Failed to set timer');
     }
@@ -619,15 +685,31 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   const handleRemoveTimer = async (note) => {
     try {
-      const updatedContent = note.content
-        .split('\n')
-        .filter(l => !l.trim().startsWith('meta::timer_cadence::'))
-        .join('\n');
+      const updatedContent = removeTimerMetaLines(note.content);
       await updateNoteById(note.id, updatedContent);
       setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
       Alerts.success('Timer removed');
     } catch (error) {
       Alerts.error('Failed to remove timer');
+    }
+  };
+
+  const handleDeleteReviewNote = async (note) => {
+    const firstLine = note.content
+      .split('\n')
+      .find(line => line.trim() && !line.trim().startsWith('meta::'))
+      ?.replace(/^\{#h[12]#\}/, '')
+      ?.trim() || 'this note';
+
+    if (!window.confirm(`Delete "${firstLine}"? This cannot be undone.`)) return;
+
+    try {
+      await deleteNoteById(note.id);
+      setNotes(notes.filter(n => n.id !== note.id));
+      Alerts.success('Note deleted');
+    } catch (error) {
+      console.error('Error deleting review note:', error);
+      Alerts.error('Failed to delete note');
     }
   };
 
@@ -1205,7 +1287,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       </div>
 
       {/* Overdue Notes Section */}
-      {filteredOverdueNotes.length > 0 && (
+      {(filteredOverdueNotes.length > 0 || hiddenTimerReviewsCount > 0) && (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full mb-4">
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
@@ -1213,8 +1295,27 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                 <ClockIcon className="h-6 w-6 text-gray-500" />
                 <h3 className="ml-3 text-base font-semibold text-gray-800">
                   Reviews Due ({filteredOverdueNotes.length})
+                  {hiddenTimerReviewsCount > 0 && (
+                    <span className="ml-2 text-xs font-medium text-amber-600">
+                      {hiddenTimerReviewsCount} timer{hiddenTimerReviewsCount !== 1 ? 's' : ''} hidden
+                    </span>
+                  )}
                 </h3>
               </div>
+              {searchedOverdueNotes.some(hasTimerCadence) && (
+                <button
+                  type="button"
+                  onClick={() => setHideTimerReviews(prev => !prev)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                    hideTimerReviews
+                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={hideTimerReviews ? 'Show review cards that have timers' : 'Hide review cards that have timers'}
+                >
+                  {hideTimerReviews ? `Show timers (${hiddenTimerReviewsCount})` : 'Hide timers'}
+                </button>
+              )}
             </div>
           </div>
           <div className="divide-y divide-gray-100">
@@ -1223,6 +1324,9 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
               const reviewTime = reviews[note.id];
               const timeUntilNext = getTimeUntilNextReview(note);
               const isFocused = isReviewsOverdueOnlyMode && focusedReviewIndex === index;
+              const hasTimer = hasTimerCadence(note);
+              const timerStatus = getTimerStatus(note);
+              const isSuperCritical = note.content.includes(SUPER_CRITICAL_REVIEW_META);
 
               return (
                 <div 
@@ -1240,15 +1344,36 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                   }}
                 >
                   {/* Note Sub-Card */}
-                  <div className={`bg-gradient-to-r from-blue-50 to-indigo-50 border rounded-lg p-4 shadow-sm ${
-                    note.content.includes('meta::review_overdue_priority') 
+                  <div className={`relative bg-gradient-to-r border rounded-lg p-4 shadow-sm ${
+                    isSuperCritical
+                      ? 'from-rose-50 to-red-50 border-red-500 border-2'
+                      : note.content.includes('meta::review_overdue_priority') 
                       ? 'border-red-400 border-2' 
-                      : 'border-blue-200 border'
+                      : 'from-blue-50 to-indigo-50 border-blue-200 border'
                   }`}>
+                  {hasTimer && (
+                    <div className="absolute right-3 top-3 flex flex-col items-center" title="This review has a timer">
+                      <div className={`text-4xl leading-none ${timerStatus?.expired ? 'text-red-500' : 'text-blue-500'}`}>⏱</div>
+                      {timerStatus?.once && (
+                        <div className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                          timerStatus.expired
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {timerStatus.expired ? `Expired ${timerStatus.daysExpired}d` : 'Once'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="grid grid-cols-4 gap-4">
                     {/* First Section - Description (50%) */}
                     <div className="col-span-2 flex flex-col">
-                      <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
+                      {isSuperCritical && (
+                        <div className="mb-1 w-fit rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          Super critical
+                        </div>
+                      )}
+                      <h4 className={`text-base font-medium text-gray-900 mb-2 break-words ${hasTimer ? 'pr-12' : ''}`}>
                         {formatContent(note.content, note)}
                       </h4>
                       <div className="flex flex-col gap-1 text-sm text-gray-500">
@@ -1280,11 +1405,35 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                           </svg>
                           <span className="text-xs">Unwatch</span>
                         </button>
-                        
-                        {/* Timer button */}
+
+	                        <button
+	                          onClick={() => handleToggleSuperCritical(note)}
+                          className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg transition-colors duration-150 ${
+                            isSuperCritical
+                              ? 'text-white bg-red-600 hover:bg-red-700'
+                              : 'text-red-700 bg-red-50 hover:bg-red-100'
+                          }`}
+                          title={isSuperCritical ? 'Remove super critical' : 'Mark super critical'}
+                          style={{ minWidth: 58, minHeight: 48 }}
+                        >
+                          <span className="text-base leading-none">!!!</span>
+	                          <span className="text-xs">Super</span>
+	                        </button>
+
+	                        <button
+	                          onClick={() => handleDeleteReviewNote(note)}
+	                          className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+	                          title="Delete note"
+	                          style={{ minWidth: 48, minHeight: 48 }}
+	                        >
+	                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0h10" />
+	                          </svg>
+	                          <span className="text-xs">Delete</span>
+	                        </button>
+	                        
+	                        {/* Timer button */}
                         {(() => {
-                          const timerLine = note.content.split('\n').find(l => l.trim().startsWith('meta::timer_cadence::'));
-                          const hasTimer = !!timerLine;
                           return hasTimer ? (
                             <button
                               onClick={() => handleRemoveTimer(note)}
@@ -1306,24 +1455,44 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                                 <span className="text-xs">Timer</span>
                               </button>
                               {/* Dropdown cadence picker */}
-                              <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 hidden group-hover/timer:block min-w-[140px]">
+                              <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 hidden group-hover/timer:block min-w-[210px]">
                                 <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Monthly on day</div>
                                 <div className="flex flex-wrap gap-1 mb-2">
-                                  {[1,5,10,15,20,25,28].map(d => (
+                                  {Array.from({ length: 31 }, (_, index) => index + 1).map(d => (
                                     <button key={d} onClick={() => handleSetTimer(note, 'monthly', d)}
-                                      className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
+                                      className="w-6 py-0.5 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
                                       {d}
                                     </button>
                                   ))}
                                 </div>
                                 <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Weekly on</div>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1 mb-2">
                                   {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) => (
                                     <button key={d} onClick={() => handleSetTimer(note, 'weekly', i + 1)}
                                       className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
                                       {d}
                                     </button>
                                   ))}
+                                </div>
+                                <div className="border-t border-gray-100 pt-2">
+                                  <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Only once: monthly day</div>
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {Array.from({ length: 31 }, (_, index) => index + 1).map(d => (
+                                      <button key={`once-monthly-${d}`} onClick={() => handleSetTimer(note, 'monthly', d, true)}
+                                        className="w-6 py-0.5 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100">
+                                        {d}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mb-1 px-1 font-medium">Only once: weekly on</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) => (
+                                      <button key={`once-weekly-${d}`} onClick={() => handleSetTimer(note, 'weekly', i + 1, true)}
+                                        className="px-1.5 py-0.5 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100">
+                                        {d}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
                             </div>

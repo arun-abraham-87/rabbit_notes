@@ -26,7 +26,9 @@ const StockPrice = ({ forceExpanded = false }) => {
   const [totalValue, setTotalValue] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [tempValue, setTempValue] = useState('');
-  const [editingField, setEditingField] = useState(null); // 'shares' or 'multiplier'
+  const [editingField, setEditingField] = useState(null); // 'shares' or 'multiplier' or 'price'
+  const [customPrice, setCustomPrice] = useState(null); // null = use live price
+  const [usdToAud, setUsdToAud] = useState(null);
   const [stockNoteId, setStockNoteId] = useState(null);
 
   // Initialize or update API call count
@@ -212,10 +214,11 @@ const StockPrice = ({ forceExpanded = false }) => {
 
   // Update total value when price, shares, or multiplier changes
   useEffect(() => {
-    if (price !== null) {
-      setTotalValue(shares * price * multiplier);
+    const effectivePrice = customPrice !== null ? customPrice : price;
+    if (effectivePrice !== null) {
+      setTotalValue(shares * effectivePrice * multiplier);
     }
-  }, [price, shares, multiplier]);
+  }, [price, customPrice, shares, multiplier]);
 
   // Load shares from notes on startup
   useEffect(() => {
@@ -317,6 +320,24 @@ const StockPrice = ({ forceExpanded = false }) => {
     return () => document.removeEventListener('refreshStockPrice', handler);
   }, [apiKey]);
 
+  // Load USD→AUD rate from cached exchange rate data
+  const loadUsdToAud = () => {
+    try {
+      const cached = localStorage.getItem('exchangeRatesData');
+      if (cached) {
+        const { usdToInr, audToInr } = JSON.parse(cached);
+        if (usdToInr && audToInr) setUsdToAud(usdToInr / audToInr);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadUsdToAud();
+    const handler = () => loadUsdToAud();
+    document.addEventListener('exchangeRatesUpdated', handler);
+    return () => document.removeEventListener('exchangeRatesUpdated', handler);
+  }, []);
+
   const handleValueSubmit = (e) => {
     e.preventDefault();
     const newValue = parseFloat(tempValue);
@@ -325,6 +346,8 @@ const StockPrice = ({ forceExpanded = false }) => {
         const qty = Math.floor(newValue);
         setShares(qty);
         saveSharesNote(qty);
+      } else if (editingField === 'price') {
+        setCustomPrice(newValue);
       } else {
         setMultiplier(newValue);
       }
@@ -454,15 +477,22 @@ const StockPrice = ({ forceExpanded = false }) => {
                 <div>
                   <p className="text-sm text-gray-600">Calculation</p>
                   <p className="text-lg font-mono">
-                    <span 
+                    <span
                       className="cursor-pointer hover:text-blue-600 transition-colors"
                       onClick={() => openEditPopup('shares', shares)}
                     >
                       {shares}
                     </span>
-                    {' × $'}{price?.toFixed(2)}
+                    {' × $'}
+                    <span
+                      className={`cursor-pointer transition-colors ${customPrice !== null ? 'text-orange-500 hover:text-orange-600' : 'hover:text-blue-600'}`}
+                      onClick={() => openEditPopup('price', customPrice !== null ? customPrice : (price || 0))}
+                      title="Click to simulate a different price"
+                    >
+                      {(customPrice !== null ? customPrice : price)?.toFixed(2)}
+                    </span>
                     {' × '}
-                    <span 
+                    <span
                       className="cursor-pointer hover:text-blue-600 transition-colors"
                       onClick={() => openEditPopup('multiplier', multiplier)}
                     >
@@ -470,6 +500,25 @@ const StockPrice = ({ forceExpanded = false }) => {
                     </span>
                     {' = $'}{totalValue.toFixed(2)}
                   </p>
+                  {customPrice !== null && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-orange-500">Simulated price (live: ${price?.toFixed(2)})</span>
+                      <button
+                        onClick={() => setCustomPrice(null)}
+                        className="text-xs text-gray-500 hover:text-gray-800 underline transition-colors"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
+                  {usdToAud && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 mb-0.5">In AUD <span className="text-gray-400">(1 USD = A${usdToAud.toFixed(4)})</span></p>
+                      <p className="text-lg font-mono font-semibold text-green-700">
+                        A${(totalValue * usdToAud).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -482,7 +531,7 @@ const StockPrice = ({ forceExpanded = false }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <h3 className="text-lg font-bold mb-4">
-              Edit {editingField === 'shares' ? 'Number of Shares' : 'Multiplier'}
+              {editingField === 'shares' ? 'Edit Number of Shares' : editingField === 'price' ? 'Simulate Stock Price' : 'Edit Multiplier'}
             </h3>
             <form onSubmit={handleValueSubmit}>
               <input
@@ -492,6 +541,7 @@ const StockPrice = ({ forceExpanded = false }) => {
                 className="w-full p-2 border rounded mb-4"
                 min="0.01"
                 step={editingField === 'shares' ? "1" : "0.01"}
+                placeholder={editingField === 'price' ? 'Enter simulated price' : ''}
                 autoFocus
               />
               <div className="flex justify-end gap-2">

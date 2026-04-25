@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import { updateNoteById } from '../utils/ApiUtils';
 import { getEventDetails } from '../utils/EventUtils';
+import { parseTimerMeta, removeTimerMetaLines, withOneTimeTimerDueDate } from '../utils/TimerUtils';
 
 import { DocumentTextIcon } from '@heroicons/react/24/solid';
 
@@ -755,6 +756,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     setNotes(prev => prev.map(n => n.id === rawNote.id ? { ...n, content: updatedContent } : n));
   };
 
+  const handleToggleTimeIt = async (note, dueDate) => {
+    if (!notes || !setNotes) return;
+    const rawNote = notes.find(n => n.id === note.id);
+    if (!rawNote) return;
+
+    const hasTimer = !!parseTimerMeta(rawNote.content);
+    const updatedContent = hasTimer
+      ? removeTimerMetaLines(rawNote.content).trim()
+      : withOneTimeTimerDueDate(rawNote.content, dueDate);
+
+    await updateNoteById(rawNote.id, updatedContent);
+    setNotes(prev => prev.map(n => n.id === rawNote.id ? { ...n, content: updatedContent } : n));
+  };
+
   const colorOptions = [
     '#ffffff', // white
     '#fef9c3', // yellow
@@ -1166,6 +1181,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
             // Don't show anniversary for deadline events
             const shouldShowAnniversary = isRecurring && !note.isDeadline;
+            const isTimed = !!parseTimerMeta(note.content);
 
             return (
               <div
@@ -1204,7 +1220,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                 )}
 
                 {/* Tags */}
-                {(() => {
+	                  {(() => {
                   const lines = note.content.split('\n');
                   const tagsLine = lines.find(line => line.startsWith('event_tags:'));
                   const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
@@ -1279,8 +1295,19 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                         <span>+</span><span>Deadline</span>
                       </button>
                     );
-                  })()}
-                  {/* Color Options */}
+	                  })()}
+	                  <button
+	                    onClick={(e) => { e.stopPropagation(); handleToggleTimeIt(note, eventDate); }}
+	                    className={`flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-full transition-colors ${
+	                      isTimed
+	                        ? 'bg-amber-500 text-white shadow-sm hover:bg-amber-600'
+	                        : 'border border-dashed border-amber-300 text-amber-600 bg-white/80 hover:bg-amber-50 hover:border-amber-400'
+	                    }`}
+	                    title={isTimed ? 'Remove timer reminder' : 'Show this in timer reminders'}
+	                  >
+	                    <span>{isTimed ? '✓' : '+'}</span><span>Time it</span>
+	                  </button>
+	                  {/* Color Options */}
                   <div className="flex gap-0.5 flex-wrap">
                     {colorOptions.map(color => (
                       <button

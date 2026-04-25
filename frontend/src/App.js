@@ -40,7 +40,17 @@ import FamilyTree from './pages/FamilyTree';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
+import TinyHabits from './pages/TinyHabits';
+import LifeTrackers from './pages/LifeTrackers';
+import Taxes from './pages/Taxes';
 import { applySavedAppFont } from './utils/FontUtils';
+import {
+  applyThemePreference,
+  getEffectiveTheme,
+  getStoredThemePreference,
+  saveThemePreference,
+  subscribeToSystemThemeChanges,
+} from './utils/ThemeUtils';
 
 // Apply saved font preference on app load
 applySavedAppFont();
@@ -290,6 +300,23 @@ const MainContentArea = ({
               </div>
             </div>
           } />
+          <Route path="/tiny-habits" element={
+            <div className="h-full overflow-y-auto">
+              <TinyHabits />
+            </div>
+          } />
+          <Route path="/life-trackers" element={
+            <div className="h-full overflow-y-auto">
+              <LifeTrackers setAllNotes={setAllNotes} />
+            </div>
+          } />
+          <Route path="/taxes" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <Taxes />
+              </div>
+            </div>
+          } />
         </Routes>
       </div>
     </div>
@@ -303,7 +330,13 @@ const AppContent = () => {
   const location = useLocation();
   const [allNotes, setAllNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [settings, setSettings] = useState(defaultSettings);
+  const [settings, setSettings] = useState(() => ({
+    ...defaultSettings,
+    theme: getStoredThemePreference(),
+  }));
+  const [resolvedTheme, setResolvedTheme] = useState(() => (
+    getEffectiveTheme(getStoredThemePreference())
+  ));
 
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
@@ -666,7 +699,11 @@ const AppContent = () => {
     const loadSettings = async () => {
       try {
         const savedSettings = await getSettings();
-        const mergedSettings = { ...defaultSettings, ...savedSettings };
+        const mergedSettings = {
+          ...defaultSettings,
+          theme: getStoredThemePreference(),
+          ...savedSettings,
+        };
         setSettings(mergedSettings);
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -674,6 +711,22 @@ const AppContent = () => {
     };
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    const syncTheme = () => {
+      const nextTheme = applyThemePreference(settings.theme);
+      saveThemePreference(settings.theme);
+      setResolvedTheme(nextTheme);
+    };
+
+    syncTheme();
+
+    if (settings.theme !== 'system') {
+      return undefined;
+    }
+
+    return subscribeToSystemThemeChanges(syncTheme);
+  }, [settings.theme]);
 
   // Initialize search index when allNotes changes
   useEffect(() => {
@@ -685,7 +738,7 @@ const AppContent = () => {
       <SearchModalProvider notes={allNotes}>
         <NotesProvider>
           <LeftPanelProvider>
-            <div className="App flex flex-col h-screen overflow-hidden">
+            <div className="App flex flex-col h-screen overflow-hidden bg-background text-card-foreground transition-colors duration-300">
               <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
               <div className="flex flex-1 overflow-hidden">
                 {/* Left panel */}
@@ -736,7 +789,7 @@ const AppContent = () => {
                 pauseOnFocusLoss={false}
                 draggable={false}
                 pauseOnHover={false}
-                theme="light"
+                theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
                 closeButton={false}
                 limit={1}
                 enableMultiContainer={false}

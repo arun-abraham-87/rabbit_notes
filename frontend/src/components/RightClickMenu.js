@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { decodeSensitiveContent } from '../utils/SensitiveUrlUtils';
 
 export default function RightClickMenu({
   noteId,
@@ -16,9 +17,12 @@ export default function RightClickMenu({
   setShowCopyToast
 }) {
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
-  const [showMoveToSectionSubmenu, setShowMoveToSectionSubmenu] = useState(false);
+  const [newSectionText, setNewSectionText] = useState('');
+  const newSectionInputRef = useRef(null);
 
   const note = notes.find(n => n.id === noteId);
+
+  const closeMenu = () => setRightClickNoteId(null);
 
   // Wrap updateNote to capture original content and show undo toast
   const editWithUndo = (newContent, label = 'Edit applied') => {
@@ -27,13 +31,14 @@ export default function RightClickMenu({
     if (originalContent !== undefined && showUndoToast) {
       showUndoToast(label, originalContent);
     }
+    closeMenu();
   };
   
   // Calculate adjusted position to keep menu in viewport
   const menuRef = React.useRef(null);
   const [adjustedPos, setAdjustedPos] = React.useState(pos);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (menuRef.current) {
       const menu = menuRef.current;
       const rect = menu.getBoundingClientRect();
@@ -104,11 +109,12 @@ export default function RightClickMenu({
   if (noteId == null || lineIndex == null) return null;
   if (!note) return null;
 
-  const noteLines = note.content.split('\n');
+  const noteLines = decodeSensitiveContent(note.content).split('\n');
   const isBatchMultiSelectMode = multiMoveNoteId === noteId;
   const visibleLineEntries = noteLines
     .map((line, actualIndex) => ({ line, actualIndex }))
     .filter(({ line }) => !line.trim().startsWith('meta::'));
+  const selectedVisibleLine = visibleLineEntries[lineIndex]?.line || '';
 
   const h2Sections = visibleLineEntries
     .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
@@ -150,7 +156,7 @@ export default function RightClickMenu({
 
     updatedLines.splice(insertIndex, 0, movedLine);
     editWithUndo(updatedLines.join('\n'), 'Moved to section');
-    setShowMoveToSectionSubmenu(false);
+
     setRightClickText(null);
     setRightClickNoteId(null);
     setRightClickIndex(null);
@@ -160,10 +166,32 @@ export default function RightClickMenu({
     document.dispatchEvent(new CustomEvent('startMultiMoveToSection', {
       detail: { noteId, lineIndex }
     }));
-    setShowMoveToSectionSubmenu(false);
+
     setRightClickText(null);
     setRightClickNoteId(null);
     setRightClickIndex(null);
+  };
+
+  const createSectionAndMove = () => {
+    const sectionTitle = newSectionText.trim();
+    if (!sectionTitle) return;
+    const sourceEntry = visibleLineEntries[lineIndex];
+    if (!sourceEntry) return;
+
+    const arr = [...noteLines];
+    // Remove the line being moved
+    const [movedLine] = arr.splice(sourceEntry.actualIndex, 1);
+    if (typeof movedLine === 'undefined') return;
+
+    // Find where to insert: after last non-meta line
+    let insertAt = arr.length;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (!arr[i].trim().startsWith('meta::')) { insertAt = i + 1; break; }
+    }
+
+    arr.splice(insertAt, 0, `{#h2#}${sectionTitle}`, movedLine);
+    editWithUndo(arr.join('\n'), `Moved to new section "${sectionTitle}"`);
+    setNewSectionText('');
   };
 
   const startGenericMultiSelect = () => {
@@ -189,9 +217,9 @@ export default function RightClickMenu({
       id: 'edit',
       label: 'Edit',
       onClick: () => {
-        const arr = note.content.split('\n');
-        setEditedLineContent(arr[lineIndex]);
+        setEditedLineContent(selectedVisibleLine);
         setEditingLine({ noteId, lineIndex });
+        closeMenu();
       }
     },
     {
@@ -206,7 +234,7 @@ export default function RightClickMenu({
     {
       id: 'copy',
       label: 'Copy',
-      onClick: () => handleCopyLine(note.content.split('\n')[lineIndex])
+      onClick: () => { handleCopyLine(selectedVisibleLine); closeMenu(); }
     },
     {
       id: 'remove-hashes',
@@ -490,10 +518,7 @@ export default function RightClickMenu({
     {
       id: 'move-to-section',
       label: 'Move To Section',
-      onClick: () => {
-        if (h2Sections.length === 0) return;
-        setShowMoveToSectionSubmenu((current) => !current);
-      }
+      onClick: () => setTimeout(() => newSectionInputRef.current?.focus(), 50)
     }
   ];
 
@@ -509,6 +534,12 @@ export default function RightClickMenu({
       }
     }
     return lineIndex;
+  };
+
+  // Get leading tabs from a raw line to inherit indentation
+  const getLeadingTabs = (rawLine) => {
+    const match = rawLine?.match(/^(\t*)/);
+    return match ? match[1] : '';
   };
 
   const insertButtons = [
@@ -535,7 +566,9 @@ export default function RightClickMenu({
       label: 'Divider ↑',
       onClick: () => {
         const arr = note.content.split('\n');
-        arr.splice(getRawLineIndex(), 0, DIVIDER);
+        const rawIdx = getRawLineIndex();
+        const tabs = getLeadingTabs(arr[rawIdx]);
+        arr.splice(rawIdx, 0, tabs + DIVIDER);
         editWithUndo(arr.join('\n'), 'Divider inserted above');
       }
     },
@@ -544,7 +577,9 @@ export default function RightClickMenu({
       label: 'Divider ↓',
       onClick: () => {
         const arr = note.content.split('\n');
-        arr.splice(getRawLineIndex() + 1, 0, DIVIDER);
+        const rawIdx = getRawLineIndex();
+        const tabs = getLeadingTabs(arr[rawIdx]);
+        arr.splice(rawIdx + 1, 0, tabs + DIVIDER);
         editWithUndo(arr.join('\n'), 'Divider inserted below');
       }
     }
@@ -568,17 +603,14 @@ export default function RightClickMenu({
       onContextMenu={(e) => e.stopPropagation()}
       onMouseLeave={() => {
         setShowColorSubmenu(false);
-        setShowMoveToSectionSubmenu(false);
+    
       }}
     >
       {isBatchMultiSelectMode ? (
         <div className="grid grid-cols-2 gap-2 min-w-[220px]">
           <button
-            className={`p-1 text-xs rounded cursor-pointer ${
-              h2Sections.length === 0 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 hover:shadow-lg'
-            }`}
+            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
             onClick={() => triggerBatchAction('move_to_section')}
-            disabled={h2Sections.length === 0}
           >
             Move To Section
           </button>
@@ -638,13 +670,8 @@ export default function RightClickMenu({
           {primaryButtons.map((button) => (
             <button
               key={button.id}
-              className={`p-1 text-xs rounded cursor-pointer ${
-                button.id === 'move-to-section' && h2Sections.length === 0
-                  ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-100 hover:bg-gray-200 hover:shadow-lg'
-              }`}
+              className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
               onClick={button.onClick}
-              disabled={button.id === 'move-to-section' && h2Sections.length === 0}
             >
               {button.label}
             </button>
@@ -669,31 +696,55 @@ export default function RightClickMenu({
           ))}
         </div>
 
-        {showMoveToSectionSubmenu && h2Sections.length > 0 && (
-          <>
-            <div className="col-span-3 border-t my-1"></div>
-            <div className="col-span-3 text-[10px] uppercase tracking-wide text-gray-500 px-1">
-              Move under H2
-            </div>
+        <div className="col-span-3">
+          <div className="border-t my-1"></div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500 px-1 mb-1">Move to section</div>
+          <div className="flex gap-1 mb-1">
+            <input
+              ref={newSectionInputRef}
+              type="text"
+              value={newSectionText}
+              onChange={(e) => setNewSectionText(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') createSectionAndMove();
+                if (e.key === 'Escape') closeMenu();
+              }}
+              placeholder="New section name…"
+              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            />
             <button
-              className="col-span-3 text-left p-1 text-xs bg-purple-50 hover:bg-purple-100 rounded cursor-pointer"
-              onClick={startMultiMoveToSection}
+              className="px-2 py-1 text-xs bg-indigo-500 hover:bg-indigo-600 text-white rounded disabled:opacity-40"
+              onClick={createSectionAndMove}
+              disabled={!newSectionText.trim()}
             >
-              Select Multiple Lines
+              + Create
             </button>
-            {h2Sections.map((section) => (
+          </div>
+          {h2Sections.length > 0 ? (
+            <div className="flex flex-col gap-0.5">
               <button
-                key={`section-${section.actualIndex}`}
-                className="col-span-3 text-left p-1 text-xs bg-blue-50 hover:bg-blue-100 rounded cursor-pointer truncate"
-                onClick={() => moveLineToSection(section.actualIndex)}
-                title={section.label}
+                className="text-left p-1 text-xs bg-purple-50 hover:bg-purple-100 rounded cursor-pointer"
+                onClick={startMultiMoveToSection}
               >
-                {section.label}
+                Select Multiple Lines
               </button>
-            ))}
-          </>
-        )}
-        
+              {h2Sections.map((section) => (
+                <button
+                  key={`section-${section.actualIndex}`}
+                  className="text-left p-1 text-xs bg-blue-50 hover:bg-blue-100 rounded cursor-pointer truncate"
+                  onClick={() => moveLineToSection(section.actualIndex)}
+                  title={section.label}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400 italic px-1 pb-1">No sections yet — create one above</div>
+          )}
+        </div>
+
         <div className="col-span-3 border-t-2 my-1"></div>
         
         {/* Color options as squares - always at bottom */}

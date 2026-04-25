@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { extractMetaTags } from '../utils/MetaTagUtils';
+import { getAgeInStringFmt, getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 import {
   XMarkIcon,
   ClockIcon,
@@ -19,11 +20,16 @@ export default function NoteTagBar({
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
   focusMode = false,
+  showCreatedDate = false,
   onNavigate,
   allNotes,
   setSearchQuery
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const metaTags = extractMetaTags(note.content);
+  const metaTagCount = Object.values(metaTags).reduce((total, tags) => total + tags.length, 0);
+  const hasDuplicateActions = duplicateUrlNoteIds.has(note.id) || duplicateWithinNoteIds.has(note.id);
+  const hasMetaTagContent = metaTagCount > 0 || hasDuplicateActions;
 
   const removeTag = (tagType, value = '') => {
     const prefix = `meta::${tagType}`;
@@ -135,10 +141,33 @@ export default function NoteTagBar({
     );
   };
 
+  if (focusMode || (!hasMetaTagContent && !showCreatedDate)) return null;
+
   return (
-    <>
-      {!focusMode && (
-        <div className="flex flex-wrap gap-2 px-4 pb-2">
+    <div className="w-full">
+      <div className="mb-1 flex items-center gap-2">
+        {hasMetaTagContent && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
+            title={isExpanded ? 'Hide meta tags' : 'Show meta tags'}
+          >
+            <span className="text-[10px] text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+            Meta tags
+            <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-gray-400">
+              {metaTagCount}
+            </span>
+          </button>
+        )}
+        {showCreatedDate && note.created_datetime && (
+          <span className="text-xs text-gray-400">
+            created: {getDateInDDMMYYYYFormat(note.created_datetime)} ({getAgeInStringFmt(note.created_datetime)})
+          </span>
+        )}
+      </div>
+      {isExpanded && (
+        <div className="flex flex-wrap gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-2">
           {/* Todo Tags with Priority */}
           {metaTags.todo.map((todoDate, index) => (
             <React.Fragment key={`todo-group-${index}`}>
@@ -252,6 +281,6 @@ export default function NoteTagBar({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

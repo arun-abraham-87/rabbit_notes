@@ -34,10 +34,10 @@ const ExchangeRates = ({ forceExpanded = false }) => {
   const [editingNote, setEditingNote] = useState(null); // 'usd' or 'aud' or null
   const [tempNote, setTempNote] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
-  const [usdAmount, setUsdAmount] = useState('1000');
-  const [audAmount, setAudAmount] = useState('1000');
-  const [inrToUsdAmount, setInrToUsdAmount] = useState('100');
-  const [inrToAudAmount, setInrToAudAmount] = useState('100');
+  const [quickInrAmount, setQuickInrAmount] = useState('100');
+  const [customInrAmount, setCustomInrAmount] = useState('');
+  const [editableUsdToInr, setEditableUsdToInr] = useState('');
+  const [editableAudToInr, setEditableAudToInr] = useState('');
 
   // Initialize API call count
   useEffect(() => {
@@ -59,6 +59,12 @@ const ExchangeRates = ({ forceExpanded = false }) => {
   useEffect(() => {
     setIsLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (!rates) return;
+    setEditableUsdToInr(prev => prev || (rates.usdToInr ? rates.usdToInr.toFixed(2) : ''));
+    setEditableAudToInr(prev => prev || (rates.audToInr ? rates.audToInr.toFixed(2) : ''));
+  }, [rates]);
 
   // Save notes to localStorage whenever they change (but only after initial load)
   useEffect(() => {
@@ -124,6 +130,7 @@ const ExchangeRates = ({ forceExpanded = false }) => {
         
         // Cache the rates and timestamp
         localStorage.setItem('exchangeRatesData', JSON.stringify(newRates));
+        document.dispatchEvent(new CustomEvent('exchangeRatesUpdated'));
         
         return newRates;
       } else {
@@ -173,6 +180,14 @@ const ExchangeRates = ({ forceExpanded = false }) => {
       setIsRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    const handleExternalRefresh = () => {
+      handleRefresh();
+    };
+    document.addEventListener('refreshExchangeRates', handleExternalRefresh);
+    return () => document.removeEventListener('refreshExchangeRates', handleExternalRefresh);
+  });
 
   // Initialize component
   useEffect(() => {
@@ -265,6 +280,20 @@ const ExchangeRates = ({ forceExpanded = false }) => {
     );
   }
 
+  const customUsdToInr = parseFloat(editableUsdToInr);
+  const customAudToInr = parseFloat(editableAudToInr);
+  const effectiveUsdToInr = Number.isFinite(customUsdToInr) && customUsdToInr > 0 ? customUsdToInr : rates?.usdToInr;
+  const effectiveAudToInr = Number.isFinite(customAudToInr) && customAudToInr > 0 ? customAudToInr : rates?.audToInr;
+  const inrToAud = effectiveAudToInr ? 1 / effectiveAudToInr : null;
+  const effectiveInrAmountText = customInrAmount.trim() || quickInrAmount;
+  const effectiveInrAmount = parseFloat(effectiveInrAmountText);
+  const hasValidInrAmount = Number.isFinite(effectiveInrAmount);
+  const quickInrOptions = ['100', '1000', '10000'];
+  const resetInrAmount = () => {
+    setQuickInrAmount('100');
+    setCustomInrAmount('');
+  };
+
   return (
     <div className="w-full group relative">
       {/* Collapsed View - Essential Info Only (Wide Format) */}
@@ -281,6 +310,10 @@ const ExchangeRates = ({ forceExpanded = false }) => {
               <div>
                 <span className="text-gray-600">AUD:</span>
                 <span className="text-green-700 font-medium ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">1 INR:</span>
+                <span className="text-green-700 font-medium ml-1">A${inrToAud != null ? inrToAud.toFixed(4) : '0.0000'}</span>
               </div>
             </div>
           </div>
@@ -299,12 +332,45 @@ const ExchangeRates = ({ forceExpanded = false }) => {
       {/* Expanded View - Full Details (Shown on Hover) */}
       <div className={`${forceExpanded ? 'opacity-100 pointer-events-auto relative' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto absolute top-0 left-0 right-0 z-10'} transition-opacity duration-200 delay-300 bg-white rounded-lg p-2 border shadow-lg`}>
         <div className="space-y-4">
-          <div className="w-72">
+          <div className="w-96">
             <div className="w-full p-4 rounded-md bg-gray-100 shadow-md">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex items-center gap-2">
                 <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
+                <div className="flex flex-1 items-center gap-1">
+                  {quickInrOptions.map(amount => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setQuickInrAmount(amount)}
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                        !customInrAmount.trim() && quickInrAmount === amount
+                          ? 'border-blue-300 bg-blue-100 text-blue-800'
+                          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                      title={`Use ₹${Number(amount).toLocaleString('en-IN')} for INR conversions`}
+                    >
+                      {Number(amount).toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    value={customInrAmount}
+                    onChange={(e) => setCustomInrAmount(e.target.value)}
+                    className="w-16 rounded border border-gray-200 bg-white px-1 py-0.5 text-center text-[10px]"
+                    placeholder="Custom"
+                    title="Custom INR amount"
+                  />
+                  <button
+                    type="button"
+                    onClick={resetInrAmount}
+                    className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 hover:bg-gray-50"
+                    title="Reset INR conversion amount to 100"
+                  >
+                    reset
+                  </button>
+                </div>
                 <button 
-                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
                   title="Refresh rates"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
@@ -318,15 +384,26 @@ const ExchangeRates = ({ forceExpanded = false }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="text-gray-600 text-sm">1 USD =</span>
-                      <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
+                      <span className="text-green-700 font-medium text-sm ml-1">₹</span>
+                      <input
+                        type="number"
+                        value={editableUsdToInr}
+                        onChange={(e) => setEditableUsdToInr(e.target.value)}
+                        className="ml-1 w-20 rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-xs font-medium text-green-700"
+                        step="0.01"
+                        title="Custom USD to INR rate"
+                      />
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 bg-blue-50 p-1.5 rounded border border-blue-100 space-y-1">
                     <div className="flex items-center gap-1">
-                      <input type="number" value={inrToUsdAmount} onChange={(e) => setInrToUsdAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-blue-200 rounded text-xs text-center bg-white" /> INR = <span className="font-medium text-blue-700">${rates?.usdToInr && inrToUsdAmount ? (parseFloat(inrToUsdAmount) / rates.usdToInr).toFixed(2) : '0.00'} USD</span>
+                      ₹{hasValidInrAmount ? effectiveInrAmount.toLocaleString('en-IN') : '0'} INR = <span className="font-medium text-blue-700">${effectiveUsdToInr && hasValidInrAmount ? (effectiveInrAmount / effectiveUsdToInr).toFixed(2) : '0.00'} USD</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <input type="number" value={usdAmount} onChange={(e) => setUsdAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-blue-200 rounded text-xs text-center bg-white" /> USD = <span className="font-medium text-blue-700">₹{rates?.usdToInr && usdAmount ? (parseFloat(usdAmount) * rates.usdToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
+                      ${hasValidInrAmount ? effectiveInrAmount.toLocaleString('en-US') : '0'} USD = <span className="font-medium text-blue-700">₹{effectiveUsdToInr && hasValidInrAmount ? (effectiveInrAmount * effectiveUsdToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      ${hasValidInrAmount ? effectiveInrAmount.toLocaleString('en-US') : '0'} USD = <span className="font-medium text-blue-700">A${effectiveUsdToInr && effectiveAudToInr && hasValidInrAmount ? ((effectiveInrAmount * effectiveUsdToInr) / effectiveAudToInr).toFixed(2) : '0.00'} AUD</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-end">
@@ -386,15 +463,26 @@ const ExchangeRates = ({ forceExpanded = false }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="text-gray-600 text-sm">1 AUD =</span>
-                      <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+                      <span className="text-green-700 font-medium text-sm ml-1">₹</span>
+                      <input
+                        type="number"
+                        value={editableAudToInr}
+                        onChange={(e) => setEditableAudToInr(e.target.value)}
+                        className="ml-1 w-20 rounded border border-green-200 bg-white px-1 py-0.5 text-center text-xs font-medium text-green-700"
+                        step="0.01"
+                        title="Custom AUD to INR rate"
+                      />
+                    </div>
+                    <div className="text-xs font-medium text-green-700">
+                      1 INR = A${inrToAud != null ? inrToAud.toFixed(4) : '0.0000'}
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 bg-green-50 p-1.5 rounded border border-green-100 space-y-1">
                     <div className="flex items-center gap-1">
-                      <input type="number" value={inrToAudAmount} onChange={(e) => setInrToAudAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-green-200 rounded text-xs text-center bg-white" /> INR = <span className="font-medium text-green-700">A${rates?.audToInr && inrToAudAmount ? (parseFloat(inrToAudAmount) / rates.audToInr).toFixed(2) : '0.00'}</span>
+                      ₹{hasValidInrAmount ? effectiveInrAmount.toLocaleString('en-IN') : '0'} INR = <span className="font-medium text-green-700">A${effectiveAudToInr && hasValidInrAmount ? (effectiveInrAmount / effectiveAudToInr).toFixed(2) : '0.00'}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <input type="number" value={audAmount} onChange={(e) => setAudAmount(e.target.value)} className="w-16 px-1 py-0.5 border border-green-200 rounded text-xs text-center bg-white" /> AUD = <span className="font-medium text-green-700">₹{rates?.audToInr && audAmount ? (parseFloat(audAmount) * rates.audToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
+                      A${hasValidInrAmount ? effectiveInrAmount.toLocaleString('en-AU') : '0'} AUD = <span className="font-medium text-green-700">₹{effectiveAudToInr && hasValidInrAmount ? (effectiveInrAmount * effectiveAudToInr).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-end">

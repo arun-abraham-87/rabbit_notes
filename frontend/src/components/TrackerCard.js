@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById, getNoteById, addNewNoteCommon } from '../utils/ApiUtils';
-import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon, Cog6ToothIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { createTrackerAnswerNote, getTrackerOverdueThreshold } from '../utils/TrackerQuestionUtils';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon, Cog6ToothIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeSlashIcon, StarIcon } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
@@ -75,7 +75,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch, allTags = [], onSaveTags }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted, onWatch, onImportant, allTags = [], onSaveTags }) {
   const navigate = useNavigate();
 
   // Debug: Log answers received
@@ -1168,16 +1168,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // Calculate days since last entry
   const getDaysSinceLastEntry = () => {
     if (!lastRecordedDate) return null;
-    const today = moment();
-    const lastDate = moment(lastRecordedDate);
+    const today = moment().startOf('day');
+    const lastDate = moment(lastRecordedDate).startOf('day');
     return today.diff(lastDate, 'days');
   };
 
   const daysSinceLastEntry = getDaysSinceLastEntry();
-  // Get overdue threshold from tracker.overdueDays if present, otherwise default to 30
-  const isUsingDefaultOverdue = !tracker.overdueDays;
-  const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
-  const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry > overdueThreshold;
+  const { days: overdueThreshold, isOverride: hasOverdueOverride } = getTrackerOverdueThreshold(tracker);
+  const isUsingDefaultOverdue = !hasOverdueOverride;
+  const defaultOverdueLabel = isUsingDefaultOverdue ? ` (default: ${overdueThreshold})` : '';
+  const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry >= overdueThreshold;
   // Calculate days until overdue (if not already overdue)
   const daysUntilOverdue = daysSinceLastEntry !== null && !isOverdue
     ? overdueThreshold - daysSinceLastEntry
@@ -1294,7 +1294,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const currentMonthYear = weekDays[0].format('MMM YYYY');
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : 'border border-gray-300'}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
+    <div className={`tracker-card bg-white rounded-lg shadow-sm p-6 relative ${isOverdue ? 'border-2 border-red-500' : 'border border-gray-300'}`} title={isOverdue ? `Overdue: ${daysSinceLastEntry} days since last entry` : ''}>
 
       {/* Header */}
       <div className="mb-6">
@@ -1404,6 +1404,20 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   >
                     {tracker.watched ? <EyeIcon className="h-3 w-3" /> : <EyeSlashIcon className="h-3 w-3" />}
                     {tracker.watched ? 'Untrack' : 'Track it'}
+                  </button>
+                )}
+                {onImportant && (
+                  <button
+                    onClick={() => onImportant(tracker)}
+                    className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
+                      tracker.important
+                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                        : 'bg-gray-100 text-gray-500 hover:bg-yellow-100 hover:text-yellow-700'
+                    }`}
+                    title={tracker.important ? 'Remove important priority' : 'Mark important'}
+                  >
+                    <StarIcon className="h-3 w-3" />
+                    {tracker.important ? 'Important' : 'Important'}
                   </button>
                 )}
                 <button
@@ -1667,7 +1681,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                               setShowAdhocValueModal(true);
                             }
                           }}
-                          className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
+                          className={`tracker-event-chip w-8 h-8 border flex items-center justify-center text-sm rounded-full ${buttonBgColor} ${buttonBorderColor}`}
                           title={`${dateMoment.format('MMM D, YYYY')}${isYesNoTracker ? ` - ${yesNoValue === 'yes' ? 'Yes' : yesNoValue === 'no' ? 'No' : 'None'} (Click to cycle)` : isAdhocValue && answer ? ` - Value: ${answer.value || answer.answer}${valueDifference ? ` (${valueDifference} from previous)` : ''}${daysDifference !== null ? ` (${daysDifference} day${daysDifference !== 1 ? 's' : ''} since previous)` : ''}` : isAdhocDate && answer && adhocDateDaysDifference !== null ? ` (${adhocDateDaysDifference} day${adhocDateDaysDifference !== 1 ? 's' : ''} since previous)` : ''}${answer && answer.notes ? ` - ${answer.notes}` : ''}`}
                         >
                           {dayNumber}
@@ -2029,7 +2043,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     )}
                     <button
                       onClick={handleMonthlyDateClick}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${isDisabled
+                      className={`tracker-event-chip w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${isDisabled
                         ? 'border-gray-200 opacity-30 cursor-not-allowed'
                         : isClickable
                           ? 'border-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-400'
@@ -2734,13 +2748,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {daysUntilOverdue !== null && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Overdue in:</span>
-                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
                 {isOverdue && daysSinceLastEntry !== null && (
                   <div className="flex items-center gap-1 text-red-600">
                     <span className="font-medium">Overdue:</span>
-                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
               </div>
@@ -2768,13 +2782,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {daysUntilOverdue !== null && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Overdue in:</span>
-                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
                 {isOverdue && daysSinceLastEntry !== null && (
                   <div className="flex items-center gap-1 text-red-600">
                     <span className="font-medium">Overdue:</span>
-                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
               </div>
@@ -2796,13 +2810,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 {daysUntilOverdue !== null && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Overdue in:</span>
-                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysUntilOverdue} day{daysUntilOverdue !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
                 {isOverdue && daysSinceLastEntry !== null && (
                   <div className="flex items-center gap-1 text-red-600">
                     <span className="font-medium">Overdue:</span>
-                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{isUsingDefaultOverdue ? ' (default: 30)' : ''}</span>
+                    <span>{daysSinceLastEntry} day{daysSinceLastEntry !== 1 ? 's' : ''}{defaultOverdueLabel}</span>
                   </div>
                 )}
               </div>
@@ -2947,4 +2961,4 @@ function EnhancedStats({ answers, tracker }) {
       </div>
     </div>
   );
-} 
+}

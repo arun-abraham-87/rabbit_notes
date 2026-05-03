@@ -4,9 +4,30 @@ import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathI
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
-import { createNote } from '../utils/ApiUtils';
+import { createNote, deleteNoteById } from '../utils/ApiUtils';
 import { addNoteToIndex } from '../utils/SearchUtils';
 import { updateNoteById, getNoteById, getTimelines, getTimelineById, getTimelineEvents, getMasterTimelineEvents } from '../utils/ApiUtils';
+
+const removeEventIdFromTimelineContent = (content, eventId) => {
+  const lines = (content || '').split('\n');
+  const nonLinkedLines = [];
+  const remainingEventIds = new Set();
+
+  lines.forEach((line) => {
+    if (line.trim().startsWith('meta::linked_from_events::')) {
+      const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+      const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(Boolean);
+      eventIds.forEach(id => {
+        if (id !== eventId) remainingEventIds.add(id);
+      });
+    } else {
+      nonLinkedLines.push(line);
+    }
+  });
+
+  const linkedEventLines = Array.from(remainingEventIds).map(id => `meta::linked_from_events::${id}`);
+  return [...nonLinkedLines, ...linkedEventLines].join('\n').trim();
+};
 
 const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
@@ -110,6 +131,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [newEventText, setNewEventText] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(() => loadMainSearchQuery());
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() => loadMainSearchQuery());
   const [searchTitlesOnly, setSearchTitlesOnly] = useState(() => loadSearchTitlesOnly());
   const [highlightMatches, setHighlightMatches] = useState(true);
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
@@ -172,6 +194,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
       if (filterParam) {
         setSearchQuery(filterParam);
+        setDebouncedSearchQuery(filterParam);
         setSearchTitlesOnly(true); // Default to titles only when filtering from dashboard
         localStorage.setItem(TIMELINE_MAIN_SEARCH_KEY, filterParam);
         localStorage.setItem(TIMELINE_SEARCH_TITLES_ONLY_KEY, 'true');
@@ -188,6 +211,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         const savedTimelineSearches = loadTimelineSearchQueries();
         const savedSearchTitlesOnly = loadSearchTitlesOnly();
         setSearchQuery(savedMainSearch);
+        setDebouncedSearchQuery(savedMainSearch);
         setTimelineSearchQueries(savedTimelineSearches);
         setSearchTitlesOnly(savedSearchTitlesOnly);
         devLog('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches, titlesOnly: savedSearchTitlesOnly });
@@ -195,13 +219,21 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   }, [location.pathname, location.search, devLog]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
   // Load timelines from API
   useEffect(() => {
     const loadTimelines = async () => {
       try {
         setLoadingTimelines(true);
         const params = {
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
           searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
         };
         const response = await getTimelines(params);
@@ -214,7 +246,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     };
 
     loadTimelines();
-  }, [searchQuery, searchTitlesOnly]);
+  }, [debouncedSearchQuery, searchTitlesOnly]);
 
   // Load timeline events when a timeline is expanded
   const loadTimelineEvents = useCallback(async (timelineId) => {
@@ -227,7 +259,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Fetch timeline details and events
       const [timelineData, eventsData] = await Promise.all([
         getTimelineById(timelineId),
-        getTimelineEvents(timelineId, timelineSearchQueries[timelineId] || '')
+        getTimelineEvents(timelineId, '')
       ]);
 
       // Convert dates to moment objects for compatibility
@@ -251,13 +283,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       console.error(`Error loading timeline events for ${timelineId}:`, error);
       return null;
     }
-  }, [timelineEventsCache, timelineSearchQueries]);
-
-  // Clear cache when timeline search changes
-  useEffect(() => {
-    // Clear cache when search queries change
-    setTimelineEventsCache({});
-  }, [Object.keys(timelineSearchQueries).join(',')]);
+  }, [timelineEventsCache]);
 
   // Clear cache when a timeline is updated
   const refreshTimeline = useCallback(async (timelineId) => {
@@ -271,7 +297,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     // Reload timeline list
     try {
       const params = {
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined,
         searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
       };
       const response = await getTimelines(params);
@@ -279,7 +305,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     } catch (error) {
       console.error('Error refreshing timelines:', error);
     }
-  }, [searchQuery, searchTitlesOnly]);
+  }, [debouncedSearchQuery, searchTitlesOnly]);
 
   // Extract dollar values from text
   const extractDollarValues = (text) => {
@@ -1249,7 +1275,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Refresh timeline notes from API
       try {
         const params = {
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
           searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
         };
         const response = await getTimelines(params);
@@ -1844,7 +1870,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="timelines-page min-h-screen bg-gray-50">
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
@@ -3607,82 +3633,70 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             console.log('[Timelines] Current notes length:', notes.length);
 
             try {
-              // Remove the event from notes via setAllNotes
-              if (setAllNotes) {
-                console.log('[Timelines] Removing event from setAllNotes');
-                setAllNotes(prev => {
-                  const filtered = prev.filter(n => n.id !== eventId);
-                  console.log('[Timelines] setAllNotes: Removed event, new length:', filtered.length);
-                  return filtered;
-                });
-              }
+              const notesToUse = getNotesWithNewEvent();
+              const eventNote = notesToUse.find(n => n.id === eventId);
+              const timelineIds = new Set();
 
-              // If this event was linked to a timeline, remove it from the timeline
-              if (editingTimelineId) {
-                console.log('[Timelines] Event was linked to timeline:', editingTimelineId);
-                const timelineNote = timelineNotes.find(n => n.id === editingTimelineId);
+              if (editingTimelineId) timelineIds.add(editingTimelineId);
 
-                if (timelineNote) {
-                  console.log('[Timelines] Found timeline note, removing event link');
-                  const timelineContent = timelineNote.content;
-                  const linkedEventsLine = timelineContent.split('\n').find(line => line.startsWith('meta::linked_from_events::'));
-
-                  if (linkedEventsLine) {
-                    console.log('[Timelines] Found linked_from_events line:', linkedEventsLine);
-                    // Remove the event ID from the linked events list
-                    const existingIds = linkedEventsLine.replace('meta::linked_from_events::', '').trim().split(',').map(id => id.trim()).filter(id => id);
-                    console.log('[Timelines] Existing linked event IDs:', existingIds);
-
-                    const updatedIds = existingIds.filter(id => id !== eventId);
-                    console.log('[Timelines] Updated linked event IDs (after removal):', updatedIds);
-
-                    let updatedContent;
-                    if (updatedIds.length > 0) {
-                      updatedContent = timelineContent.replace(
-                        linkedEventsLine,
-                        `meta::linked_from_events::${updatedIds.join(', ')}`
-                      );
-                    } else {
-                      // Remove the line entirely if no linked events remain
-                      updatedContent = timelineContent.replace(linkedEventsLine + '\n', '').replace('\n' + linkedEventsLine, '').replace(linkedEventsLine, '');
-                    }
-
-                    console.log('[Timelines] Updating timeline note content');
-                    await updateNoteById(editingTimelineId, updatedContent);
-
-                    // Update the timeline in the notes array
-                    if (updateNote) {
-                      console.log('[Timelines] Calling updateNote for timeline');
-                      updateNote(editingTimelineId, updatedContent);
-                    }
-
-                    // Refresh timeline display
-                    console.log('[Timelines] Refreshing timeline display');
-                    handleTimelineUpdated(editingTimelineId, updatedContent);
-                  } else {
-                    console.log('[Timelines] No linked_from_events line found in timeline');
+              if (eventNote?.content) {
+                eventNote.content.split('\n').forEach(line => {
+                  if (line.trim().startsWith('meta::linked_to_timeline::')) {
+                    const timelineId = line.replace('meta::linked_to_timeline::', '').trim();
+                    if (timelineId) timelineIds.add(timelineId);
                   }
-                } else {
-                  console.warn('[Timelines] Timeline note not found:', editingTimelineId);
-                }
-              } else {
-                console.log('[Timelines] No editingTimelineId, event was not linked to a timeline');
+                });
               }
 
-              // Clear cache and reload timeline events if timeline is expanded
-              if (editingTimelineId && !collapsedTimelines.has(editingTimelineId)) {
-                console.log('[Timelines] Clearing cache and reloading timeline events');
-                setTimelineEventsCache(prev => {
-                  const updated = { ...prev };
-                  delete updated[editingTimelineId];
-                  return updated;
+              notesToUse
+                .filter(note => note.content && note.content.includes('meta::timeline'))
+                .forEach(timelineNote => {
+                  const linkedLines = timelineNote.content
+                    .split('\n')
+                    .filter(line => line.trim().startsWith('meta::linked_from_events::'));
+                  if (linkedLines.some(line => {
+                    const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+                    return eventIdsString.split(',').map(id => id.trim()).includes(eventId);
+                  })) {
+                    timelineIds.add(timelineNote.id);
+                  }
                 });
-                loadTimelineEvents(editingTimelineId);
+
+              const updatedTimelineContentById = {};
+              for (const timelineId of timelineIds) {
+                const timelineNote = notesToUse.find(n => n.id === timelineId) || timelineNotes.find(n => n.id === timelineId);
+                if (!timelineNote?.content) continue;
+
+                const updatedContent = removeEventIdFromTimelineContent(timelineNote.content, eventId);
+                if (updatedContent !== timelineNote.content) {
+                  updatedTimelineContentById[timelineId] = updatedContent;
+                  await updateNoteById(timelineId, updatedContent);
+                }
               }
+
+              await deleteNoteById(eventId);
 
               // Also refresh timelineNotes to reflect the deletion
               console.log('[Timelines] Refreshing timelineNotes');
-              const notesAfterDelete = notes.filter(n => n.id !== eventId);
+              const notesAfterDelete = notesToUse
+                .filter(n => n.id !== eventId)
+                .map(note => updatedTimelineContentById[note.id]
+                  ? { ...note, content: updatedTimelineContentById[note.id] }
+                  : note
+                );
+
+              if (setAllNotes) {
+                setAllNotes(notesAfterDelete);
+              }
+
+              setTimelineEventsCache(prev => {
+                const updated = { ...prev };
+                timelineIds.forEach(timelineId => {
+                  delete updated[timelineId];
+                });
+                return updated;
+              });
+
               const filteredNotes = notesAfterDelete
                 .filter(note => note.content && note.content.includes('meta::timeline'))
                 .map(note => {
@@ -4332,7 +4346,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                         // Refresh timeline notes from API
                         try {
                           const params = {
-                            search: searchQuery || undefined,
+                            search: debouncedSearchQuery || undefined,
                             searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
                           };
                           const response = await getTimelines(params);

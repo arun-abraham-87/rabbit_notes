@@ -17,6 +17,10 @@ const hasTimerCadence = (note) => (
   !!note?.content?.split('\n').some(l => l.trim().startsWith('meta::timer_cadence::'))
 );
 
+const isSuperCriticalReview = (note) => (
+  !!note?.content?.includes(SUPER_CRITICAL_REVIEW_META)
+);
+
 // Link type indicator function
 const getLinkTypeIndicator = (url) => {
   try {
@@ -289,10 +293,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [snoozeToast, setSnoozeToast] = useState(null);
   const [hideTimerReviews, setHideTimerReviews] = useState(() => localStorage.getItem('dashboardHideReviewTimers') !== 'false');
+  const [hideSuperCriticalReviews, setHideSuperCriticalReviews] = useState(() => localStorage.getItem('dashboardHideSuperCriticalReviews') === 'true');
 
   useEffect(() => {
     localStorage.setItem('dashboardHideReviewTimers', hideTimerReviews ? 'true' : 'false');
   }, [hideTimerReviews]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardHideSuperCriticalReviews', hideSuperCriticalReviews ? 'true' : 'false');
+  }, [hideSuperCriticalReviews]);
 
   useEffect(() => {
     const handleShowTimerReviews = () => setHideTimerReviews(false);
@@ -368,9 +377,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   const searchedOverdueNotes = filterNotesBySearch(overdueNotes).filter(note => !getTimerStatus(note)?.shouldCleanup);
   const hiddenTimerReviewsCount = hideTimerReviews ? searchedOverdueNotes.filter(hasTimerCadence).length : 0;
-  const filteredOverdueNotes = hideTimerReviews
-    ? searchedOverdueNotes.filter(note => !hasTimerCadence(note))
-    : searchedOverdueNotes;
+  const hiddenSuperCriticalReviewsCount = hideSuperCriticalReviews ? searchedOverdueNotes.filter(isSuperCriticalReview).length : 0;
+  const filteredOverdueNotes = searchedOverdueNotes.filter(note => (
+    !(hideTimerReviews && hasTimerCadence(note)) &&
+    !(hideSuperCriticalReviews && isSuperCriticalReview(note))
+  ));
   const filteredSnoozedNotes = filterNotesBySearch(snoozedNotes);
 
 
@@ -1287,7 +1298,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       </div>
 
       {/* Overdue Notes Section */}
-      {(filteredOverdueNotes.length > 0 || hiddenTimerReviewsCount > 0) && (
+      {(filteredOverdueNotes.length > 0 || hiddenTimerReviewsCount > 0 || hiddenSuperCriticalReviewsCount > 0) && (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full mb-4">
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
@@ -1295,30 +1306,53 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                 <ClockIcon className="h-6 w-6 text-gray-500" />
                 <h3 className="ml-3 text-base font-semibold text-gray-800">
                   Reviews Due ({filteredOverdueNotes.length})
-                  {hiddenTimerReviewsCount > 0 && (
+                  {(hiddenSuperCriticalReviewsCount > 0 || hiddenTimerReviewsCount > 0) && (
                     <span className="ml-2 text-xs font-medium text-amber-600">
-                      {hiddenTimerReviewsCount} timer{hiddenTimerReviewsCount !== 1 ? 's' : ''} hidden
+                      {[
+                        hiddenSuperCriticalReviewsCount > 0
+                          ? `${hiddenSuperCriticalReviewsCount} super critical hidden`
+                          : null,
+                        hiddenTimerReviewsCount > 0
+                          ? `${hiddenTimerReviewsCount} timer${hiddenTimerReviewsCount !== 1 ? 's' : ''} hidden`
+                          : null,
+                      ].filter(Boolean).join(' and ')}
                     </span>
                   )}
                 </h3>
               </div>
-              {searchedOverdueNotes.some(hasTimerCadence) && (
-                <button
-                  type="button"
-                  onClick={() => setHideTimerReviews(prev => !prev)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    hideTimerReviews
-                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title={hideTimerReviews ? 'Show review cards that have timers' : 'Hide review cards that have timers'}
-                >
-                  {hideTimerReviews ? `Show timers (${hiddenTimerReviewsCount})` : 'Hide timers'}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {searchedOverdueNotes.some(isSuperCriticalReview) && (
+                  <button
+                    type="button"
+                    onClick={() => setHideSuperCriticalReviews(prev => !prev)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      hideSuperCriticalReviews
+                        ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={hideSuperCriticalReviews ? 'Show super critical review cards' : 'Hide super critical review cards'}
+                  >
+                    {hideSuperCriticalReviews ? `Show super critical (${hiddenSuperCriticalReviewsCount})` : 'Hide super critical'}
+                  </button>
+                )}
+                {searchedOverdueNotes.some(hasTimerCadence) && (
+                  <button
+                    type="button"
+                    onClick={() => setHideTimerReviews(prev => !prev)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      hideTimerReviews
+                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={hideTimerReviews ? 'Show review cards that have timers' : 'Hide review cards that have timers'}
+                  >
+                    {hideTimerReviews ? `Show timers (${hiddenTimerReviewsCount})` : 'Hide timers'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="review-overdue-list divide-y divide-gray-100">
             {filteredOverdueNotes.map((note, index) => {
               const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
               const reviewTime = reviews[note.id];
@@ -1329,12 +1363,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
               const isSuperCritical = note.content.includes(SUPER_CRITICAL_REVIEW_META);
 
               return (
-                <div 
-                  key={note.id} 
+                <div
+                  key={note.id}
                   data-review-id={note.id}
-                  className={`px-6 py-3 transition-colors duration-150 min-h-[120px] ${
-                    isFocused 
-                      ? 'bg-blue-50 border-l-4 border-blue-500' 
+                  className={`review-overdue-row px-6 py-3 transition-colors duration-150 min-h-[120px] ${
+                    isFocused
+                      ? 'review-overdue-row-focused bg-blue-50 border-l-4 border-blue-500'
                       : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   } hover:bg-gray-100`}
                   onClick={() => {
@@ -1344,15 +1378,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                   }}
                 >
                   {/* Note Sub-Card */}
-                  <div className={`relative bg-gradient-to-r border rounded-lg p-4 shadow-sm ${
+                  <div className={`review-overdue-card relative bg-gradient-to-r border rounded-lg p-4 shadow-sm ${
                     isSuperCritical
-                      ? 'from-rose-50 to-red-50 border-red-500 border-2'
-                      : note.content.includes('meta::review_overdue_priority') 
-                      ? 'border-red-400 border-2' 
-                      : 'from-blue-50 to-indigo-50 border-blue-200 border'
+                      ? 'review-overdue-card-super from-rose-50 to-red-50 border-red-500 border-2'
+                      : note.content.includes('meta::review_overdue_priority')
+                      ? 'review-overdue-card-priority border-red-400 border-2'
+                      : 'review-overdue-card-default from-blue-50 to-indigo-50 border-blue-200 border'
                   }`}>
                   {hasTimer && (
-                    <div className="absolute right-3 top-3 flex flex-col items-center" title="This review has a timer">
+                    <div className="review-overdue-timer-badge absolute right-3 top-3 flex flex-col items-center" title="This review has a timer">
                       <div className={`text-4xl leading-none ${timerStatus?.expired ? 'text-red-500' : 'text-blue-500'}`}>⏱</div>
                       {timerStatus?.once && (
                         <div className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
@@ -1369,14 +1403,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     {/* First Section - Description (50%) */}
                     <div className="col-span-2 flex flex-col">
                       {isSuperCritical && (
-                        <div className="mb-1 w-fit rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        <div className="review-overdue-super-label mb-1 w-fit rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                           Super critical
                         </div>
                       )}
-                      <h4 className={`text-base font-medium text-gray-900 mb-2 break-words ${hasTimer ? 'pr-12' : ''}`}>
+                      <h4 className={`review-overdue-title text-base font-medium text-gray-900 mb-2 break-words ${hasTimer ? 'pr-12' : ''}`}>
                         {formatContent(note.content, note)}
                       </h4>
-                      <div className="flex flex-col gap-1 text-sm text-gray-500">
+                      <div className="review-overdue-meta flex flex-col gap-1 text-sm text-gray-500">
                         <div className="grid grid-cols-[120px_1fr] items-center">
                           <span className="text-xs text-gray-500">Review cadence:</span>
                           <span className="text-xs text-gray-500">{getCadenceDisplay(note)}</span>
@@ -1391,12 +1425,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     </div>
 
                     {/* Combined Review In Buttons and Actions */}
-                    <div className="col-span-2 flex items-center justify-end">
+                    <div className={`review-overdue-actions col-span-2 flex items-center justify-end ${hasTimer ? 'pr-16' : ''}`}>
                       <div className="flex items-center gap-2">
                         {/* Unwatch button - always first */}
                         <button
                           onClick={() => handleUnfollow(note)}
-                          className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                          className="review-overdue-action review-overdue-action-danger flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                           title="Remove from watchlist"
                           style={{ minWidth: 48, minHeight: 48 }}
                         >
@@ -1410,8 +1444,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 	                          onClick={() => handleToggleSuperCritical(note)}
                           className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg transition-colors duration-150 ${
                             isSuperCritical
-                              ? 'text-white bg-red-600 hover:bg-red-700'
-                              : 'text-red-700 bg-red-50 hover:bg-red-100'
+                              ? 'review-overdue-action review-overdue-action-super-active text-white bg-red-600 hover:bg-red-700'
+                              : 'review-overdue-action review-overdue-action-danger text-red-700 bg-red-50 hover:bg-red-100'
                           }`}
                           title={isSuperCritical ? 'Remove super critical' : 'Mark super critical'}
                           style={{ minWidth: 58, minHeight: 48 }}
@@ -1422,7 +1456,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
 	                        <button
 	                          onClick={() => handleDeleteReviewNote(note)}
-	                          className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+	                          className="review-overdue-action review-overdue-action-danger flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
 	                          title="Delete note"
 	                          style={{ minWidth: 48, minHeight: 48 }}
 	                        >
@@ -1431,13 +1465,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 	                          </svg>
 	                          <span className="text-xs">Delete</span>
 	                        </button>
-	                        
+
 	                        {/* Timer button */}
                         {(() => {
                           return hasTimer ? (
                             <button
                               onClick={() => handleRemoveTimer(note)}
-                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-150"
+                              className="review-overdue-action review-overdue-action-timer flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-150"
                               title="Remove timer"
                               style={{ minWidth: 48, minHeight: 48 }}
                             >
@@ -1447,7 +1481,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                           ) : (
                             <div className="relative group/timer">
                               <button
-                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-50 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150"
+                                className="review-overdue-action review-overdue-action-neutral flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-50 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150"
                                 title="Set timer"
                                 style={{ minWidth: 48, minHeight: 48 }}
                               >
@@ -1503,22 +1537,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         {note.content.includes('meta::review_overdue_priority') && (
                           <button
                             onClick={() => handleAddPriority(note)}
-                            className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                            className="review-overdue-action review-overdue-action-danger flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                             title="Flag note"
                             style={{ minWidth: 48, minHeight: 48 }}
                           >
                             <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
                             </svg>
-                          </button>
-                        )}
-                        
+	                          </button>
+	                        )}
+
                         {/* Cadence buttons - when note doesn't have priority */}
                         {!note.content.includes('meta::review_overdue_priority') && (
                           <>
                             <button
                               onClick={() => handleAddPriority(note)}
-                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              className="review-overdue-action review-overdue-action-flag flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Flag note"
                               style={{ minWidth: 48, minHeight: 48 }}
                             >
@@ -1549,8 +1583,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                                   onClick={() => handleCadence(note, h, 0)}
                                   className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
                                     isSelected(h, 0)
-                                      ? 'bg-purple-600 text-white border border-purple-700'
-                                      : 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500 focus:border-purple-500'
+                                      ? 'review-overdue-action review-overdue-action-cadence-active bg-purple-600 text-white border border-purple-700'
+                                      : 'review-overdue-action review-overdue-action-cadence text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500 focus:border-purple-500'
                                   }`}
                                   title={`Set ${label} cadence`}
                                   style={{ minWidth: 48 }}
@@ -1974,7 +2008,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       {/* Link Selection Popup */}
       {showLinkPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-link-popup tabIndex={0}>
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+          <div className="link-selection-popup bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>
               <button
@@ -1992,9 +2026,9 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
               {linkPopupLinks.map((link, index) => (
                 <div
                   key={index}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  className={`link-selection-option p-3 rounded-lg border cursor-pointer transition-colors ${
                     index === selectedLinkIndex
-                      ? 'bg-blue-100 border-blue-300 text-blue-800'
+                      ? 'link-selection-option-selected bg-blue-100 border-blue-300 text-blue-800'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                   onClick={() => {

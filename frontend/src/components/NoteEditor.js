@@ -304,6 +304,23 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       : `${leadingWhitespace}${cleanUrl}${trailingWhitespace}`;
   };
 
+  const focusAdjacentEditableLine = (index, direction, preferredCursorPosition = 0) => {
+    const step = direction === 'up' ? -1 : 1;
+
+    for (let nextIndex = index + step; nextIndex >= 0 && nextIndex < lines.length; nextIndex += step) {
+      const textarea = textareasRef.current[nextIndex];
+      if (textarea && textarea.isConnected) {
+        textarea.focus();
+        const nextCursorPosition = Math.min(preferredCursorPosition, textarea.value.length);
+        textarea.selectionStart = textarea.selectionEnd = nextCursorPosition;
+        setFocusedLineIndex(nextIndex);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   // Removed conflicting useEffect that was focusing the last textarea
 
   // Update lines when search query changes
@@ -622,21 +639,15 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       return;
     }
 
-    if (e.key === 'ArrowUp' && !e.shiftKey) {
-      const cursorPosition = e.target.selectionStart;
-      if (cursorPosition === 0 && index > 0) {
-        e.preventDefault();
-        textareasRef.current[index - 1]?.focus();
-        return;
-      }
-    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const didMove = focusAdjacentEditableLine(
+        index,
+        e.key === 'ArrowUp' ? 'up' : 'down',
+        e.target.selectionStart
+      );
 
-    if (e.key === 'ArrowDown' && !e.shiftKey) {
-      const cursorPosition = e.target.selectionStart;
-      const textLength = e.target.value.length;
-      if (cursorPosition === textLength && index < lines.length - 1) {
+      if (didMove) {
         e.preventDefault();
-        textareasRef.current[index + 1]?.focus();
         return;
       }
     }
@@ -1175,7 +1186,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
       )} */}
         {isTextMode ? (
           <textarea
-            className="w-full p-4 text-sm border border-gray-300 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"
+            className="w-full p-4 text-sm border border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"
             value={lines.map(line => line.text).join('\n')}
             onChange={(e) => {
               const timestamp = Date.now();
@@ -1200,7 +1211,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
             }}
           />
         ) : (
-          <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 shadow-sm">
+          <div className="note-editor-lines border border-gray-200 rounded-lg divide-y divide-gray-100 shadow-sm overflow-hidden bg-white">
             {/* Regular content lines */}
             {lines.filter(line => !line.text.trim().startsWith('meta::')).map((line, index) => {
               const originalIndex = lines.findIndex(l => l.id === line.id);
@@ -1214,7 +1225,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                     handleDragOver(originalIndex);
                   }}
                   onDrop={(e) => handleDrop(e, originalIndex)}
-                  className={`relative group transition border-l-4 border-transparent bg-gray-50 hover:bg-white hover:border-blue-400 ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
+                  className={`note-editor-line relative group transition border-l-4 border-transparent bg-gray-50 hover:bg-white hover:border-blue-400 ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
                 >
                   {dropTargetIndex === originalIndex && draggedId !== lines[originalIndex].id && (
                     <div className="h-1 bg-blue-500 rounded my-1"></div>
@@ -1299,7 +1310,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                     )}
                     {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ? (
                       <div
-                        className="flex items-center pl-12 pr-28 w-full"
+                        className="note-editor-link-row flex items-center pl-12 pr-28 w-full"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
@@ -1335,7 +1346,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                       </div>
                     ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
                       <div
-                        className="flex items-center pl-12 pr-28 w-full"
+                        className="note-editor-link-row flex items-center pl-12 pr-28 w-full"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
@@ -1390,7 +1401,7 @@ const NoteEditor = ({ isModal = false, objList, note, onSave, onCancel, text, se
                               index: originalIndex
                             });
                           }}
-                          className={`w-full pl-12 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                          className={`w-full pl-12 pr-28 bg-transparent resize-none focus:outline-none text-sm placeholder:text-slate-500 ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
                             }`}
                           rows={1}
                         />

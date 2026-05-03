@@ -31,7 +31,7 @@ import {
 } from 'chart.js';
 import TrackerGrid from './TrackerGrid';
 import TrackerTable from './TrackerTable';
-import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
+import { createTrackerAnswerNote, getTrackerOverdueThreshold, isCustomXDaysTrackerCadence } from '../utils/TrackerQuestionUtils';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 
@@ -65,6 +65,14 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     const saved = localStorage.getItem('trackerPageFilterOverdue');
     return saved === 'true';
   });
+  const [filterUnmarked, setFilterUnmarked] = useState(() => {
+    const saved = localStorage.getItem('trackerPageFilterUnmarked');
+    return saved === 'true';
+  });
+  const [filterMarked, setFilterMarked] = useState(() => {
+    const saved = localStorage.getItem('trackerPageFilterMarked');
+    return saved === 'true';
+  });
   const [groupBy, setGroupBy] = useState(() => {
     const saved = localStorage.getItem('trackerPageGroupBy');
     return saved || 'none'; // 'none', 'cadence', or 'type'
@@ -75,7 +83,11 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
   });
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('trackerPageViewMode');
-    return saved || 'grid'; // 'grid' or 'table'
+    return saved || 'table'; // 'grid' or 'table'
+  });
+  const [showPastSeven, setShowPastSeven] = useState(() => {
+    const saved = localStorage.getItem('trackerPageShowPastSeven');
+    return saved !== 'false';
   });
   const [showOverdueAlert, setShowOverdueAlert] = useState(true);
   const [trackerStats, setTrackerStats] = useState({});
@@ -90,6 +102,9 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [allNotes, setAllNotes] = useState([]);
+  const [flipQueue, setFlipQueue] = useState([]);
+  const [showFlipModal, setShowFlipModal] = useState(false);
+  const [flipValue, setFlipValue] = useState('');
 
   useEffect(() => {
     loadTrackers();
@@ -115,10 +130,23 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     localStorage.setItem('trackerPageFilterOverdue', filterOverdue.toString());
   }, [filterOverdue]);
 
+  // Save filterUnmarked to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('trackerPageFilterUnmarked', filterUnmarked.toString());
+  }, [filterUnmarked]);
+
+  useEffect(() => {
+    localStorage.setItem('trackerPageFilterMarked', filterMarked.toString());
+  }, [filterMarked]);
+
   // Save collapsedGroups to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('trackerPageCollapsedGroups', JSON.stringify(collapsedGroups));
   }, [collapsedGroups]);
+
+  useEffect(() => {
+    localStorage.setItem('trackerPageShowPastSeven', showPastSeven.toString());
+  }, [showPastSeven]);
 
   // Save viewMode to localStorage whenever it changes
   useEffect(() => {
@@ -147,8 +175,12 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
           const lines = note.content.split('\n');
           const title = lines.find(line => line.startsWith('Title:'))?.replace('Title:', '').trim();
           const question = lines.find(line => line.startsWith('Question:'))?.replace('Question:', '').trim();
-          const type = lines.find(line => line.startsWith('Type:'))?.replace('Type:', '').trim();
-          const cadence = lines.find(line => line.startsWith('Cadence:'))?.replace('Cadence:', '').trim();
+          const rawType = lines.find(line => line.startsWith('Type:'))?.replace('Type:', '').trim();
+          const rawCadence = lines.find(line => line.startsWith('Cadence:'))?.replace('Cadence:', '').trim();
+          const legacyCustomXType = String(rawType || '').trim().toLowerCase() === 'custom_x_days'
+            || String(rawType || '').trim().toLowerCase() === 'custom x days';
+          const type = legacyCustomXType ? 'value' : rawType;
+          const cadence = legacyCustomXType ? 'Custom X Days' : rawCadence;
           const daysStr = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim();
           const days = daysStr ? daysStr.split(',').map(day => day.trim()) : [];
           const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
@@ -169,6 +201,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
             overdueDays: overdueDays || undefined,
             createdAt: note.createdAt,
             watched: lines.some(line => line.trim() === 'meta::tracker_watched'),
+            important: lines.some(line => line.trim() === 'meta::tracker_important'),
             completions: {} // Initialize completions
           };
         });
@@ -400,6 +433,34 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
       }
     } catch (err) {
       console.error('Error toggling tracker watch:', err);
+    }
+  };
+
+  const handleImportantToggle = async (tracker) => {
+    try {
+      const freshNotes = await loadAllNotes();
+      const allNotesList = Array.isArray(freshNotes) ? freshNotes : (freshNotes?.notes || []);
+      const note = allNotesList.find(n => String(n.id) === String(tracker.id));
+      if (!note) return;
+      const lines = note.content.split('\n');
+      const isImportant = lines.some(l => l.trim() === 'meta::tracker_important');
+      const updatedContent = isImportant
+        ? lines.filter(l => l.trim() !== 'meta::tracker_important').join('\n')
+        : [...lines, 'meta::tracker_important'].join('\n');
+      await updateNoteById(note.id, updatedContent);
+      setTrackers(prev => prev.map(t =>
+        String(t.id) === String(tracker.id) ? { ...t, important: !isImportant } : t
+      ));
+      setAllNotes(prev => prev.map(n =>
+        String(n.id) === String(note.id) ? { ...n, content: updatedContent } : n
+      ));
+      if (setGlobalNotes) {
+        setGlobalNotes(prev => prev.map(n =>
+          String(n.id) === String(note.id) ? { ...n, content: updatedContent } : n
+        ));
+      }
+    } catch (err) {
+      console.error('Error toggling tracker importance:', err);
     }
   };
 
@@ -717,8 +778,10 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
     // Handle addition/update
     let answer;
-    if (tracker.type.toLowerCase() === 'value') {
+    if (tracker.type.toLowerCase() === 'value' || tracker.type.toLowerCase() === 'adhoc_value') {
       answer = value;
+    } else if (tracker.type.toLowerCase().includes('date')) {
+      answer = value || dateStr;
     } else if (tracker.type.toLowerCase().includes('yes')) {
       answer = value; // value should be 'yes' or 'no' from TrackerCard
     } else {
@@ -1061,6 +1124,167 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     return relevantDateStr >= tracker.startDate;
   }
 
+  const getTrackerTargetDate = (tracker) => {
+    const today = moment().startOf('day');
+    const endDate = tracker.endDate && moment(tracker.endDate).isValid()
+      ? moment.min(today, moment(tracker.endDate).startOf('day'))
+      : today;
+
+    if (isCustomXDaysTrackerCadence(tracker.cadence)) {
+      const lastAnswer = getLatestTrackerAnswer(tracker);
+      if (!lastAnswer?.date) return endDate.format('YYYY-MM-DD');
+      const { days } = getTrackerOverdueThreshold(tracker);
+      const dueDate = moment(lastAnswer.date).startOf('day').add(days, 'days');
+      return moment.min(dueDate, endDate).format('YYYY-MM-DD');
+    }
+
+    if (!tracker.days || tracker.days.length === 0) {
+      return endDate.format('YYYY-MM-DD');
+    }
+
+    const selectedDays = tracker.days.map(d => {
+      if (typeof d === 'string') {
+        const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(d.toLowerCase().slice(0, 3));
+        return idx >= 0 ? idx : d;
+      }
+      return d;
+    });
+
+    const cursor = moment(endDate);
+    for (let i = 0; i < 14; i++) {
+      const dateStr = cursor.format('YYYY-MM-DD');
+      if (selectedDays.includes(cursor.day()) && isOnOrAfterStartDate(tracker, dateStr)) {
+        return dateStr;
+      }
+      cursor.subtract(1, 'days');
+    }
+
+    return endDate.format('YYYY-MM-DD');
+  };
+
+  const isTrackerMarkedForCurrentTarget = (tracker) => {
+    const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : '';
+
+    if (isCustomXDaysTrackerCadence(tracker.cadence)) {
+      return !isCustomXDaysDue(tracker);
+    }
+
+    if (cadence === 'monthly') {
+      return isMonthlyCompleted(tracker);
+    }
+
+    if (cadence === 'yearly') {
+      return isYearlyCompleted(tracker);
+    }
+
+    if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
+      return isWeeklyCompleted(tracker);
+    }
+
+    const targetDate = getTrackerTargetDate(tracker);
+    return Boolean(tracker.completions && tracker.completions[targetDate]);
+  };
+
+  const getDateAgeLabel = (date) => {
+    const days = moment().startOf('day').diff(moment(date).startOf('day'), 'days');
+    if (days === 0) return 'today';
+    if (days > 0) return `${days} day${days !== 1 ? 's' : ''} ago`;
+    const daysAhead = Math.abs(days);
+    return `in ${daysAhead} day${daysAhead !== 1 ? 's' : ''}`;
+  };
+
+  const formatDateWithWeekday = (date) => moment(date).format('YYYY-MM-DD (ddd)');
+
+  const getUnmarkedTrackersForFlip = () => (
+    [...trackers]
+      .filter(tracker => !isTrackerMarkedForCurrentTarget(tracker))
+      .sort(compareTrackersByImportanceThenTitle)
+  );
+
+  const getLatestTrackerAnswer = (tracker) => {
+    const answers = trackerAnswers[String(tracker.id)] || [];
+    if (answers.length === 0) return null;
+    return [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf())[0];
+  };
+
+  const isCustomXDaysDue = (tracker) => {
+    const lastAnswer = getLatestTrackerAnswer(tracker);
+    if (!lastAnswer?.date) return true;
+    const { days } = getTrackerOverdueThreshold(tracker);
+    const daysSince = moment().startOf('day').diff(moment(lastAnswer.date).startOf('day'), 'days');
+    return daysSince >= days;
+  };
+
+  const getTrackerFromFlipItem = (item) => item?.type === 'tracker' ? item.tracker : null;
+
+  const getInitialFlipValue = (item) => {
+    const tracker = getTrackerFromFlipItem(item);
+    const trackerType = tracker?.type ? tracker.type.toLowerCase() : '';
+    return trackerType.includes('date') && tracker ? getTrackerTargetDate(tracker) : '';
+  };
+
+  const buildFlipQueue = () => {
+    const todayKey = moment().format('YYYY-MM-DD');
+    const unmarkedTrackers = getUnmarkedTrackersForFlip();
+    const todaysTrackers = unmarkedTrackers.filter(tracker => getTrackerTargetDate(tracker) === todayKey);
+    const overdueTrackers = unmarkedTrackers.filter(tracker => getTrackerTargetDate(tracker) < todayKey);
+    const queue = [];
+
+    if (todaysTrackers.length > 0) {
+      queue.push({
+        type: 'intro',
+        title: "Today's trackers",
+        body: `Asking for today's ones first.`,
+        count: todaysTrackers.length
+      });
+      todaysTrackers.forEach(tracker => queue.push({ type: 'tracker', tracker, section: 'today' }));
+    }
+
+    if (overdueTrackers.length > 0) {
+      queue.push({
+        type: 'intro',
+        title: 'Overdue trackers',
+        body: 'Now asking for yesterday and before.',
+        count: overdueTrackers.length
+      });
+      overdueTrackers.forEach(tracker => queue.push({ type: 'tracker', tracker, section: 'overdue' }));
+    }
+
+    return queue;
+  };
+
+  const startFlipSession = () => {
+    const queue = buildFlipQueue();
+    setFlipQueue(queue);
+    setShowFlipModal(true);
+    setFlipValue(getInitialFlipValue(queue[0]));
+  };
+
+  const closeFlipSession = () => {
+    setShowFlipModal(false);
+    setFlipQueue([]);
+    setFlipValue('');
+  };
+
+  const advanceFlipSession = () => {
+    setFlipQueue(prev => {
+      const nextQueue = prev.slice(1);
+      setFlipValue(getInitialFlipValue(nextQueue[0]));
+      if (nextQueue.length === 0) {
+        setShowFlipModal(false);
+      }
+      return nextQueue;
+    });
+  };
+
+  const submitFlipAnswer = async (answer) => {
+    const tracker = getTrackerFromFlipItem(flipQueue[0]);
+    if (!tracker) return;
+    const targetDate = getTrackerTargetDate(tracker);
+    await handleToggleDay(tracker.id, targetDate, answer);
+    advanceFlipSession();
+  };
+
   // Helper function to check if a tracker is overdue
   const isTrackerOverdue = (tracker) => {
     const trackerId = String(tracker.id);
@@ -1073,16 +1297,24 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     if (!lastAnswer || !lastAnswer.date) return false;
 
     // Calculate days since last entry
-    const today = moment();
-    const lastDate = moment(lastAnswer.date);
+    const today = moment().startOf('day');
+    const lastDate = moment(lastAnswer.date).startOf('day');
     const daysSince = today.diff(lastDate, 'days');
 
-    // Use tracker's overdueDays if set, otherwise default to 30
-    const overdueThreshold = tracker.overdueDays ? parseInt(tracker.overdueDays) : 30;
-    return daysSince > overdueThreshold;
+    const { days: overdueThreshold } = getTrackerOverdueThreshold(tracker);
+    return daysSince >= overdueThreshold;
   };
 
   // Filter trackers based on search term, cadence, type, and overdue status
+  const compareTrackersByImportanceThenTitle = (a, b) => {
+    if (Boolean(a.important) !== Boolean(b.important)) {
+      return a.important ? -1 : 1;
+    }
+    const nameA = (a.title || '').toLowerCase();
+    const nameB = (b.title || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  };
+
   const filteredTrackers = trackers.filter(tracker => {
     // Fuzzy search on title and question
     const matchesSearch = fuzzyMatch(tracker.title || '', searchTerm) ||
@@ -1090,13 +1322,11 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
     const matchesType = filterType === 'all' || tracker.type === filterType;
     const matchesOverdue = !filterOverdue || isTrackerOverdue(tracker);
-    return matchesSearch && matchesCadence && matchesType && matchesOverdue;
-  }).sort((a, b) => {
-    // Sort by name (title)
-    const nameA = (a.title || '').toLowerCase();
-    const nameB = (b.title || '').toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
+    const isMarked = isTrackerMarkedForCurrentTarget(tracker);
+    const matchesUnmarked = !filterUnmarked || !isMarked;
+    const matchesMarked = !filterMarked || isMarked;
+    return matchesSearch && matchesCadence && matchesType && matchesOverdue && matchesUnmarked && matchesMarked;
+  }).sort(compareTrackersByImportanceThenTitle);
 
   // Show all trackers in one unified section - removed pending/completed separation
 
@@ -1105,13 +1335,15 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
   const allTags = [...new Set(trackers.flatMap(t => Array.isArray(t.tags) ? t.tags.filter(Boolean) : []))].sort();
 
   const groupByCadence = (trackers) => {
-    const groups = { yearly: [], monthly: [], weekly: [], daily: [], custom: [] };
+    const groups = { yearly: [], monthly: [], weekly: [], daily: [], customXDays: [], custom: [] };
     trackers.forEach(tracker => {
       const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
       if (cadence === 'yearly') groups.yearly.push(tracker);
       else if (cadence === 'monthly') groups.monthly.push(tracker);
       else if (cadence === 'weekly') {
         groups.weekly.push(tracker);
+      } else if (isCustomXDaysTrackerCadence(cadence)) {
+        groups.customXDays.push(tracker);
       } else if (cadence === 'custom') {
         groups.custom.push(tracker);
       } else {
@@ -1120,11 +1352,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     });
     // Sort each group by name
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => {
-        const nameA = (a.title || '').toLowerCase();
-        const nameB = (b.title || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
+      groups[key].sort(compareTrackersByImportanceThenTitle);
     });
     return groups;
   };
@@ -1141,11 +1369,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
     });
     // Sort each group by name
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => {
-        const nameA = (a.title || '').toLowerCase();
-        const nameB = (b.title || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
+      groups[key].sort(compareTrackersByImportanceThenTitle);
     });
     return groups;
   };
@@ -1169,11 +1393,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
     // Sort each group by name
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => {
-        const nameA = (a.title || '').toLowerCase();
-        const nameB = (b.title || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
+      groups[key].sort(compareTrackersByImportanceThenTitle);
     });
     return groups;
   };
@@ -1190,7 +1410,38 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
   const renderGroupedTrackers = (groups) => {
     // Unified section styling
-    const sectionBg = 'bg-blue-50';
+    const sectionBg = 'tracker-list-panel bg-blue-50';
+
+    const renderTrackerCollection = (trackerList) => (
+      viewMode === 'grid' ? (
+        <TrackerGrid
+          trackers={trackerList}
+          onToggleDay={handleToggleDay}
+          trackerAnswers={trackerAnswers}
+          onEdit={handleEditTracker}
+          isFocusMode={isFocusMode}
+          isDevMode={isDevMode}
+          onRefresh={loadTrackers}
+          onTrackerConverted={handleTrackerConverted}
+          onTrackerDeleted={handleTrackerDeleted}
+          onWatch={handleWatchToggle}
+          onImportant={handleImportantToggle}
+          allTags={allTags}
+          onSaveTags={handleSaveTags}
+        />
+      ) : (
+        <TrackerTable
+          trackers={trackerList}
+          trackerAnswers={trackerAnswers}
+          onEdit={handleEditTracker}
+          onTrackerDeleted={handleTrackerDeleted}
+          onToggleDay={handleToggleDay}
+          isFocusMode={isFocusMode}
+          groupBy={groupBy}
+          showPastSeven={showPastSeven}
+        />
+      )
+    );
 
     // Format group title for display
     const formatGroupTitle = (key) => {
@@ -1213,7 +1464,9 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
           'monthly': 'Monthly',
           'weekly': 'Weekly',
           'daily': 'Daily',
-          'custom': 'Custom'
+          'custom': 'Custom',
+          'custom x days': 'Custom X Days',
+          'custom_x_days': 'Custom X Days'
         };
         return cadenceMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
       }
@@ -1223,20 +1476,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
       <div className={`${sectionBg} rounded-lg p-4 mb-6`}>
         {groupBy === 'none' ? (
           // Render flat list (no grouping)
-          <TrackerGrid
-            trackers={groups._flat || []}
-            onToggleDay={handleToggleDay}
-            trackerAnswers={trackerAnswers}
-            onEdit={handleEditTracker}
-            isFocusMode={isFocusMode}
-            isDevMode={isDevMode}
-            onRefresh={loadTrackers}
-            onTrackerConverted={handleTrackerConverted}
-            onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-          />
+          renderTrackerCollection(groups._flat || [])
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
           <>
@@ -1253,22 +1493,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                   )}
                   Yearly ({groups.yearly.length})
                 </button>
-                {!collapsedGroups['yearly'] && (
-                  <TrackerGrid
-                    trackers={groups.yearly}
-                    onToggleDay={handleToggleDay}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                  />
-                )}
+                {!collapsedGroups['yearly'] && renderTrackerCollection(groups.yearly)}
               </div>
             )}
             {groups.monthly && groups.monthly.length > 0 && (
@@ -1284,22 +1509,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                   )}
                   Monthly ({groups.monthly.length})
                 </button>
-                {!collapsedGroups['monthly'] && (
-                  <TrackerGrid
-                    trackers={groups.monthly}
-                    onToggleDay={handleToggleDay}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                  />
-                )}
+                {!collapsedGroups['monthly'] && renderTrackerCollection(groups.monthly)}
               </div>
             )}
             {groups.weekly && groups.weekly.length > 0 && (
@@ -1315,22 +1525,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                   )}
                   Weekly ({groups.weekly.length})
                 </button>
-                {!collapsedGroups['weekly'] && (
-                  <TrackerGrid
-                    trackers={groups.weekly}
-                    onToggleDay={handleToggleDay}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                  />
-                )}
+                {!collapsedGroups['weekly'] && renderTrackerCollection(groups.weekly)}
               </div>
             )}
             {groups.daily && groups.daily.length > 0 && (
@@ -1346,33 +1541,23 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                   )}
                   Daily ({groups.daily.length})
                 </button>
-                {!collapsedGroups['daily'] && (viewMode === 'grid' ? (
-                  <TrackerGrid
-                    trackers={groups.daily}
-                    onToggleDay={handleToggleDay}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                  />
-                ) : (
-                  <TrackerTable
-                    trackers={groups.daily}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                    isFocusMode={isFocusMode}
-                  />
-                ))}
+                {!collapsedGroups['daily'] && renderTrackerCollection(groups.daily)}
+              </div>
+            )}
+            {groups.customXDays && groups.customXDays.length > 0 && (
+              <div className="ml-8">
+                <button
+                  onClick={() => toggleGroupCollapse('customXDays')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['customXDays'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Custom X Days ({groups.customXDays.length})
+                </button>
+                {!collapsedGroups['customXDays'] && renderTrackerCollection(groups.customXDays)}
               </div>
             )}
             {groups.custom && groups.custom.length > 0 && (
@@ -1388,33 +1573,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                   )}
                   Custom ({groups.custom.length})
                 </button>
-                {!collapsedGroups['custom'] && (viewMode === 'grid' ? (
-                  <TrackerGrid
-                    trackers={groups.custom}
-                    onToggleDay={handleToggleDay}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                  />
-                ) : (
-                  <TrackerTable
-                    trackers={groups.custom}
-                    trackerAnswers={trackerAnswers}
-                    onEdit={handleEditTracker}
-                    onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                    isFocusMode={isFocusMode}
-                  />
-                ))}
+                {!collapsedGroups['custom'] && renderTrackerCollection(groups.custom)}
               </div>
             )}
           </>
@@ -1437,34 +1596,7 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
                     )}
                     {formatGroupTitle(groupKey)} ({groupTrackers.length})
                   </button>
-                  {!isCollapsed && (viewMode === 'grid' ? (
-                    <TrackerGrid
-                      trackers={groupTrackers}
-                      onToggleDay={handleToggleDay}
-                      trackerAnswers={trackerAnswers}
-                      onEdit={handleEditTracker}
-                      isFocusMode={isFocusMode}
-                      isDevMode={isDevMode}
-                      onRefresh={loadTrackers}
-                      onTrackerConverted={handleTrackerConverted}
-                      onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                    />
-                  ) : (
-                    <TrackerTable
-                      trackers={groupTrackers}
-                      trackerAnswers={trackerAnswers}
-                      onEdit={handleEditTracker}
-                      onTrackerDeleted={handleTrackerDeleted}
-                    onWatch={handleWatchToggle}
-                    allTags={allTags}
-                    onSaveTags={handleSaveTags}
-                      onToggleDay={handleToggleDay}
-                      isFocusMode={isFocusMode}
-                    />
-                  ))}
+                  {!isCollapsed && renderTrackerCollection(groupTrackers)}
                 </div>
               );
             }
@@ -1481,9 +1613,21 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
 
   // Calculate number of overdue trackers
   const overdueCount = trackers.filter(tracker => isTrackerOverdue(tracker)).length;
+  const unmarkedFlipCount = getUnmarkedTrackersForFlip().length;
+  const flipItem = flipQueue[0];
+  const flipTracker = getTrackerFromFlipItem(flipItem);
+  const flipTrackerCount = flipQueue.filter(item => item.type === 'tracker').length;
+  const flipTrackerType = flipTracker?.type ? flipTracker.type.toLowerCase() : '';
+  const flipTargetDate = flipTracker ? getTrackerTargetDate(flipTracker) : '';
+  const isFlipYesNo = flipTrackerType === 'yes,no' || flipTrackerType === 'yesno' || flipTrackerType === 'yes/no';
+  const isFlipValue = flipTrackerType === 'value' || flipTrackerType === 'adhoc_value';
+  const isFlipDate = flipTrackerType.includes('date');
+  const flipQuestion = flipTracker?.question
+    ? flipTracker.question.replace(/#date#/g, `${formatDateWithWeekday(flipTargetDate)} (${getDateAgeLabel(flipTargetDate)})`)
+    : '';
 
   return (
-    <div className="p-8">
+    <div className="trackers-page p-8">
       {/* Overdue Trackers Alert */}
       {showOverdueAlert && overdueCount > 0 && (
         <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm relative">
@@ -1508,6 +1652,16 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
         <div className="flex gap-3">
+          <button
+            onClick={startFlipSession}
+            disabled={unmarkedFlipCount === 0}
+            className={`px-4 py-2 rounded-lg transition-colors ${unmarkedFlipCount === 0
+              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+          >
+            Flip & Record ({unmarkedFlipCount})
+          </button>
           <button
             onClick={() => navigate('/tracker-stats-analysis')}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -1578,6 +1732,45 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
             />
             <span className="text-sm font-medium text-gray-700">Show Overdue Only</span>
           </label>
+
+          <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={filterUnmarked}
+              onChange={(e) => {
+                setFilterUnmarked(e.target.checked);
+                if (e.target.checked) setFilterMarked(false);
+              }}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Show Unmarked Only</span>
+          </label>
+
+          <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={filterMarked}
+              onChange={(e) => {
+                setFilterMarked(e.target.checked);
+                if (e.target.checked) setFilterUnmarked(false);
+              }}
+              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Show Marked Only</span>
+          </label>
+
+          {(filterMarked || filterUnmarked) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilterMarked(false);
+                setFilterUnmarked(false);
+              }}
+              className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Exit marked filter
+            </button>
+          )}
 
           {/* Group By Buttons */}
           <div className="flex items-center gap-2">
@@ -1658,12 +1851,155 @@ const TrackerListing = ({ setAllNotes: setGlobalNotes } = {}) => {
           </div>
         </div>
       </div>
-      <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
+      <div className="tracker-list-header bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200 flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">
           Trackers ({totalCount})
         </h2>
+        {viewMode === 'table' && (
+          <button
+            type="button"
+            onClick={() => setShowPastSeven(prev => !prev)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            {showPastSeven ? 'Hide Past 7' : 'Show Past 7'}
+          </button>
+        )}
       </div>
       {renderGroupedTrackers(groups)}
+      {showFlipModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-xl w-full relative shadow-xl">
+            <button
+              type="button"
+              onClick={closeFlipSession}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 transition-colors"
+              aria-label="Close flip tracker modal"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+
+            {flipItem?.type === 'intro' ? (
+              <div className="flex flex-col gap-5 pr-8">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {flipItem.count} tracker{flipItem.count !== 1 ? 's' : ''}
+                  </div>
+                  <h2 className="mt-1 text-xl font-bold text-gray-900">{flipItem.title}</h2>
+                  <p className="mt-2 text-sm text-gray-600">{flipItem.body}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={advanceFlipSession}
+                  className="self-start px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            ) : flipTracker ? (
+              <div className="flex flex-col gap-5">
+                <div className="pr-8">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {flipTrackerCount} remaining
+                  </div>
+                  <h2 className="mt-1 text-xl font-bold text-gray-900">{flipTracker.title}</h2>
+                  {flipQuestion && (
+                    <p className="mt-2 text-sm text-gray-600">{flipQuestion}</p>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div className="text-sm font-semibold text-gray-900">{formatDateWithWeekday(flipTargetDate)}</div>
+                  <div className="text-xs text-gray-500">{getDateAgeLabel(flipTargetDate)}</div>
+                </div>
+
+                {isFlipYesNo ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => submitFlipAnswer('yes')}
+                      className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => submitFlipAnswer('no')}
+                      className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+                    >
+                      No
+                    </button>
+                    <button
+                      type="button"
+                      onClick={advanceFlipSession}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      Skip for now
+                    </button>
+                  </div>
+                ) : (isFlipValue || isFlipDate) ? (
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type={isFlipDate ? 'date' : 'text'}
+                      value={flipValue}
+                      onChange={(event) => setFlipValue(event.target.value)}
+                      placeholder={isFlipDate ? 'Date' : 'Value'}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const value = flipValue.trim();
+                          if (!value) return;
+                          submitFlipAnswer(value);
+                        }}
+                        className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={advanceFlipSession}
+                        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                      >
+                        Skip for now
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => submitFlipAnswer('yes')}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      Done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={advanceFlipSession}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      Skip for now
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-gray-900">All caught up</h2>
+                <button
+                  type="button"
+                  onClick={closeFlipSession}
+                  className="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {showAddTracker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">

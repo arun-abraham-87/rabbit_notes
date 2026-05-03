@@ -137,7 +137,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     return nextOccurrence;
   };
 
-  // Get top 10 event notes
+  // Get event notes
   const getEventNotes = () => {
     if (!notes) return [];
 
@@ -237,8 +237,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
         // Sort by days until event (ascending) - no special treatment for pinned events
         return daysA - daysB;
-      })
-      .slice(0, 10); // Get top 10
+      });
   };
 
   // Helper function to parse timeline notes
@@ -1182,6 +1181,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
             // Don't show anniversary for deadline events
             const shouldShowAnniversary = isRecurring && !note.isDeadline;
             const isTimed = !!parseTimerMeta(note.content);
+            const anniversaryAgeInYears = new Date().getFullYear() - originalDate.getFullYear();
+            const anniversaryAgeText = `${anniversaryAgeInYears} year${anniversaryAgeInYears !== 1 ? 's' : ''}`;
+            const anniversaryLabel = `${anniversaryAgeInYears} year anniversary`;
 
             return (
               <div
@@ -1200,11 +1202,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                     </div>
                   </div>
                 )}
-                <div className={`text-2xl font-bold ${isToday ? 'text-green-800' : (note.bgColor === '#f3e8ff' ? 'text-purple-800' : 'text-gray-600')}`}>
-                  {isToday ? '' : displayText}
+                <div className={`flex items-baseline gap-1 ${isToday ? 'text-green-800' : (note.bgColor === '#f3e8ff' ? 'text-purple-800' : 'text-gray-600')}`}>
+                  <span className="text-2xl font-bold">{isToday ? '' : displayText}</span>
+                  {!isToday && <span className="text-xs font-medium">to event</span>}
                 </div>
                 <div className={`text-sm ${isToday ? 'text-green-700' : (note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500')}`}>
-                  {isToday ? '' : (shouldShowAnniversary ? 'anniversary' : 'until')}
+                  {isToday ? '' : (shouldShowAnniversary ? anniversaryLabel : 'until')}
                 </div>
                 <div
                   className={`font-medium w-full truncate flex-shrink-0 ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`}
@@ -1247,10 +1250,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                 <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
                   {shouldShowAnniversary ? (
                     (() => {
-                      const originalDate = new Date(note.dateTime);
-                      const currentYear = new Date().getFullYear();
-                      const ageInYears = currentYear - originalDate.getFullYear();
-                      return `Original date: ${originalDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${ageInYears} year${ageInYears !== 1 ? 's' : ''})`;
+                      return `Original date: ${originalDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${anniversaryAgeText})`;
                     })()
                   ) : (
                     `on ${eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`

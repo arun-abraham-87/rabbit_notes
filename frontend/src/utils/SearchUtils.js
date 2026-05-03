@@ -6,7 +6,7 @@ const MAX_RECENT_SEARCHES = 5;
 // Create a new MiniSearch instance
 const miniSearch = new MiniSearch({
   fields: ['content', 'title'], // fields to index for full-text search
-  storeFields: ['id', 'content', 'created_datetime'], // fields to return with search results
+  storeFields: ['id', 'created_datetime'], // keep search results light; content is already in app state
   searchOptions: {
     boost: { title: 2 }, // boost title matches
     fuzzy: 0.2, // enable fuzzy search with 0.2 tolerance
@@ -112,4 +112,4 @@ export const addRecentSearch = (searchTerm) => {
   } catch (error) {
     console.error('Error saving recent search:', error);
   }
-}; 
+};

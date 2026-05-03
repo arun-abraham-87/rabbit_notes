@@ -76,6 +76,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return colorConfig;
   };
 
+  const getReminderThemeClass = (noteId) => `reminder-card-${getReminderColor(noteId)}`;
+
   // Function to handle color selection
   const handleColorSelect = (noteId, colorName) => {
     const newColors = { ...reminderColors, [noteId]: colorName };
@@ -820,7 +822,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
+            className="reminder-content-link text-blue-600 underline hover:text-blue-800"
           >
             {text}
           </a>
@@ -845,7 +847,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
+              className="reminder-content-link text-blue-600 underline hover:text-blue-800"
             >
               {host}
             </a>
@@ -877,12 +879,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
     return (
       <>
-        <div className="font-medium">{renderLine(firstLine, 'first')}</div>
-        {secondLine && <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>}
+        <div className="reminder-content-primary font-medium">{renderLine(firstLine, 'first')}</div>
+        {secondLine && <div className="reminder-content-secondary mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>}
         {lines.length > 2 && (
           <>
             {isExpanded ? (
-              <div className="mt-2 text-gray-600">
+              <div className="reminder-content-details mt-2 text-gray-600">
                 {remainingLines.map((line, index) => (
                   <div key={index}>{renderLine(line, 'rem-' + index)}</div>
                 ))}
@@ -890,7 +892,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             ) : null}
             <button
               onClick={toggleDetails}
-              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              className="reminder-content-link mt-1 text-sm text-blue-600 hover:text-blue-800"
             >
               {isExpanded ? 'Show less' : `Show more (${lines.length - 2} more line${lines.length - 2 > 1 ? 's' : ''})`}
             </button>
@@ -1361,7 +1363,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       <div
                         key={note.id}
                         data-reminder-id={note.id}
-                        className={`${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${isFocused
+                        className={`reminder-card ${getReminderThemeClass(note.id)} ${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${isFocused
                           ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl`
                           : colorConfig.border
                           }`}
@@ -1387,7 +1389,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                               {hasMoreContent && (
                                 <button
                                   onClick={() => toggleDetails(note.id)}
-                                  className={`${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
+                                  className={`reminder-card-icon ${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
                                 >
                                   {isDetailsExpanded ? (
                                     <ChevronUpIcon className="h-5 w-5" />
@@ -1397,7 +1399,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                 </button>
                               )}
                               {/* Bell icon with vibration animation */}
-                              <BellIcon className={`h-5 w-5 ${colorConfig.text} bell-vibrate`} />
+                              <BellIcon className={`reminder-card-icon h-5 w-5 ${colorConfig.text} bell-vibrate`} />
                               <div>
                                 {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
                               </div>
@@ -1437,15 +1439,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                 ) : (
                                   <div className="flex items-center gap-1">
                                     {getReminderGroup(note.id) ? (
-                                      <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
+                                      <span className="reminder-group-chip text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
                                         {getReminderGroup(note.id)}
                                       </span>
                                     ) : (
-                                      <span className="text-xs text-gray-500 italic">No group</span>
+                                      <span className="reminder-group-empty text-xs text-gray-500 italic">No group</span>
                                     )}
                                     <button
                                       onClick={(event) => toggleGroupDropdown(note.id, event)}
-                                      className="text-xs text-blue-600 hover:text-blue-800 underline ml-1"
+                                      className="reminder-content-link text-xs text-blue-600 hover:text-blue-800 underline ml-1"
                                     >
                                       {getReminderGroup(note.id) ? 'Edit' : 'Add'}
                                     </button>
@@ -1469,35 +1471,35 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                 <>
                                   <div className="flex flex-col items-end mr-2">
                                     {getHumanReadableCadence(note) && (
-                                      <div className="text-xs text-gray-400 mb-1">
+                                      <div className="reminder-cadence-label text-xs text-gray-400 mb-1">
                                         {getHumanReadableCadence(note)}
                                       </div>
                                     )}
                                   </div>
                                   <button
                                     onClick={() => handleDismiss(note)}
-                                    className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                                    className="reminder-action reminder-action-confirm px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
                                     title="Dismiss"
                                   >
                                     <CheckIcon className="h-5 w-5" />
                                   </button>
                                   <button
                                     onClick={() => setNoteToRemove(note)}
-                                    className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                                    className="reminder-action reminder-action-remove px-3 py-1 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                                     title="Remove from Reminders"
                                   >
                                     <XMarkIcon className="h-5 w-5" />
                                   </button>
                                   <button
                                     onClick={() => handleEditNote(note.id)}
-                                    className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                                    className="reminder-action reminder-action-edit px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                                     title="Goto Note"
                                   >
                                     <PencilIcon className="h-5 w-5" />
                                   </button>
                                   <button
                                     onClick={() => toggleOptions(note.id)}
-                                    className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                                    className="reminder-action-more px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
                                     title="More Options"
                                   >
                                     <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
@@ -1735,7 +1737,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <div
                     key={note.id}
                     data-reminder-id={note.id}
-                    className={`${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${isFocused
+                    className={`reminder-card ${getReminderThemeClass(note.id)} ${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${isFocused
                       ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl`
                       : colorConfig.border
                       }`}
@@ -1759,7 +1761,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           {hasMoreContent && (
                             <button
                               onClick={() => toggleDetails(note.id)}
-                              className={`${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
+                              className={`reminder-card-icon ${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
                             >
                               {isDetailsExpanded ? (
                                 <ChevronUpIcon className="h-5 w-5" />
@@ -1770,7 +1772,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           )}
                           <div>
                             {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
-                            <div className="mt-1 text-sm text-gray-500">
+                            <div className="reminder-cadence-label mt-1 text-sm text-gray-500">
                               {formatDate(nextReview)}
                             </div>
                           </div>
@@ -1802,7 +1804,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                 </button>
                                 <button
                                   onClick={cancelEditGroupName}
-                                  className="px-1 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
+                                  className="reminder-action reminder-action-neutral px-1 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
                                 >
                                   ✕
                                 </button>
@@ -1810,15 +1812,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                             ) : (
                               <div className="flex items-center gap-1">
                                 {getReminderGroup(note.id) ? (
-                                  <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
+                                  <span className="reminder-group-chip text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
                                     {getReminderGroup(note.id)}
                                   </span>
                                 ) : (
-                                  <span className="text-xs text-gray-500 italic">No group</span>
+                                  <span className="reminder-group-empty text-xs text-gray-500 italic">No group</span>
                                 )}
                                 <button
                                   onClick={() => startEditGroupName(note.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                  className="reminder-content-link text-xs text-blue-600 hover:text-blue-800 underline"
                                 >
                                   {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
                                 </button>
@@ -1829,21 +1831,21 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col items-end mr-2">
                             {getHumanReadableCadence(note) && (
-                              <div className="text-xs text-gray-400 mb-1">
+                              <div className="reminder-cadence-label text-xs text-gray-400 mb-1">
                                 {getHumanReadableCadence(note)}
                               </div>
                             )}
                           </div>
                           <button
                             onClick={() => toggleOptions(note.id)}
-                            className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                            className="reminder-action-more px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
                             title="More Options"
                           >
                             <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
                           </button>
                           <button
                             onClick={() => handleEditNote(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            className="reminder-action reminder-action-edit px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                             title="Goto Note"
                           >
                             <PencilIcon className="h-5 w-5" />

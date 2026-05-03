@@ -16,6 +16,7 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 import EditEventModal from './EditEventModal.js';
 import WatchedTrackers from './WatchedTrackers.js';
+import NoteCardContent from './NoteCardContent.js';
 
 import TrackedInfoCards from './TrackedInfoCards.js';
 import Countdown from './Countdown.js';
@@ -533,7 +534,7 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
           <>
             <div className="flex-1 min-w-0">
               <div className={`text-sm truncate ${isDone ? 'line-through text-gray-400' : 'text-gray-700'}`}>{habit.name}</div>
-              {habit.tag && (
+              {habit.tag && !groupByTag && (
                 <div className="mt-0.5">
                   <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
                     {habit.tag}
@@ -772,10 +773,13 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
   const [showQuickSuperCriticalAdd, setShowQuickSuperCriticalAdd] = useState(false);
   const [quickSuperCriticalTitle, setQuickSuperCriticalTitle] = useState('');
+  const [activeSuperCriticalPreviewId, setActiveSuperCriticalPreviewId] = useState(null);
   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
   const [calendarPopupStyle, setCalendarPopupStyle] = useState({ top: 0, left: 16, width: 1100 });
   const fontSelectorRef = useRef(null);
   const quickSuperCriticalInputRef = useRef(null);
+  const superCriticalPreviewOpenTimeoutRef = useRef(null);
+  const superCriticalPreviewCloseTimeoutRef = useRef(null);
   const loadedDashboardFilterDefaultsRef = useRef(false);
   const dateTriggerRef = useRef(null);
   const calendarPopupRef = useRef(null);
@@ -827,6 +831,12 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   useEffect(() => () => {
     if (calendarHoverTimeoutRef.current) {
       clearTimeout(calendarHoverTimeoutRef.current);
+    }
+    if (superCriticalPreviewOpenTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewOpenTimeoutRef.current);
+    }
+    if (superCriticalPreviewCloseTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewCloseTimeoutRef.current);
     }
   }, []);
 
@@ -941,6 +951,75 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
       .join('\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
+  );
+
+  const noop = () => {};
+
+  const handleSuperCriticalPreviewEnter = (noteId) => {
+    if (superCriticalPreviewCloseTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewCloseTimeoutRef.current);
+    }
+    if (superCriticalPreviewOpenTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewOpenTimeoutRef.current);
+    }
+    superCriticalPreviewOpenTimeoutRef.current = setTimeout(() => {
+      setActiveSuperCriticalPreviewId(noteId);
+    }, 550);
+  };
+
+  const handleSuperCriticalPreviewLeave = () => {
+    if (superCriticalPreviewOpenTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewOpenTimeoutRef.current);
+    }
+    if (superCriticalPreviewCloseTimeoutRef.current) {
+      clearTimeout(superCriticalPreviewCloseTimeoutRef.current);
+    }
+    superCriticalPreviewCloseTimeoutRef.current = setTimeout(() => {
+      setActiveSuperCriticalPreviewId(null);
+    }, 220);
+  };
+
+  const renderSuperCriticalReviewPreview = (note, isVisible) => (
+    <div
+      className={`super-critical-review-preview absolute left-0 top-full z-50 mt-2 w-[min(520px,calc(100vw-3rem))] rounded-xl border p-3 text-left shadow-xl ${isVisible ? 'block' : 'hidden'}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="super-critical-review-preview-title mb-2 truncate text-xs font-bold uppercase tracking-wide">
+        {getNoteTitle(note)}
+      </div>
+      <div className="super-critical-review-preview-body max-h-80 overflow-y-auto rounded-lg border p-3 text-sm">
+        <NoteCardContent
+          note={note}
+          searchQuery=""
+          duplicatedUrlColors={{}}
+          editingLine={{ noteId: null, lineIndex: null }}
+          setEditingLine={noop}
+          editedLineContent=""
+          setEditedLineContent={noop}
+          rightClickNoteId={null}
+          rightClickIndex={null}
+          setRightClickNoteId={noop}
+          setRightClickIndex={noop}
+          setRightClickPos={noop}
+          editingInlineDate={null}
+          setEditingInlineDate={noop}
+          handleInlineDateSelect={noop}
+          popupNoteText=""
+          setPopupNoteText={noop}
+          objList={[]}
+          addingLineNoteId={null}
+          setAddingLineNoteId={noop}
+          newLineText=""
+          setNewLineText={noop}
+          newLineInputRef={{ current: null }}
+          compressedView={true}
+          updateNote={noop}
+          focusMode={true}
+          allNotes={notes || []}
+          addNote={noop}
+        />
+      </div>
+    </div>
   );
 
   const superCriticalReviews = (notes || []).filter(note =>
@@ -1510,11 +1589,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           {/* ── Main content column ── */}
           <div className="flex-1 min-w-0">
           {/* Super Critical Reviews */}
-          {superCriticalReviews.length > 0 && !isPinned && (
+          {superCriticalReviews.length > 0 && (
             <div className="mb-4">
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50/80 p-3 shadow-sm">
+              <div className="super-critical-reviews-panel mt-3 rounded-xl border p-3 shadow-sm">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-wide text-red-700">
+                  <div className="super-critical-reviews-title text-xs font-bold uppercase tracking-wide">
                     Super critical reviews ({superCriticalReviews.length})
                   </div>
                   <button
@@ -1525,14 +1604,14 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                         setQuickSuperCriticalTitle('');
                       }
                     }}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100"
+                    className="super-critical-reviews-add inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors"
                   >
                     <PlusIcon className="h-3 w-3" />
                     Add
                   </button>
                 </div>
                 {showQuickSuperCriticalAdd && (
-                  <div className="mb-3 rounded-lg border border-red-200 bg-white/80 p-2">
+                  <div className="super-critical-reviews-quick-add mb-3 rounded-lg border p-2">
                     <div className="flex items-center gap-2">
                       <input
                         ref={quickSuperCriticalInputRef}
@@ -1546,12 +1625,12 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           }
                         }}
                         placeholder="Super critical review title"
-                        className="flex-1 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-200"
+                        className="super-critical-reviews-input flex-1 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
                       />
                       <button
                         type="button"
                         onClick={handleQuickAddSuperCriticalReview}
-                        className="rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                        className="super-critical-reviews-primary rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors"
                       >
                         Add
                       </button>
@@ -1561,23 +1640,30 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           setShowQuickSuperCriticalAdd(false);
                           setQuickSuperCriticalTitle('');
                         }}
-                        className="px-2 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+                        className="super-critical-reviews-cancel px-2 py-1 text-xs transition-colors"
                       >
                         Cancel
                       </button>
                     </div>
-                    <div className="mt-2 text-[11px] text-red-700/80">
+                    <div className="super-critical-reviews-hint mt-2 text-[11px]">
                       Creates a watched super-critical review with the default minimum review cadence.
                     </div>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {superCriticalReviews.map(note => (
-                    <div key={note.id} className="group relative">
+                  {superCriticalReviews.map(note => {
+                    const isPreviewVisible = activeSuperCriticalPreviewId === note.id;
+                    return (
+                    <div
+                      key={note.id}
+                      className="group relative"
+                      onMouseEnter={() => handleSuperCriticalPreviewEnter(note.id)}
+                      onMouseLeave={handleSuperCriticalPreviewLeave}
+                    >
                       <button
                         type="button"
                         onClick={() => scrollToReviewDue(note.id)}
-                        className="max-w-xs truncate rounded-full border border-red-200 bg-white px-3 py-1 text-left text-xs font-semibold text-red-800 shadow-sm transition-colors hover:bg-red-100 pr-24"
+                        className="super-critical-review-chip max-w-xs truncate rounded-full border px-3 py-1 text-left text-xs font-semibold shadow-sm transition-colors pr-24"
                         title="Jump to this review due card"
                       >
                         {getNoteTitle(note)}
@@ -1589,7 +1675,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                             e.stopPropagation();
                             handleUnmarkSuperCriticalReview(note);
                           }}
-                          className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 transition-colors hover:bg-amber-100"
+                          className="super-critical-review-unmark rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors"
                           title="Remove super critical marker"
                         >
                           Unmark
@@ -1600,14 +1686,16 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                             e.stopPropagation();
                             handleDeleteSuperCriticalReview(note.id);
                           }}
-                          className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100"
+                          className="super-critical-review-delete rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors"
                           title="Delete review"
                         >
                           Delete
                         </button>
                       </div>
+                      {renderSuperCriticalReviewPreview(note, isPreviewVisible)}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -2022,9 +2110,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     const event = new CustomEvent('addEvent');
                     document.dispatchEvent(event);
                   }}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
                 >
-                  <PlusIcon className="h-4 w-4" />
+                  <PlusIcon className="h-3 w-3" />
                   Add Note
                 </button>
                 <button
@@ -2032,9 +2120,9 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     setEditingEvent(null); // Set to null for new event
                     setShowEditEventModal(true);
                   }}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
                 >
-                  <PlusIcon className="h-4 w-4" />
+                  <PlusIcon className="h-3 w-3" />
                   Add Event
                 </button>
               </div>

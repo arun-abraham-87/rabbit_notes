@@ -3,8 +3,6 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  ChevronDoubleUpIcon,
-  ChevronDoubleDownIcon,
   Cog6ToothIcon,
   XMarkIcon,
   PencilSquareIcon,
@@ -322,7 +320,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [unsavedSettings, setUnsavedSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
-  const [lockedSections, setLockedSections] = useState(() => {
+  const [lockedSections] = useState(() => {
     const saved = localStorage.getItem('lockedSections');
     return saved ? JSON.parse(saved) : {
       quickLinks: false,
@@ -333,6 +331,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const popupRef = useRef(null);
+  const panelRef = useRef(null);
+  const isPointerInsidePanelRef = useRef(false);
   const [showQuickNote, setShowQuickNote] = useState(false);
   const [quickNoteText, setQuickNoteText] = useState('');
   const quickNoteInputRef = useRef(null);
@@ -579,6 +579,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
   const handlePinBookmark = async (bookmark) => {
     try {
+      setHovered(true);
+      setActiveSection('bookmarks');
+
       // Find the note containing this bookmark
       const note = notes.find(n => n.id === bookmark.noteId);
       if (!note) return;
@@ -706,6 +709,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const handleBookmarkContextMenu = (e, bookmark) => {
     e.preventDefault();
     e.stopPropagation();
+    setHovered(true);
     
     // Calculate position to prevent overflow
     const menuWidth = 200;
@@ -732,10 +736,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   };
 
   useEffect(() => {
-    const hideBookmarkMenu = () => setShowBookmarkContextMenu(false);
+    const hideBookmarkMenu = () => {
+      setShowBookmarkContextMenu(false);
+      if (!isPinned && !isPointerInsidePanelRef.current) {
+        setHovered(false);
+      }
+    };
     window.addEventListener('click', hideBookmarkMenu);
     return () => window.removeEventListener('click', hideBookmarkMenu);
-  }, []);
+  }, [isPinned, setHovered]);
 
   const handleViewNote = (bookmark) => {
     if (bookmark && bookmark.noteId) {
@@ -890,20 +899,37 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       )}
 
       {/* Small visible panel */}
-      {!isPinned && (
+      {!isPinned && !isVisible && (
         <div 
-          className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
+          className="fixed left-0 top-1/2 flex min-h-72 w-9 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-r-xl border border-l-0 border-indigo-400 bg-indigo-700/95 py-4 text-[10px] font-bold uppercase text-white shadow-lg transition-colors hover:bg-indigo-600 z-40 cursor-pointer"
           onMouseEnter={() => setHovered(true)}
           style={{ pointerEvents: 'auto' }}
-        />
+          title="Open bookmarks panel"
+          aria-label="Open bookmarks panel"
+        >
+          {'BOOKMARKS'.split('').map((letter, index) => (
+            <span key={`${letter}-${index}`} className="block leading-none">
+              {letter}
+            </span>
+          ))}
+        </div>
       )}
 
       {/* Main sliding panel */}
       <div 
+        ref={panelRef}
         className={`fixed left-0 top-0 h-full bg-slate-50 shadow-lg transition-all duration-300 ease-in-out z-30 ${
           isVisible ? 'w-80 opacity-100' : 'w-0 opacity-0'
         }`}
-        onMouseLeave={() => !isPinned && setHovered(false)}
+        onMouseEnter={() => {
+          isPointerInsidePanelRef.current = true;
+        }}
+        onMouseLeave={() => {
+          isPointerInsidePanelRef.current = false;
+          if (!isPinned && !showBookmarkContextMenu) {
+            setHovered(false);
+          }
+        }}
         style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
         <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
@@ -946,93 +972,12 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </ul>
             )}
 
-            {/* Quick Links Section */}
-            <div
-              className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
-              onMouseEnter={() => setActiveSection('quickLinks')}
-              onMouseLeave={() => !lockedSections.quickLinks && setActiveSection(null)}
-            >
-              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
-                <span className="truncate flex-1">Quick Links</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleConvertQuickLinksToBookmarks}
-                    className="p-1 rounded hover:bg-green-100"
-                    title="Convert all Quick Links to Bookmarks"
-                  >
-                    <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLockedSections(prev => ({ ...prev, quickLinks: !prev.quickLinks }));
-                    }}
-                    className="p-1 rounded hover:bg-indigo-100"
-                    title={lockedSections.quickLinks ? "Unlock section" : "Lock section open"}
-                  >
-                    {lockedSections.quickLinks ? (
-                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </button>
-                  {activeSection === 'quickLinks' || lockedSections.quickLinks ?
-                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
-                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                  }
-                </div>
-              </h2>
-              {(activeSection === 'quickLinks' || lockedSections.quickLinks) && (
-                <div className="space-y-1.5 w-full">
-                  {uniqueUrls.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No Quick Links</p>
-                  ) : (
-                    uniqueUrls.map(({ url, label }, idx) => {
-                      let displayText = label || (() => {
-                        try { return new URL(url).hostname.replace(/^www\./, ''); }
-                        catch { return url; }
-                      })();
-                      return (
-                        <div
-                          key={url}
-                          onContextMenu={e => handleLinkContextMenu(e, url)}
-                          className={`flex items-center pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors w-full`}
-                        >
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm min-w-0"
-                          >
-                            {displayText}
-                          </a>
-                          <button
-                            onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                            className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none flex-shrink-0"
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-
             {/* Bookmarks Section */}
             <div
               className="bg-white p-3 rounded-lg shadow-sm mb-3"
               onMouseEnter={() => setActiveSection('bookmarks')}
-              onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
             >
-              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center p-1.5 rounded-lg text-base">
                 <span className="flex items-center gap-2">
                   Bookmarks
                   <span className="text-xs text-gray-500 font-normal">
@@ -1052,31 +997,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLockedSections(prev => ({ ...prev, bookmarks: !prev.bookmarks }));
-                    }}
-                    className="p-1 rounded hover:bg-indigo-100"
-                    title={lockedSections.bookmarks ? "Unlock section" : "Lock section open"}
-                  >
-                    {lockedSections.bookmarks ? (
-                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </button>
-                  {activeSection === 'bookmarks' || lockedSections.bookmarks ?
-                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
-                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
-                  }
                 </div>
               </h2>
-              {(activeSection === 'bookmarks' || lockedSections.bookmarks) && (
+              {(
                 bookmarkedUrls.length === 0 ? (
                   <p className="text-gray-500 text-sm">No Bookmarks</p>
                 ) : (
@@ -1090,13 +1013,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       <div
                         key={url}
                         onContextMenu={e => handleBookmarkContextMenu(e, { url, label, isPinned, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
-                        className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${
-                          isFocused ? 'bg-indigo-100 border border-indigo-300' : 
-                          idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                        } hover:bg-indigo-50 transition-colors`}
+                        className={`group/bookmark flex items-center mb-1.5 pl-3 p-2 rounded-lg border transition-all duration-150 ${
+                          isFocused ? 'bg-indigo-100 border-indigo-300 ring-1 ring-indigo-300' :
+                          idx % 2 === 0 ? 'bg-white border-transparent' : 'bg-slate-50 border-transparent'
+                        } hover:-translate-y-0.5 hover:bg-indigo-100 hover:border-indigo-400 hover:ring-1 hover:ring-indigo-300 hover:shadow-sm`}
                       >
                         <span className={`mr-2 text-xs font-medium ${
-                          isFocused ? 'text-indigo-700' : 'text-gray-500'
+                          isFocused ? 'text-indigo-700' : 'text-gray-500 group-hover/bookmark:text-indigo-700'
                         }`}>
                           {idx + 1}.
                         </span>
@@ -1105,22 +1028,28 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`flex-1 truncate text-sm ${
-                            isFocused ? 'text-indigo-800 font-medium' : 'text-gray-700 hover:text-indigo-600'
+                            isFocused ? 'text-indigo-800 font-medium' : 'text-gray-700 group-hover/bookmark:text-indigo-800 hover:text-indigo-600'
                           }`}
                         >
                           {displayText}
                         </a>
                         <button
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setHovered(true);
+                            setActiveSection('bookmarks');
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePinBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId });
                           }}
                           className={`ml-2 p-1 rounded transition-colors ${
-                            isPinned 
-                              ? 'text-indigo-600 hover:bg-indigo-100' 
+                            isPinned
+                              ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100'
                               : bookmarkedUrls.filter(b => b.isPinned).length >= 7
                                 ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100'
+                                : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
                           }`}
                           title={
                             isPinned 
@@ -1131,8 +1060,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           }
                           disabled={!isPinned && bookmarkedUrls.filter(b => b.isPinned).length >= 7}
                         >
-                          <svg className="h-4 w-4" fill={isPinned ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                            <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>
                           </svg>
                         </button>
                       </div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import ReminderWatchCard from './ReminderWatchCard';
 import { ClockIcon, PencilIcon, XMarkIcon, BellIcon, MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
-import StockInfoPanel from './StockInfoPanel';
 import { findDueRemindersAsNotes, findRemindersNotDue, findwatchitemsOverdue } from '../utils/CadenceHelpUtils';
 import { searchInNote } from '../utils/NotesUtils';
 

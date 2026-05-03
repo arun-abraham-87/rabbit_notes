@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Cog6ToothIcon, ChevronDownIcon, PencilSquareIcon, Bars2Icon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
-import StockInfoPanel from './StockInfoPanel';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
 import {
   DASHBOARD_NAV_MENU_SETTING_KEY,
@@ -375,9 +374,6 @@ const Navbar = ({ activePage, setActivePage }) => {
               )}
             </div>
           )}
-
-          {/* Stock Info Panel */}
-          <StockInfoPanel />
 
           {/* Settings button */}
           <button

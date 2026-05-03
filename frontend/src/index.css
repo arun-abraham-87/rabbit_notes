@@ -177,6 +177,1099 @@ html.dark ::selection {
   background: rgba(96, 165, 250, 0.3);
 }
 
+html.dark .review-due-timer-card {
+  background-color: #172554 !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.dark .review-due-timer-card.review-due-timer-card-expired {
+  background-color: #3b0a0a !important;
+  border-color: #b91c1c !important;
+}
+
+html.dark .review-due-timer-title {
+  color: #e5eefc !important;
+}
+
+html.dark .review-due-timer-status {
+  color: #bfdbfe !important;
+}
+
+html.dark .review-due-timer-card.review-due-timer-card-expired .review-due-timer-status {
+  color: #fecaca !important;
+}
+
+html.dark .review-due-timer-chip {
+  background-color: rgba(96, 165, 250, 0.22) !important;
+  color: #dbeafe !important;
+}
+
+html.dark .review-due-timer-progress-track {
+  background-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+html.dark .review-due-timer-card.review-due-timer-card-expired .review-due-timer-progress-track {
+  background-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+html.dark .review-due-timer-progress-fill {
+  background-color: #60a5fa !important;
+}
+
+html.dark .review-due-timer-card.review-due-timer-card-expired .review-due-timer-progress-fill {
+  background-color: #f87171 !important;
+}
+
+html.dark .review-due-timer-remove {
+  color: #93c5fd !important;
+}
+
+html.dark .review-due-timer-remove:hover {
+  color: #fca5a5 !important;
+}
+
+html.dark .review-overdue-row {
+  background-color: var(--app-surface) !important;
+}
+
+html.dark .review-overdue-row:nth-child(even) {
+  background-color: var(--app-surface-muted) !important;
+}
+
+html.dark .review-overdue-row:hover {
+  background-color: #1e293b !important;
+}
+
+html.dark .review-overdue-row-focused {
+  background-color: #172554 !important;
+  border-left-color: #60a5fa !important;
+}
+
+html.dark .review-overdue-list {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .review-overdue-list > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .review-overdue-card {
+  background-image: none !important;
+}
+
+html.dark .review-overdue-card-default {
+  background-color: #172554 !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.dark .review-overdue-card-priority,
+html.dark .review-overdue-card-super {
+  background-color: #3a0616 !important;
+  border-color: #e11d48 !important;
+}
+
+html.dark .review-overdue-card-super:hover {
+  border-color: #fb7185 !important;
+}
+
+html.dark .review-overdue-title,
+html.dark .review-overdue-title a {
+  color: #e5eefc !important;
+}
+
+html.dark .review-overdue-card-super .review-overdue-title,
+html.dark .review-overdue-card-super .review-overdue-title a {
+  color: #ffe4e6 !important;
+}
+
+html.dark .review-overdue-super-label {
+  background-color: #e11d48 !important;
+  color: #ffffff !important;
+}
+
+html.dark .review-overdue-title a {
+  text-decoration-color: rgba(147, 197, 253, 0.65) !important;
+}
+
+html.dark .review-overdue-card-super .review-overdue-title a {
+  text-decoration-color: rgba(253, 164, 175, 0.7) !important;
+}
+
+html.dark .review-overdue-meta,
+html.dark .review-overdue-meta span {
+  color: #cbd5e1 !important;
+}
+
+html.dark .review-overdue-card-super .review-overdue-meta,
+html.dark .review-overdue-card-super .review-overdue-meta span {
+  color: #fecdd3 !important;
+}
+
+html.dark .review-overdue-action {
+  border: 1px solid transparent;
+}
+
+html.dark .review-overdue-action-danger {
+  background-color: #3b1120 !important;
+  border-color: #be123c !important;
+  color: #fecdd3 !important;
+}
+
+html.dark .review-overdue-action-danger:hover {
+  background-color: #4c1426 !important;
+  color: #ffe4e6 !important;
+}
+
+html.dark .review-overdue-action-super-active {
+  background-color: #e11d48 !important;
+  border-color: #fb7185 !important;
+  color: #ffffff !important;
+}
+
+html.dark .review-overdue-action-super-active:hover {
+  background-color: #be123c !important;
+}
+
+html.dark .review-overdue-action-timer,
+html.dark .review-overdue-action-neutral {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  color: #dbeafe !important;
+}
+
+html.dark .review-overdue-action-timer:hover,
+html.dark .review-overdue-action-neutral:hover {
+  background-color: #172554 !important;
+  border-color: #2563eb !important;
+  color: #bfdbfe !important;
+}
+
+html.dark .review-overdue-action-flag,
+html.dark .review-overdue-action-cadence {
+  background-color: #24113f !important;
+  border-color: #6d28d9 !important;
+  color: #ddd6fe !important;
+}
+
+html.dark .review-overdue-action-flag:hover,
+html.dark .review-overdue-action-cadence:hover {
+  background-color: #31205f !important;
+  color: #f5f3ff !important;
+}
+
+html.dark .review-overdue-action-cadence-active {
+  background-color: #7e22ce !important;
+  border-color: #a855f7 !important;
+  color: #ffffff !important;
+}
+
+html.dark .review-overdue-action-cadence-active span:first-child {
+  color: #e9d5ff !important;
+}
+
+.review-overdue-timer-badge {
+  min-width: 44px;
+  pointer-events: none;
+}
+
+.review-overdue-actions {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .review-overdue-actions {
+    padding-right: 0 !important;
+    padding-top: 3.5rem;
+  }
+}
+
+html.dark .note-card {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-border) !important;
+  --tw-ring-color: rgba(71, 85, 105, 0.65) !important;
+  color: var(--app-text) !important;
+}
+
+html.dark .note-card-focused {
+  background-color: #172554 !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.55) !important;
+}
+
+html.dark .note-line-focused {
+  background-color: #1e3a8a !important;
+  border-left-color: #60a5fa !important;
+}
+
+.note-line-colored {
+  color: var(--note-line-color) !important;
+}
+
+html.dark .note-card .bg-white,
+html.dark .note-card .bg-white\/80 {
+  background-color: var(--app-surface-muted) !important;
+}
+
+html.dark .note-card .bg-gray-50,
+html.dark .note-card .bg-gray-100,
+html.dark .note-card .bg-indigo-50,
+html.dark .note-card .bg-indigo-100,
+html.dark .note-card .bg-sky-50,
+html.dark .note-card .bg-sky-100,
+html.dark .note-card .bg-blue-50,
+html.dark .note-card .bg-blue-100,
+html.dark .note-card .bg-amber-50,
+html.dark .note-card .bg-amber-100,
+html.dark .note-card .bg-emerald-50,
+html.dark .note-card .bg-emerald-100,
+html.dark .note-card .bg-green-50,
+html.dark .note-card .bg-green-100,
+html.dark .note-card .bg-red-50,
+html.dark .note-card .bg-red-100,
+html.dark .note-card .bg-purple-50,
+html.dark .note-card .bg-purple-100,
+html.dark .note-card .bg-yellow-100 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html.dark .note-card .hover\:bg-gray-50:hover,
+html.dark .note-card .hover\:bg-gray-100:hover,
+html.dark .note-card .hover\:bg-gray-200:hover,
+html.dark .note-card .hover\:bg-indigo-50:hover,
+html.dark .note-card .hover\:bg-indigo-100:hover,
+html.dark .note-card .hover\:bg-sky-100:hover,
+html.dark .note-card .hover\:bg-blue-50:hover,
+html.dark .note-card .hover\:bg-blue-100:hover,
+html.dark .note-card .hover\:bg-blue-200:hover,
+html.dark .note-card .hover\:bg-amber-100:hover,
+html.dark .note-card .hover\:bg-emerald-100:hover,
+html.dark .note-card .hover\:bg-green-100:hover,
+html.dark .note-card .hover\:bg-green-200:hover,
+html.dark .note-card .hover\:bg-red-100:hover,
+html.dark .note-card .hover\:bg-red-200:hover,
+html.dark .note-card .hover\:bg-purple-100:hover {
+  background-color: #243244 !important;
+}
+
+html.dark .note-card .border-gray-50,
+html.dark .note-card .border-gray-100,
+html.dark .note-card .border-gray-200,
+html.dark .note-card .border-gray-300,
+html.dark .note-card .border-indigo-100,
+html.dark .note-card .border-indigo-200,
+html.dark .note-card .border-sky-100,
+html.dark .note-card .border-sky-200,
+html.dark .note-card .border-sky-300,
+html.dark .note-card .border-blue-300,
+html.dark .note-card .border-amber-400,
+html.dark .note-card .border-red-100,
+html.dark .note-card .border-red-200,
+html.dark .note-card .border-purple-500 {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .note-card .text-gray-900,
+html.dark .note-card .text-gray-800,
+html.dark .note-card .text-gray-700,
+html.dark .note-card .text-indigo-700,
+html.dark .note-card .text-indigo-800,
+html.dark .note-card .text-sky-800,
+html.dark .note-card .text-blue-700,
+html.dark .note-card .text-amber-700,
+html.dark .note-card .text-emerald-700,
+html.dark .note-card .text-green-700,
+html.dark .note-card .text-red-700,
+html.dark .note-card .text-purple-700 {
+  color: var(--app-text) !important;
+}
+
+html.dark .note-card .note-line-colored,
+html.dark .note-card .note-line-colored.text-gray-900,
+html.dark .note-card .note-line-colored.text-gray-800,
+html.dark .note-card .note-line-colored.text-gray-700 {
+  color: var(--note-line-color) !important;
+}
+
+html.dark .note-card .text-gray-600,
+html.dark .note-card .text-gray-500,
+html.dark .note-card .text-gray-400,
+html.dark .note-card .text-gray-300,
+html.dark .note-card .text-indigo-400,
+html.dark .note-card .text-indigo-500,
+html.dark .note-card .text-sky-400,
+html.dark .note-card .text-red-600 {
+  color: var(--app-text-muted) !important;
+}
+
+html.dark .note-card .text-blue-600,
+html.dark .note-card a {
+  color: #60a5fa !important;
+}
+
+html.dark .note-card .hover\:text-gray-600:hover,
+html.dark .note-card .hover\:text-gray-700:hover,
+html.dark .note-card .hover\:text-indigo-700:hover,
+html.dark .note-card .hover\:text-red-500:hover,
+html.dark .note-card .hover\:text-red-600:hover {
+  color: #f8fafc !important;
+}
+
+html.dark .note-card .ring-slate-100,
+html.dark .note-card .ring-blue-500,
+html.dark .note-card .focus\:ring-indigo-200:focus,
+html.dark .note-card .focus\:ring-gray-400:focus {
+  --tw-ring-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+html.dark .note-card .shadow-sm,
+html.dark .note-card .shadow,
+html.dark .note-card .shadow-lg,
+html.dark .note-card .shadow-2xl {
+  box-shadow: none !important;
+}
+
+html.dark .note-card hr {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .reminder-card {
+  color: #e5eefc !important;
+}
+
+html.dark .reminder-card-yellow {
+  background-color: #332d10 !important;
+  border-color: #ca8a04 !important;
+}
+
+html.dark .reminder-card-blue {
+  background-color: #172554 !important;
+  border-color: #2563eb !important;
+}
+
+html.dark .reminder-card-green {
+  background-color: #12351f !important;
+  border-color: #16a34a !important;
+}
+
+html.dark .reminder-card-red {
+  background-color: #3b0a0a !important;
+  border-color: #dc2626 !important;
+}
+
+html.dark .reminder-card-purple {
+  background-color: #24113f !important;
+  border-color: #7e22ce !important;
+}
+
+html.dark .reminder-card:hover {
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.45) !important;
+}
+
+html.dark .reminder-card-icon,
+html.dark .reminder-content-primary {
+  color: #f8fafc !important;
+}
+
+html.dark .reminder-card-yellow .reminder-card-icon {
+  color: #fde68a !important;
+}
+
+html.dark .reminder-card-blue .reminder-card-icon {
+  color: #bfdbfe !important;
+}
+
+html.dark .reminder-card-green .reminder-card-icon {
+  color: #bbf7d0 !important;
+}
+
+html.dark .reminder-card-red .reminder-card-icon {
+  color: #fecaca !important;
+}
+
+html.dark .reminder-card-purple .reminder-card-icon {
+  color: #ddd6fe !important;
+}
+
+html.dark .reminder-content-secondary,
+html.dark .reminder-content-details,
+html.dark .reminder-cadence-label,
+html.dark .reminder-group-empty {
+  color: #cbd5e1 !important;
+}
+
+html.dark .reminder-content-link {
+  color: #93c5fd !important;
+  text-decoration-color: rgba(147, 197, 253, 0.65) !important;
+}
+
+html.dark .reminder-content-link:hover {
+  color: #bfdbfe !important;
+}
+
+html.dark .reminder-group-chip {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+  color: #e5eefc !important;
+}
+
+html.dark .reminder-action {
+  border: 1px solid transparent;
+}
+
+html.dark .reminder-action-confirm {
+  background-color: #12351f !important;
+  border-color: #16a34a !important;
+  color: #bbf7d0 !important;
+}
+
+html.dark .reminder-action-confirm:hover {
+  background-color: #14532d !important;
+}
+
+html.dark .reminder-action-remove {
+  background-color: #3b1120 !important;
+  border-color: #be123c !important;
+  color: #fecdd3 !important;
+}
+
+html.dark .reminder-action-remove:hover {
+  background-color: #4c1426 !important;
+}
+
+html.dark .reminder-action-edit {
+  background-color: #172554 !important;
+  border-color: #2563eb !important;
+  color: #bfdbfe !important;
+}
+
+html.dark .reminder-action-edit:hover {
+  background-color: #1e3a8a !important;
+}
+
+html.dark .reminder-action-neutral {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .reminder-action-neutral:hover {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark .reminder-action-more {
+  color: #cbd5e1 !important;
+}
+
+html.dark .reminder-action-more:hover {
+  color: #f8fafc !important;
+}
+
+.super-critical-reviews-panel {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.super-critical-reviews-title {
+  color: #1d4ed8;
+}
+
+.super-critical-reviews-add,
+.super-critical-review-chip {
+  background-color: #ffffff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.super-critical-reviews-add:hover,
+.super-critical-review-chip:hover {
+  background-color: #dbeafe;
+}
+
+.super-critical-reviews-quick-add {
+  background-color: rgba(255, 255, 255, 0.82);
+  border-color: #bfdbfe;
+}
+
+.super-critical-reviews-input {
+  background-color: #ffffff;
+  border-color: #bfdbfe;
+  color: #111827;
+  --tw-ring-color: #bfdbfe;
+}
+
+.super-critical-reviews-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.super-critical-reviews-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.super-critical-reviews-cancel,
+.super-critical-reviews-hint {
+  color: #1d4ed8;
+}
+
+.super-critical-reviews-cancel:hover {
+  color: #1e3a8a;
+}
+
+.super-critical-review-unmark {
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.super-critical-review-unmark:hover {
+  background-color: #dbeafe;
+}
+
+.super-critical-review-delete {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.super-critical-review-delete:hover {
+  background-color: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.super-critical-review-preview {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  color: #111827;
+}
+
+.super-critical-review-preview-title {
+  color: #1d4ed8;
+}
+
+.super-critical-review-preview-body {
+  background-color: #ffffff;
+  border-color: #bfdbfe;
+}
+
+.super-critical-review-preview-body a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.super-critical-review-preview-body a:hover {
+  color: #1d4ed8;
+}
+
+html.dark .super-critical-reviews-panel {
+  background-color: #172554 !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.dark .super-critical-reviews-title {
+  color: #bfdbfe !important;
+}
+
+html.dark .super-critical-reviews-add,
+html.dark .super-critical-review-chip {
+  background-color: #1e3a8a !important;
+  border-color: #2563eb !important;
+  color: #dbeafe !important;
+}
+
+html.dark .super-critical-reviews-add:hover,
+html.dark .super-critical-review-chip:hover {
+  background-color: #1d4ed8 !important;
+  border-color: #60a5fa !important;
+  color: #eff6ff !important;
+}
+
+html.dark .super-critical-reviews-quick-add {
+  background-color: rgba(15, 23, 42, 0.42) !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.dark .super-critical-reviews-input {
+  background-color: #111827 !important;
+  border-color: #2563eb !important;
+  color: #e5eefc !important;
+  --tw-ring-color: rgba(96, 165, 250, 0.45);
+}
+
+html.dark .super-critical-reviews-primary {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html.dark .super-critical-reviews-primary:hover {
+  background-color: #1d4ed8 !important;
+}
+
+html.dark .super-critical-reviews-cancel,
+html.dark .super-critical-reviews-hint {
+  color: #bfdbfe !important;
+}
+
+html.dark .super-critical-reviews-cancel:hover {
+  color: #eff6ff !important;
+}
+
+html.dark .super-critical-review-unmark {
+  background-color: rgba(30, 58, 138, 0.72) !important;
+  border-color: #3b82f6 !important;
+  color: #dbeafe !important;
+}
+
+html.dark .super-critical-review-unmark:hover {
+  background-color: #1d4ed8 !important;
+}
+
+html.dark .super-critical-review-delete {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .super-critical-review-delete:hover {
+  background-color: #3b1120 !important;
+  border-color: #be123c !important;
+  color: #fecdd3 !important;
+}
+
+html.dark .super-critical-review-preview {
+  background-color: #0f172a !important;
+  border-color: #1d4ed8 !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .super-critical-review-preview-title {
+  color: #bfdbfe !important;
+}
+
+html.dark .super-critical-review-preview-body {
+  background-color: #172033 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .super-critical-review-preview-body a {
+  color: #60a5fa !important;
+}
+
+html.dark .super-critical-review-preview-body a:hover {
+  color: #93c5fd !important;
+}
+
+html.dark .information-page,
+html.dark .timelines-page,
+html.dark .trackers-page {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+html.dark .information-page .bg-white,
+html.dark .timelines-page .bg-white,
+html.dark .trackers-page .bg-white,
+html.dark .tracker-card.bg-white,
+html.dark .tracker-table.bg-white,
+html.dark .tracker-table .bg-white {
+  background-color: var(--app-surface) !important;
+}
+
+html.dark .information-page .bg-white\/80,
+html.dark .timelines-page .bg-white\/80,
+html.dark .trackers-page .bg-white\/80 {
+  background-color: rgba(17, 24, 39, 0.86) !important;
+}
+
+html.dark .information-page .bg-gray-50,
+html.dark .information-page .bg-slate-50,
+html.dark .timelines-page .bg-gray-50,
+html.dark .timelines-page .bg-slate-50,
+html.dark .trackers-page .bg-gray-50,
+html.dark .trackers-page .bg-slate-50,
+html.dark .tracker-card .bg-gray-50,
+html.dark .tracker-table .bg-gray-50 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html.dark .information-page .bg-gray-100,
+html.dark .information-page .bg-slate-100,
+html.dark .timelines-page .bg-gray-100,
+html.dark .timelines-page .bg-slate-100,
+html.dark .trackers-page .bg-gray-100,
+html.dark .trackers-page .bg-slate-100,
+html.dark .tracker-card .bg-gray-100,
+html.dark .tracker-table .bg-gray-100 {
+  background-color: #243244 !important;
+}
+
+html.dark .information-page .information-card {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-border) !important;
+  box-shadow: none !important;
+}
+
+html.dark .information-page .information-card.ring-2 {
+  border-color: #3b82f6 !important;
+  --tw-ring-color: rgba(59, 130, 246, 0.32) !important;
+}
+
+html.dark .timelines-page .border-gray-200,
+html.dark .timelines-page .border-gray-300,
+html.dark .timelines-page .border-slate-200\/50,
+html.dark .trackers-page .border-gray-200,
+html.dark .trackers-page .border-gray-300,
+html.dark .tracker-card.border-gray-300,
+html.dark .tracker-card .border-gray-200,
+html.dark .tracker-card .border-gray-300,
+html.dark .tracker-table.border-gray-200,
+html.dark .tracker-table .border-gray-200 {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .information-page .border-gray-100,
+html.dark .information-page .border-gray-200,
+html.dark .information-page .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .timelines-page .shadow-sm,
+html.dark .timelines-page .shadow-md,
+html.dark .timelines-page .shadow-lg,
+html.dark .trackers-page .shadow-sm,
+html.dark .trackers-page .shadow-md,
+html.dark .trackers-page .shadow-lg,
+html.dark .tracker-card.shadow-sm,
+html.dark .tracker-table.shadow-sm {
+  box-shadow: none !important;
+}
+
+html.dark .timelines-page .from-indigo-50,
+html.dark .timelines-page .from-slate-50,
+html.dark .trackers-page .from-indigo-50,
+html.dark .trackers-page .from-slate-50 {
+  --tw-gradient-from: #182234 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(24, 34, 52, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html.dark .timelines-page .to-blue-50,
+html.dark .timelines-page .to-indigo-50,
+html.dark .trackers-page .to-blue-50,
+html.dark .trackers-page .to-indigo-50 {
+  --tw-gradient-to: #111827 var(--tw-gradient-to-position) !important;
+}
+
+html.dark .information-page .text-gray-900,
+html.dark .timelines-page .text-gray-900,
+html.dark .trackers-page .text-gray-900,
+html.dark .tracker-card .text-gray-900,
+html.dark .tracker-table .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+html.dark .information-page .text-gray-800,
+html.dark .information-page .text-gray-700,
+html.dark .information-page .text-gray-600,
+html.dark .timelines-page .text-gray-800,
+html.dark .timelines-page .text-gray-700,
+html.dark .timelines-page .text-gray-600,
+html.dark .trackers-page .text-gray-800,
+html.dark .trackers-page .text-gray-700,
+html.dark .trackers-page .text-gray-600,
+html.dark .tracker-card .text-gray-800,
+html.dark .tracker-card .text-gray-700,
+html.dark .tracker-card .text-gray-600,
+html.dark .tracker-table .text-gray-800,
+html.dark .tracker-table .text-gray-700,
+html.dark .tracker-table .text-gray-600 {
+  color: var(--app-text-muted) !important;
+}
+
+html.dark .information-page .text-gray-500,
+html.dark .information-page .text-gray-400,
+html.dark .timelines-page .text-gray-500,
+html.dark .timelines-page .text-gray-400,
+html.dark .trackers-page .text-gray-500,
+html.dark .trackers-page .text-gray-400,
+html.dark .tracker-card .text-gray-500,
+html.dark .tracker-card .text-gray-400,
+html.dark .tracker-table .text-gray-500,
+html.dark .tracker-table .text-gray-400 {
+  color: var(--app-text-faint) !important;
+}
+
+html.dark .information-page input,
+html.dark .timelines-page input,
+html.dark .trackers-page input,
+html.dark .tracker-card input,
+html.dark .tracker-table input,
+html.dark .information-page textarea,
+html.dark .timelines-page textarea,
+html.dark .trackers-page textarea {
+  background-color: var(--app-surface-soft) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html.dark .information-page input::placeholder,
+html.dark .timelines-page input::placeholder,
+html.dark .trackers-page input::placeholder,
+html.dark .tracker-card input::placeholder {
+  color: var(--app-text-faint) !important;
+}
+
+html.dark .timelines-page .hover\:bg-gray-50:hover,
+html.dark .timelines-page .hover\:bg-gray-100:hover,
+html.dark .trackers-page .hover\:bg-gray-50:hover,
+html.dark .trackers-page .hover\:bg-gray-100:hover,
+html.dark .tracker-card .hover\:bg-gray-50:hover,
+html.dark .tracker-card .hover\:bg-gray-100:hover,
+html.dark .tracker-table .hover\:bg-gray-50:hover {
+  background-color: #243244 !important;
+}
+
+html.dark .timelines-page .bg-blue-50,
+html.dark .timelines-page .bg-blue-100,
+html.dark .timelines-page .bg-indigo-50,
+html.dark .timelines-page .bg-indigo-100,
+html.dark .timelines-page .bg-purple-50,
+html.dark .timelines-page .bg-purple-100,
+html.dark .timelines-page .bg-green-50,
+html.dark .timelines-page .bg-green-100,
+html.dark .timelines-page .bg-emerald-50,
+html.dark .timelines-page .bg-emerald-100,
+html.dark .timelines-page .bg-teal-50,
+html.dark .timelines-page .bg-teal-100,
+html.dark .timelines-page .bg-red-50,
+html.dark .timelines-page .bg-red-100,
+html.dark .timelines-page .bg-amber-50,
+html.dark .timelines-page .bg-amber-100,
+html.dark .timelines-page .bg-orange-50,
+html.dark .timelines-page .bg-orange-100,
+html.dark .timelines-page .bg-slate-100 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html.dark .timelines-page .hover\:bg-blue-50:hover,
+html.dark .timelines-page .hover\:bg-blue-100:hover,
+html.dark .timelines-page .hover\:bg-indigo-50:hover,
+html.dark .timelines-page .hover\:bg-indigo-100:hover,
+html.dark .timelines-page .hover\:bg-purple-50:hover,
+html.dark .timelines-page .hover\:bg-purple-100:hover,
+html.dark .timelines-page .hover\:bg-green-50:hover,
+html.dark .timelines-page .hover\:bg-green-100:hover,
+html.dark .timelines-page .hover\:bg-emerald-100:hover,
+html.dark .timelines-page .hover\:bg-teal-100:hover,
+html.dark .timelines-page .hover\:bg-red-100:hover {
+  background-color: #243244 !important;
+}
+
+html.dark .timelines-page .hover\:from-indigo-100:hover,
+html.dark .timelines-page .hover\:from-emerald-100:hover {
+  --tw-gradient-from: #243244 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(36, 50, 68, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html.dark .timelines-page .hover\:to-blue-100:hover,
+html.dark .timelines-page .hover\:to-teal-100:hover {
+  --tw-gradient-to: #172033 var(--tw-gradient-to-position) !important;
+}
+
+html.dark .timelines-page .border-blue-200,
+html.dark .timelines-page .border-blue-300,
+html.dark .timelines-page .border-blue-400,
+html.dark .timelines-page .border-indigo-200,
+html.dark .timelines-page .border-indigo-300,
+html.dark .timelines-page .border-indigo-400,
+html.dark .timelines-page .border-purple-200,
+html.dark .timelines-page .border-purple-500,
+html.dark .timelines-page .border-green-200,
+html.dark .timelines-page .border-emerald-200,
+html.dark .timelines-page .border-amber-400,
+html.dark .timelines-page .border-red-200,
+html.dark .timelines-page .border-slate-200,
+html.dark .timelines-page .border-slate-300 {
+  border-color: var(--app-border-strong) !important;
+}
+
+html.dark .timelines-page .text-blue-600,
+html.dark .timelines-page .text-blue-700,
+html.dark .timelines-page .text-blue-800,
+html.dark .timelines-page .text-indigo-600,
+html.dark .timelines-page .text-indigo-700,
+html.dark .timelines-page .text-purple-600,
+html.dark .timelines-page .text-purple-700,
+html.dark .timelines-page .text-purple-900,
+html.dark .timelines-page .text-green-600,
+html.dark .timelines-page .text-green-700,
+html.dark .timelines-page .text-emerald-600,
+html.dark .timelines-page .text-emerald-700,
+html.dark .timelines-page .text-emerald-800,
+html.dark .timelines-page .text-amber-800,
+html.dark .timelines-page .text-red-600,
+html.dark .timelines-page .text-red-700,
+html.dark .timelines-page .text-slate-600,
+html.dark .timelines-page .text-slate-500 {
+  color: var(--app-text) !important;
+}
+
+html.dark .timelines-page a,
+html.dark .timelines-page .hover\:text-blue-800:hover {
+  color: #93c5fd !important;
+}
+
+html.dark .timelines-page mark,
+html.dark .timelines-page span[style*="background-color:#fef08a"] {
+  background-color: rgba(250, 204, 21, 0.28) !important;
+  color: #fef9c3 !important;
+}
+
+html.dark .tracker-table table,
+html.dark .tracker-table tbody {
+  background-color: var(--app-surface) !important;
+}
+
+html.dark .tracker-table tr:hover {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html.dark .tracker-table .tracker-past-entry-latest,
+.tracker-table .tracker-past-entry-latest {
+  background-color: rgba(34, 197, 94, 0.24) !important;
+  border-color: #22c55e !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.18);
+}
+
+html.dark .tracker-table .tracker-past-entry-latest:hover,
+.tracker-table .tracker-past-entry-latest:hover {
+  background-color: rgba(34, 197, 94, 0.34) !important;
+  border-color: #4ade80 !important;
+}
+
+html.dark .tracker-event-chip {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 1px rgba(2, 6, 23, 0.45);
+}
+
+html.dark .tracker-event-chip.bg-green-300 {
+  background-color: #16a34a !important;
+  border-color: #4ade80 !important;
+}
+
+html.dark .tracker-event-chip.bg-red-300 {
+  background-color: #dc2626 !important;
+  border-color: #f87171 !important;
+}
+
+html.dark .tracker-event-chip.bg-gray-200 {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
+  color: #dbeafe !important;
+  text-shadow: none;
+}
+
+html.dark .tracker-list-header,
+html.dark .tracker-list-panel {
+  background-color: var(--app-bg) !important;
+  border-color: var(--app-border) !important;
+}
+
+html.dark .tracker-list-panel {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+html.dark .tracker-list-header h2 {
+  color: var(--app-text) !important;
+}
+
+html.dark .trackers-route {
+  background-color: var(--app-bg) !important;
+}
+
+html.dark .tracker-table .tracker-past-row {
+  background-color: rgba(15, 23, 42, 0.72) !important;
+}
+
+html.dark .tracker-table .tracker-main-row-with-history {
+  border-bottom-color: transparent !important;
+}
+
+html.dark .tracker-table .tracker-main-row-with-history + .tracker-past-row {
+  border-top-color: transparent !important;
+}
+
+html.dark .tracker-table .tracker-past-row > td {
+  border-color: var(--app-border) !important;
+}
+
+html.dark .tracker-table .tracker-past-entry {
+  background-color: #162235 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .tracker-table .tracker-past-entry:hover {
+  background-color: #1e2d44 !important;
+  border-color: #3b82f6 !important;
+}
+
+html.dark .tracker-table .tracker-past-entry-latest {
+  background-color: rgba(16, 185, 129, 0.24) !important;
+  border-color: #10b981 !important;
+}
+
+html.dark .tracker-table .tracker-past-entry-latest:hover {
+  background-color: rgba(16, 185, 129, 0.32) !important;
+}
+
+html.dark .link-selection-popup {
+  background-color: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border);
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.55) !important;
+}
+
+html.dark .link-selection-popup h2 {
+  color: var(--app-text) !important;
+}
+
+html.dark .link-selection-popup .text-gray-500,
+html.dark .link-selection-popup .text-gray-600 {
+  color: var(--app-text-muted) !important;
+}
+
+html.dark .link-selection-popup .text-gray-800 {
+  color: var(--app-text) !important;
+}
+
+html.dark .link-selection-popup .hover\:text-gray-700:hover {
+  color: #f8fafc !important;
+}
+
+html.dark .link-selection-option {
+  background-color: var(--app-surface-soft) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html.dark .link-selection-option:hover {
+  background-color: #243244 !important;
+}
+
+html.dark .link-selection-option-selected {
+  background-color: #172554 !important;
+  border-color: #3b82f6 !important;
+  color: #dbeafe !important;
+}
+
+html.dark .link-selection-option-selected .text-gray-500 {
+  color: #bfdbfe !important;
+}
+
 
 pre {
 font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
@@ -206,6 +1299,40 @@ font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe U
 
   .editable-div:focus {
     outline: none; /* Removes the focus outline */
+}
+
+html.dark .note-editor {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e5eefc !important;
+}
+
+html.dark .note-editor .divide-y > :not([hidden]) ~ :not([hidden]) {
+    border-color: #334155 !important;
+}
+
+html.dark .note-editor textarea {
+    background-color: transparent !important;
+    color: #e5eefc !important;
+}
+
+html.dark .note-editor > textarea,
+html.dark .note-editor .note-editor-lines {
+    background-color: #111827 !important;
+    border-color: #334155 !important;
+}
+
+html.dark .note-editor-line {
+    background-color: #111827 !important;
+}
+
+html.dark .note-editor-line:hover {
+    background-color: #172033 !important;
+}
+
+html.dark .note-editor-link-row {
+    background-color: transparent !important;
+    color: #dbeafe !important;
 }
 
 /* Developer Mode Styles */

@@ -1,14 +1,47 @@
 import { getAgeInStringFmt } from './DateUtils';
 import { createNote } from './ApiUtils';
 
-export const calculateDatesToAsk = (startDate, endDate, cadence, days) => {
+export const isCustomXDaysTrackerCadence = (cadence = '') => {
+  const normalized = String(cadence).trim().toLowerCase();
+  return normalized === 'custom_x_days' || normalized === 'custom x days';
+};
+
+export const getTrackerOverdueThreshold = (tracker = {}) => {
+  const override = parseInt(tracker.overdueDays, 10);
+  if (Number.isFinite(override) && override > 0) {
+    return { days: override, isOverride: true };
+  }
+
+  if (isCustomXDaysTrackerCadence(tracker.cadence)) {
+    return { days: 30, isOverride: false };
+  }
+
+  const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : '';
+  const cadenceThresholds = {
+    daily: 1,
+    weekly: 7,
+    monthly: 31,
+    yearly: 365,
+    custom: 30,
+    custom_x_days: 30,
+    'custom x days': 30
+  };
+
+  return {
+    days: cadenceThresholds[cadence] || 30,
+    isOverride: false
+  };
+};
+
+export const calculateDatesToAsk = (startDate, endDate, cadence, days, overdueDays) => {
   const start = new Date(startDate);
   const end = endDate ? new Date(endDate) : new Date();
   const dates = [];
   let currentDate = new Date(start);
+  const customXDaysThreshold = parseInt(overdueDays, 10);
 
   while (currentDate <= end) {
-    if (shouldAskOnDate(currentDate, cadence, days)) {
+    if (shouldAskOnDate(currentDate, cadence, days, start, customXDaysThreshold)) {
       dates.push(new Date(currentDate));
     }
     currentDate.setDate(currentDate.getDate() + 1);
@@ -17,7 +50,7 @@ export const calculateDatesToAsk = (startDate, endDate, cadence, days) => {
   return dates;
 };
 
-export const shouldAskOnDate = (date, cadence, days) => {
+export const shouldAskOnDate = (date, cadence, days, startDate = null, customXDaysThreshold = 30) => {
   const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
   
   switch (cadence) {
@@ -29,6 +62,13 @@ export const shouldAskOnDate = (date, cadence, days) => {
       return date.getDate() === 1; // First day of month
     case 'Yearly':
       return date.getMonth() === 0 && date.getDate() === 1; // First day of year
+    case 'Custom X Days':
+    case 'custom_x_days':
+      if (!startDate) return false;
+      const threshold = Number.isFinite(customXDaysThreshold) && customXDaysThreshold > 0 ? customXDaysThreshold : 30;
+      const start = new Date(startDate);
+      const daysSinceStart = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+      return daysSinceStart >= 0 && daysSinceStart % threshold === 0;
     default:
       return false;
   }
@@ -66,11 +106,12 @@ export const generateTrackerQuestions = (notes) => {
       const days = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim()?.split(',') || [];
       const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
       const endDate = lines.find(line => line.startsWith('End Date:'))?.replace('End Date:', '').trim();
+      const overdueDays = lines.find(line => line.startsWith('overdue:'))?.replace('overdue:', '').trim();
 
       if (!startDate) return [];
 
       // Calculate all dates that need questions
-      const datesToAsk = calculateDatesToAsk(startDate, endDate, cadence, days);
+      const datesToAsk = calculateDatesToAsk(startDate, endDate, cadence, days, overdueDays);
       
       // Filter dates that don't have answers
       const unansweredDates = datesToAsk.filter(date => {
@@ -134,4 +175,4 @@ export const createTrackerAnswerNote = async (trackerId, answer, date, notes = '
   }
 
   return response;
-}; 
+};

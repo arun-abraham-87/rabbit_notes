@@ -4,7 +4,7 @@ import { PhotoIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/react/24
 // API Base URL for consistent API calls
 const API_BASE_URL = 'http://localhost:5001/api';
 
-const NoteImages = ({ imageIds, onDeleteImage }) => {
+const NoteImages = ({ imageIds, onDeleteImage, onOpenImage }) => {
   const [imageStates, setImageStates] = useState({});
 
   useEffect(() => {
@@ -102,8 +102,11 @@ const NoteImages = ({ imageIds, onDeleteImage }) => {
                   }));
                 }}
                 onClick={() => {
-                  // Open image in new tab for full view
-                  window.open(state.url, '_blank');
+                  if (onOpenImage) {
+                    onOpenImage(state.url);
+                  } else {
+                    window.open(state.url, '_blank');
+                  }
                 }}
                 title="Click to view full size"
               />

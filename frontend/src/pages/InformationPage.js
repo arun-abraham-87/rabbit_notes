@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon, EyeIcon, EyeSlashIcon, HashtagIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon, DocumentDuplicateIcon, EyeIcon, EyeSlashIcon, HashtagIcon, Squares2X2Icon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import EditEventModal from '../components/EditEventModal';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
@@ -95,6 +95,15 @@ const parseEventNotes = (notes) => {
 const renderTextWithLinks = (text) => {
   if (!text) return null;
 
+  const getHostnameLabel = (url) => {
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      return parsed.hostname.replace(/^www\./, '');
+    } catch (error) {
+      return url;
+    }
+  };
+
   // URL regex pattern - matches http://, https://, www., and common domains
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+[^\s]*)/gi;
 
@@ -116,7 +125,7 @@ const renderTextWithLinks = (text) => {
       url = 'https://' + url;
     }
 
-    parts.push({ type: 'link', url, text: match[0] });
+    parts.push({ type: 'link', url, text: getHostnameLabel(url) });
     lastIndex = match.index + match[0].length;
   }
 
@@ -158,6 +167,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [groupByTag, setGroupByTag] = useState(true);
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('informationPageViewMode') || 'grid';
+    } catch (error) {
+      return 'grid';
+    }
+  });
   const [pinnedCards, setPinnedCards] = useState(() => {
     try {
       const stored = localStorage.getItem('pinnedInformationCards');
@@ -200,6 +216,15 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   };
 
   const isCardPinned = (cardId) => pinnedCards.includes(cardId);
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('informationPageViewMode', mode);
+    } catch (error) {
+      console.error('Error saving information view mode:', error);
+    }
+  };
 
   // Group events by tags
   const groupedEventsByTag = useMemo(() => {
@@ -248,10 +273,6 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     return Array.from(tagSet).sort();
   }, [allEvents]);
 
-
-  // Separate pinned and unpinned events (only when not grouping by tag)
-  const pinnedEvents = groupByTag ? [] : filteredEvents.filter(event => isCardPinned(event.id));
-  const unpinnedEvents = groupByTag ? [] : filteredEvents.filter(event => !isCardPinned(event.id));
 
   // Handle edit event
   const handleEditEvent = (event) => {
@@ -383,7 +404,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     return (
       <div
         key={event.id}
-        className={`group/card relative bg-white rounded-xl border ${isPinned ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 flex flex-col overflow-hidden`}
+        className={`information-card group/card relative bg-white rounded-xl border ${isPinned ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 flex flex-col overflow-hidden`}
       >
         {/* Accent bar */}
         <div className={`h-1 ${color.accent} w-full`} />
@@ -466,11 +487,86 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     );
   };
 
+  const renderTable = (events) => (
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="w-10 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500"></th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Title</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Content</th>
+              <th className="w-48 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Tags</th>
+              <th className="w-24 px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {events.map((event) => {
+              const isPinned = isCardPinned(event.id);
+              return (
+                <tr key={event.id} className={`${isPinned ? 'bg-blue-50/50' : ''} hover:bg-gray-50`}>
+                  <td className="px-4 py-3 align-top">
+                    <button
+                      onClick={() => togglePinCard(event.id)}
+                      className={`rounded-md p-1 transition-colors ${isPinned ? 'text-blue-600 hover:text-red-500' : 'text-gray-300 hover:text-blue-600'}`}
+                      title={isPinned ? 'Unpin' : 'Pin'}
+                    >
+                      <MapPinIcon className="h-4 w-4" />
+                    </button>
+                  </td>
+                  <td className="max-w-xs px-4 py-3 align-top">
+                    <div className="font-medium text-gray-900">{event.title || 'Untitled'}</div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="max-h-20 max-w-3xl overflow-y-auto whitespace-pre-wrap break-words text-sm leading-6 text-gray-600">
+                      {event.content ? renderTextWithLinks(event.content) : <span className="text-xs italic text-gray-300">No content</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-wrap gap-1">
+                      {event.tags && event.tags.length > 0 ? event.tags.map((tag, index) => {
+                        const tc = getTagColor(tag);
+                        return (
+                          <span key={index} className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tc.pill}`}>
+                            {tag}
+                          </span>
+                        );
+                      }) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">Untagged</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleToggleTrack(event)}
+                        className={`rounded-md p-1.5 transition-colors ${event.tracked ? 'text-blue-600 hover:text-red-500' : 'text-gray-400 hover:text-blue-600'}`}
+                        title={event.tracked ? 'Untrack from dashboard' : 'Show on dashboard'}
+                      >
+                        {event.tracked ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+                      </button>
+                      <button onClick={() => handleEditEvent(event)} className="rounded-md p-1.5 text-gray-400 transition-colors hover:text-blue-600" title="Edit">
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDuplicateEvent(event)} className="rounded-md p-1.5 text-gray-400 transition-colors hover:text-green-600" title="Duplicate">
+                        <DocumentDuplicateIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   // Events to display
   const eventsToShow = groupByTag ? [] : filteredEvents;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+    <div className="information-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="px-8 py-4">
@@ -510,6 +606,31 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                 <HashtagIcon className="h-4 w-4" />
                 Groups
               </button>
+              {/* View mode */}
+              <div className="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5">
+                <button
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${viewMode === 'grid'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title="Grid view"
+                >
+                  <Squares2X2Icon className="h-4 w-4" />
+                  Grid
+                </button>
+                <button
+                  onClick={() => handleSetViewMode('table')}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${viewMode === 'table'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title="Table view"
+                >
+                  <TableCellsIcon className="h-4 w-4" />
+                  Table
+                </button>
+              </div>
               {/* Add */}
               <button
                 onClick={handleAddEvent}
@@ -545,10 +666,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                         <span className="text-xs text-gray-400">{group.events.length}</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
-                      {/* Cards grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {group.events.map((event) => renderCard(event, color))}
-                      </div>
+                      {viewMode === 'table' ? (
+                        renderTable(group.events)
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {group.events.map((event) => renderCard(event, color))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -566,9 +690,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
         {!groupByTag && (
           <>
             {eventsToShow.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {eventsToShow.map((event) => renderCard(event))}
-              </div>
+              viewMode === 'table' ? (
+                renderTable(eventsToShow)
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {eventsToShow.map((event) => renderCard(event))}
+                </div>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                 <TagIcon className="h-12 w-12 mb-3 opacity-30" />
@@ -596,4 +724,3 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     </div>
   );
 }
-

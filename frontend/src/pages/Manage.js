@@ -112,6 +112,7 @@ const Manage = () => {
   const [imagesError, setImagesError] = useState('');
   const [hasLoadedImages, setHasLoadedImages] = useState(false);
   const [compressingImageId, setCompressingImageId] = useState(null);
+  const [bulkCompressProgress, setBulkCompressProgress] = useState(null);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -447,50 +448,129 @@ const Manage = () => {
     }
   };
 
+  const reduceImageSize = async (image, notesSnapshot) => {
+    const originalSize = image.size || 0;
+    if (!originalSize) {
+      throw new Error('Image size is not loaded yet. Try Refresh first.');
+    }
+
+    const imageUrl = `${API_BASE_URL}/images/${image.filename}`;
+    const compressed = await compressImageBlob(imageUrl, originalSize);
+
+    if (!compressed) {
+      return {
+        changed: false,
+        reason: 'Could not make this image smaller without changing width and height',
+        notes: notesSnapshot,
+        originalSize,
+        compressedSize: originalSize
+      };
+    }
+
+    const compressedFile = new File([compressed.blob], `${image.id}-compressed.jpg`, {
+      type: 'image/jpeg'
+    });
+    const uploadedImage = await uploadImage(compressedFile);
+    const updatedNotes = notesSnapshot.filter(note => extractReferencedImageIds(note.content).includes(image.id.toLowerCase()));
+    const nextNotes = notesSnapshot.map(note => {
+      if (!updatedNotes.some(updatedNote => updatedNote.id === note.id)) return note;
+      return {
+        ...note,
+        content: replaceImageReferences(note.content, image, uploadedImage)
+      };
+    });
+
+    for (const note of updatedNotes) {
+      const updatedContent = replaceImageReferences(note.content, image, uploadedImage);
+      if (updatedContent !== note.content) {
+        await updateNoteById(note.id, updatedContent);
+      }
+    }
+
+    await deleteImageById(image.id).catch(() => null);
+
+    return {
+      changed: true,
+      notes: nextNotes,
+      originalSize,
+      compressedSize: compressed.blob.size
+    };
+  };
+
   const handleReduceImageSize = async (image) => {
     if (!window.confirm(`Compress ${image.filename} without changing width or height?`)) {
       return;
     }
 
-    const originalSize = image.size || 0;
-    if (!originalSize) {
-      toast.error('Image size is not loaded yet. Try Refresh first.');
-      return;
-    }
-
     try {
       setCompressingImageId(image.id);
-      const imageUrl = `${API_BASE_URL}/images/${image.filename}`;
-      const compressed = await compressImageBlob(imageUrl, originalSize);
+      const result = await reduceImageSize(image, notes);
 
-      if (!compressed) {
-        toast.info('Could not make this image smaller without changing width and height');
+      if (!result.changed) {
+        toast.info(result.reason);
         return;
       }
 
-      const compressedFile = new File([compressed.blob], `${image.id}-compressed.jpg`, {
-        type: 'image/jpeg'
-      });
-      const uploadedImage = await uploadImage(compressedFile);
-      const updatedNotes = notes.filter(note => extractReferencedImageIds(note.content).includes(image.id.toLowerCase()));
-
-      for (const note of updatedNotes) {
-        const updatedContent = replaceImageReferences(note.content, image, uploadedImage);
-        if (updatedContent !== note.content) {
-          await updateNoteById(note.id, updatedContent);
-        }
-      }
-
-      await deleteImageById(image.id).catch(() => null);
       const notesData = await loadAllNotes('', null);
       setNotes(notesData.notes);
       await refreshImages();
 
-      toast.success(`Reduced image from ${formatFileSize(originalSize)} to ${formatFileSize(compressed.blob.size)}`);
+      toast.success(`Reduced image from ${formatFileSize(result.originalSize)} to ${formatFileSize(result.compressedSize)}`);
     } catch (error) {
       toast.error('Error reducing image size: ' + error.message);
     } finally {
       setCompressingImageId(null);
+    }
+  };
+
+  const handleReduceAllImageSizes = async () => {
+    const uniqueImages = Array.from(
+      new Map(largeImageNotes.map(({ image }) => [image.id, image])).values()
+    );
+
+    if (uniqueImages.length === 0) {
+      toast.info('No large images to reduce');
+      return;
+    }
+
+    if (!window.confirm(`Compress all ${uniqueImages.length} images currently shown without changing width or height?`)) {
+      return;
+    }
+
+    let workingNotes = notes;
+    let reducedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    let savedBytes = 0;
+
+    try {
+      for (let index = 0; index < uniqueImages.length; index++) {
+        const image = uniqueImages[index];
+        setBulkCompressProgress({ current: index + 1, total: uniqueImages.length, filename: image.filename });
+        setCompressingImageId(image.id);
+
+        try {
+          const result = await reduceImageSize(image, workingNotes);
+          workingNotes = result.notes;
+          if (result.changed) {
+            reducedCount++;
+            savedBytes += Math.max(0, result.originalSize - result.compressedSize);
+          } else {
+            skippedCount++;
+          }
+        } catch (error) {
+          failedCount++;
+          console.error('Error reducing image size:', image.filename, error);
+        }
+      }
+
+      const notesData = await loadAllNotes('', null);
+      setNotes(notesData.notes);
+      await refreshImages();
+      toast.success(`Reduced ${reducedCount} images, skipped ${skippedCount}, failed ${failedCount}. Saved ${formatFileSize(savedBytes)}.`);
+    } finally {
+      setCompressingImageId(null);
+      setBulkCompressProgress(null);
     }
   };
 
@@ -1238,24 +1318,45 @@ const Manage = () => {
 
                   {!imagesLoading && !imageSizesLoading && !imagesError && (
                     <div>
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between gap-4 mb-4">
                         <h3 className="text-lg font-semibold text-gray-800">
                           Matching Images: {largeImageNotes.length}
                         </h3>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await refreshImages();
-                            } catch (error) {
-                              setImagesError(error.message);
-                              toast.error('Error refreshing images: ' + error.message);
-                            }
-                          }}
-                          className="px-4 py-2 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200"
-                        >
-                          Refresh
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleReduceAllImageSizes}
+                            disabled={largeImageNotes.length === 0 || Boolean(bulkCompressProgress)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                              largeImageNotes.length === 0 || bulkCompressProgress
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                            }`}
+                          >
+                            {bulkCompressProgress
+                              ? `Reducing ${bulkCompressProgress.current}/${bulkCompressProgress.total}`
+                              : 'Reduce all'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await refreshImages();
+                              } catch (error) {
+                                setImagesError(error.message);
+                                toast.error('Error refreshing images: ' + error.message);
+                              }
+                            }}
+                            className="px-4 py-2 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+                          >
+                            Refresh
+                          </button>
+                        </div>
                       </div>
+
+                      {bulkCompressProgress && (
+                        <div className="mb-4 text-sm text-gray-600">
+                          Reducing {bulkCompressProgress.filename}
+                        </div>
+                      )}
 
                       {largeImageNotes.length > 0 ? (
                         <div className="space-y-4">

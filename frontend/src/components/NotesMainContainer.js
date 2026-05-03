@@ -12,6 +12,7 @@ import { isBackupDoneMessageNote, isTimelineNote } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
 import { Alerts } from './Alerts';
 import { DEFAULT_APP_FONT, applySavedAppFont, getAppFontFamily } from '../utils/FontUtils';
+import { createRecentLinksNote } from '../utils/LinkClickHistoryUtils';
 
 // API Base URL for image uploads
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -56,6 +57,7 @@ const NotesMainContainer = ({
     });
     const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
     const [saveSearchName, setSaveSearchName] = useState('');
+    const [savedSearchMenu, setSavedSearchMenu] = useState(null);
     const [appFont, setAppFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
     const [resetTrigger, setResetTrigger] = useState(0);
     const [focusMode, setFocusMode] = useState(() => {
@@ -306,6 +308,12 @@ const NotesMainContainer = ({
         const noteId = urlParams?.get('note');
 
         if (noteId) {
+            if (location.state?.skipNoteSearchSync) {
+                window.history.replaceState({}, document.title);
+                hasParsedInitialUrl.current = true;
+                return;
+            }
+
             // Use the existing ID-based search functionality with 'id:' prefix
             const idSearchQuery = `id:${noteId}`;
             setSearchQuery(idSearchQuery);
@@ -335,7 +343,7 @@ const NotesMainContainer = ({
             setResetTrigger(Date.now());
             hasParsedInitialUrl.current = true;
         }
-    }, [location.pathname, location.search, allNotes, setSearchQuery]);
+    }, [location.pathname, location.search, location.state, allNotes, setSearchQuery]);
 
     // Handle temporary search query from localStorage (for bookmark navigation)
     useEffect(() => {
@@ -629,13 +637,6 @@ const NotesMainContainer = ({
         }
     };
 
-    const searchableNotes = useMemo(() => (
-        allNotes.map(note => ({
-            note,
-            lowerContent: (note.content || '').toLowerCase()
-        }))
-    ), [allNotes]);
-
     const searchTerms = useMemo(() => (
         (deferredSearchQuery || '')
             .toLowerCase()
@@ -667,18 +668,23 @@ const NotesMainContainer = ({
         };
 
         const trimmedSearch = (deferredSearchQuery || '').trim();
+        if (trimmedSearch.toLowerCase() === '#recent') {
+            return [createRecentLinksNote()];
+        }
+
         const idSearchValue = trimmedSearch.startsWith('id:') ? trimmedSearch.substring(3) : null;
 
-        let filtered = searchableNotes.filter(({ note, lowerContent }) => {
+        let filtered = allNotes.filter((note) => {
             if (!passesExclusionFilters(note)) return false;
             if (!trimmedSearch) return isSameAsTodaysDate(note.created_datetime);
             if (idSearchValue !== null) return note.id?.toString() === idSearchValue;
             if (searchTerms.length === 0) return false;
+            const lowerContent = (note.content || '').toLowerCase();
             return searchTerms.every(term => lowerContent.includes(term));
-        }).map(({ note }) => note);
+        });
 
         return filtered;
-    }, [searchableNotes, deferredSearchQuery, searchTerms, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive, excludeTrackers, excludeTimelines, excludeBackupDoneMessages, excludePeople]);
+    }, [allNotes, deferredSearchQuery, searchTerms, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive, excludeTrackers, excludeTimelines, excludeBackupDoneMessages, excludePeople]);
 
     useEffect(() => {
         setTotals({ totals: filteredNotes.length });
@@ -761,7 +767,21 @@ const NotesMainContainer = ({
         const updated = savedSearches.filter(s => s.name !== name);
         setSavedSearches(updated);
         localStorage.setItem('savedNoteSearches', JSON.stringify(updated));
+        setSavedSearchMenu(null);
     };
+
+    useEffect(() => {
+        if (!savedSearchMenu) return undefined;
+
+        const closeMenu = () => setSavedSearchMenu(null);
+        document.addEventListener('click', closeMenu);
+        document.addEventListener('keydown', closeMenu);
+
+        return () => {
+            document.removeEventListener('click', closeMenu);
+            document.removeEventListener('keydown', closeMenu);
+        };
+    }, [savedSearchMenu]);
 
     return (
         <>
@@ -773,11 +793,35 @@ const NotesMainContainer = ({
                         {savedSearches.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mb-2">
                                 {savedSearches.map(s => (
-                                    <span key={s.name} className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800 border border-purple-200">
-                                        <button onClick={() => handleApplySavedSearch(s)} className="hover:underline">{s.name}</button>
-                                        <button onClick={() => handleDeleteSavedSearch(s.name)} className="ml-0.5 text-purple-400 hover:text-red-600 leading-none" title="Delete saved search">×</button>
-                                    </span>
+                                    <button
+                                        key={s.name}
+                                        type="button"
+                                        onClick={() => handleApplySavedSearch(s)}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            setSavedSearchMenu({ name: s.name, x: e.clientX, y: e.clientY });
+                                        }}
+                                        className="inline-flex min-h-[1.75rem] items-center rounded-full border border-purple-200 bg-purple-100 px-3 py-1 text-sm font-medium text-purple-800 transition-colors hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                        title="Click to apply. Right-click to delete."
+                                    >
+                                        {s.name}
+                                    </button>
                                 ))}
+                            </div>
+                        )}
+                        {savedSearchMenu && (
+                            <div
+                                className="fixed z-50 min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+                                style={{ left: savedSearchMenu.x, top: savedSearchMenu.y }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteSavedSearch(savedSearchMenu.name)}
+                                    className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                >
+                                    Delete saved search
+                                </button>
                             </div>
                         )}
 

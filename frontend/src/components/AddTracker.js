@@ -5,6 +5,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
 import { getAllUniqueTags } from '../utils/EventUtils';
+import { isCustomXDaysTrackerCadence } from '../utils/TrackerQuestionUtils';
 
 const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel, onTrackerDeleted, notes }) => {
   const [title, setTitle] = useState('');
@@ -38,8 +39,11 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
       setTitle(editingTracker.title || '');
       setTags(Array.isArray(editingTracker.tags) ? editingTracker.tags : (editingTracker.tags ? editingTracker.tags.split(',').map(t => t.trim()) : []));
       setQuestion(editingTracker.question || '');
-      setType(editingTracker.type || 'Yes,No');
-      setCadence(editingTracker.cadence || 'Daily');
+      const savedType = editingTracker.type || 'Yes,No';
+      const savedCadence = editingTracker.cadence || 'Daily';
+      const legacyCustomXType = String(savedType).trim().toLowerCase() === 'custom_x_days' || String(savedType).trim().toLowerCase() === 'custom x days';
+      setType(legacyCustomXType ? 'value' : savedType);
+      setCadence(legacyCustomXType ? 'Custom X Days' : savedCadence);
       setStartDate(editingTracker.startDate || new Date().toISOString().split('T')[0]);
       setEndDate(editingTracker.endDate || '');
       setTrackFromYesterday(editingTracker.trackFromYesterday || false);
@@ -113,6 +117,12 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
       return;
     }
 
+    const overdueThreshold = parseInt(overdueDays, 10);
+    if (isCustomXDaysTrackerCadence(cadence) && (!Number.isFinite(overdueThreshold) || overdueThreshold <= 0)) {
+      setError('Custom X Days trackers require an overdue threshold');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -153,8 +163,16 @@ Start Date: ${startDate}`;
         content += '\ntracking_as_of:yesterday';
       }
 
+      if (editingTracker?.watched) {
+        content += '\nmeta::tracker_watched';
+      }
+
+      if (editingTracker?.important) {
+        content += '\nmeta::tracker_important';
+      }
+
       // Add overdue days if provided
-      if (overdueDays && overdueDays.trim() && !isNaN(parseInt(overdueDays))) {
+      if (overdueDays && overdueDays.trim() && Number.isFinite(parseInt(overdueDays, 10))) {
         content += `\noverdue:${overdueDays.trim()}`;
       }
 
@@ -173,6 +191,8 @@ Start Date: ${startDate}`;
           startDate,
           endDate,
           trackFromYesterday,
+          watched: editingTracker.watched,
+          important: editingTracker.important,
           overdueDays: overdueDays.trim() || undefined,
           days: cadence === 'Weekly' ? Object.entries(selectedDays)
             .filter(([_, selected]) => selected)
@@ -381,6 +401,7 @@ Start Date: ${startDate}`;
             <option value="Weekly">Weekly</option>
             <option value="Monthly">Monthly</option>
             <option value="Yearly">Yearly</option>
+            <option value="Custom X Days">Custom X Days</option>
             <option value="Custom">Custom</option>
           </select>
         </div>
@@ -432,7 +453,7 @@ Start Date: ${startDate}`;
         {/* Overdue Days Input */}
         <div>
           <label htmlFor="overdueDays" className="block text-sm font-medium text-gray-700 mb-1">
-            Overdue Days (Optional)
+            Overdue Days {isCustomXDaysTrackerCadence(cadence) ? '(Required)' : '(Optional)'}
           </label>
           <input
             type="number"
@@ -444,7 +465,9 @@ Start Date: ${startDate}`;
             min="1"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Number of days since last entry before tracker is considered overdue
+            {isCustomXDaysTrackerCadence(cadence)
+              ? 'Custom X Days cadence becomes due only after this many days since the last entry'
+              : 'Number of days since last entry before tracker is considered overdue'}
           </p>
         </div>
 
@@ -545,4 +568,4 @@ Start Date: ${startDate}`;
   );
 };
 
-export default AddTracker; 
+export default AddTracker;

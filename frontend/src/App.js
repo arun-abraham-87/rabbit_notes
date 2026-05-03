@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -199,8 +199,8 @@ const MainContentArea = ({
           } />
           <Route path="/trackers" element={
             <div className="h-full overflow-y-auto">
-              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <div className="min-h-screen bg-gray-50">
+              <div className="w-full">
+                <div className="trackers-route min-h-screen bg-gray-50">
                   <TrackerListing setAllNotes={setAllNotes} />
                 </div>
               </div>
@@ -347,6 +347,7 @@ const AppContent = () => {
   const [isWatchSelected, setIsWatchSelected] = useState(false);
   const [isSensitiveSelected, setIsSensitiveSelected] = useState(false);
   const [objList, setObjList] = useState([]);
+  const searchIndexNoteIdsRef = useRef('');
   const [lastAddedNoteId, setLastAddedNoteId] = useState(() => {
     // Load last added note ID from localStorage on mount
     const saved = localStorage.getItem('lastAddedNoteId');
@@ -627,6 +628,11 @@ const AppContent = () => {
 
     if (searchText) {
       // Use MiniSearch for in-memory search
+      const noteIdsSignature = allNotes.map(note => note.id).join('|');
+      if (searchIndexNoteIdsRef.current !== noteIdsSignature) {
+        initializeSearchIndex(allNotes);
+        searchIndexNoteIdsRef.current = noteIdsSignature;
+      }
       const searchResults = searchNotes(searchText);
       setTotals(searchResults.length);
     }
@@ -728,9 +734,9 @@ const AppContent = () => {
     return subscribeToSystemThemeChanges(syncTheme);
   }, [settings.theme]);
 
-  // Initialize search index when allNotes changes
+  // Mark the search index stale without rebuilding it on page load.
   useEffect(() => {
-    initializeSearchIndex(allNotes);
+    searchIndexNoteIdsRef.current = '';
   }, [allNotes]);
 
   return (

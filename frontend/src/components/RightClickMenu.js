@@ -114,19 +114,66 @@ export default function RightClickMenu({
   const visibleLineEntries = noteLines
     .map((line, actualIndex) => ({ line, actualIndex }))
     .filter(({ line }) => !line.trim().startsWith('meta::'));
+  const getSectionHeadingInfo = (line = '') => {
+    let text = line.trim();
+    let isH2 = false;
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      const colorMatch = text.match(/^\{<[^}]+>\}/);
+      if (colorMatch) {
+        text = text.slice(colorMatch[0].length).trim();
+        changed = true;
+      }
+      const legacyColorMatch = text.match(/^@\$%\^[^@]+@\$%\^/);
+      if (legacyColorMatch) {
+        text = text.slice(legacyColorMatch[0].length).trim();
+        changed = true;
+      }
+      if (text.startsWith('{meta::sub}')) {
+        text = text.replace(/^\{meta::sub\}\s*/, '').trim();
+        changed = true;
+      }
+      if (text.startsWith('{#h1#}')) {
+        text = text.slice(6).trim();
+        changed = true;
+      }
+      if (text.startsWith('{#h2#}')) {
+        text = text.slice(6).trim();
+        isH2 = true;
+        changed = true;
+      }
+      if (text.startsWith('{#bold#}')) {
+        text = text.slice(8).trim();
+        changed = true;
+      }
+      if (text.startsWith('{#italics#}')) {
+        text = text.slice(11).trim();
+        changed = true;
+      }
+    }
+
+    const label = text
+      .replace(/\{#tags:[^#]*?#\}/g, '')
+      .replace(/\{#[^}]+#\}/g, '')
+      .trim();
+
+    return { isH2, label: label || 'Untitled section' };
+  };
   const selectedVisibleLine = visibleLineEntries[lineIndex]?.line || '';
+  const selectedSectionInfo = getSectionHeadingInfo(selectedVisibleLine);
+  const isSelectedH2Section = selectedSectionInfo.isH2;
 
   const h2Sections = visibleLineEntries
     .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
-    .filter(({ line }) => {
-      const trimmed = line.trim();
-      return trimmed.startsWith('{#h2#}');
-    })
     .map(({ line, actualIndex, visibleIndex }) => ({
       actualIndex,
       visibleIndex,
-      label: line.trim().slice(6).trim() || 'Untitled section'
-    }));
+      ...getSectionHeadingInfo(line)
+    }))
+    .filter(({ isH2 }) => isH2)
+    .map(({ actualIndex, visibleIndex, label }) => ({ actualIndex, visibleIndex, label }));
 
   const moveLineToSection = async (targetSectionActualIndex) => {
     const sourceEntry = visibleLineEntries[lineIndex];
@@ -198,6 +245,16 @@ export default function RightClickMenu({
     document.dispatchEvent(new CustomEvent('startMultiSelectFromContextMenu', {
       detail: { noteId, lineIndex }
     }));
+    setRightClickText(null);
+    setRightClickNoteId(null);
+    setRightClickIndex(null);
+  };
+
+  const moveSectionToNewNote = () => {
+    document.dispatchEvent(new CustomEvent('moveSectionToNewNote', {
+      detail: { noteId, lineIndex }
+    }));
+
     setRightClickText(null);
     setRightClickNoteId(null);
     setRightClickIndex(null);
@@ -597,7 +654,7 @@ export default function RightClickMenu({
     <div
       ref={menuRef}
       style={{ position: 'fixed', top: `${adjustedPos.y}px`, left: `${adjustedPos.x}px` }}
-      className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1"
+      className="z-50 rounded border border-slate-600 bg-slate-950 px-2 py-1 text-slate-100 shadow-xl"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
@@ -609,42 +666,42 @@ export default function RightClickMenu({
       {isBatchMultiSelectMode ? (
         <div className="grid grid-cols-2 gap-2 min-w-[220px]">
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('move_to_section')}
           >
             Move To Section
           </button>
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('move_to_new_note')}
           >
             Move To New Note
           </button>
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('move_to_note')}
           >
             Move To Note
           </button>
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('bold')}
           >
             Bold
           </button>
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('italics')}
           >
             Italics
           </button>
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+            className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
             onClick={() => triggerBatchAction('cancel_multi_select')}
           >
             Cancel
           </button>
-          <div className="col-span-2 border-t-2 my-1"></div>
+          <div className="col-span-2 my-1 border-t border-slate-600"></div>
           <div className="col-span-2 flex justify-center gap-1 py-1">
             {colorOptions.map((option) => (
               <button
@@ -656,7 +713,7 @@ export default function RightClickMenu({
               />
             ))}
             <button
-              className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow bg-white border border-gray-300 relative"
+              className="relative h-6 w-6 rounded border border-slate-600 bg-slate-800 shadow transition-shadow hover:shadow-lg"
               title="Default"
               onClick={() => triggerBatchAction('color', { color: 'default' })}
             >
@@ -670,25 +727,33 @@ export default function RightClickMenu({
           {primaryButtons.map((button) => (
             <button
               key={button.id}
-              className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+              className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
               onClick={button.onClick}
             >
               {button.label}
             </button>
           ))}
           <button
-            className="p-1 text-xs rounded cursor-pointer bg-green-50 hover:bg-green-100 hover:shadow-lg"
+            className="cursor-pointer rounded bg-emerald-950 p-1 text-xs text-emerald-100 hover:bg-emerald-800 hover:shadow-lg"
             onClick={startGenericMultiSelect}
           >
             Multi Select
           </button>
+          {isSelectedH2Section && (
+            <button
+              className="cursor-pointer rounded bg-purple-950 p-1 text-xs text-purple-100 hover:bg-purple-800 hover:shadow-lg"
+              onClick={moveSectionToNewNote}
+            >
+              Section To Note
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-1">
           {insertButtons.map((button) => (
             <button
               key={button.id}
-              className="p-1 text-xs rounded cursor-pointer bg-gray-100 hover:bg-gray-200 hover:shadow-lg"
+              className="cursor-pointer rounded bg-slate-800 p-1 text-xs text-slate-100 hover:bg-slate-700 hover:shadow-lg"
               onClick={button.onClick}
             >
               {button.label}
@@ -697,8 +762,8 @@ export default function RightClickMenu({
         </div>
 
         <div className="col-span-3">
-          <div className="border-t my-1"></div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-500 px-1 mb-1">Move to section</div>
+          <div className="my-1 border-t border-slate-600"></div>
+          <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-slate-300">Move to section</div>
           <div className="flex gap-1 mb-1">
             <input
               ref={newSectionInputRef}
@@ -711,10 +776,10 @@ export default function RightClickMenu({
                 if (e.key === 'Escape') closeMenu();
               }}
               placeholder="New section name…"
-              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="flex-1 rounded border border-indigo-400 bg-slate-950 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
             <button
-              className="px-2 py-1 text-xs bg-indigo-500 hover:bg-indigo-600 text-white rounded disabled:opacity-40"
+              className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-950 disabled:text-indigo-300"
               onClick={createSectionAndMove}
               disabled={!newSectionText.trim()}
             >
@@ -724,7 +789,7 @@ export default function RightClickMenu({
           {h2Sections.length > 0 ? (
             <div className="flex flex-col gap-0.5">
               <button
-                className="text-left p-1 text-xs bg-purple-50 hover:bg-purple-100 rounded cursor-pointer"
+                className="cursor-pointer rounded bg-violet-950 p-1 text-left text-xs text-violet-100 hover:bg-violet-800"
                 onClick={startMultiMoveToSection}
               >
                 Select Multiple Lines
@@ -732,7 +797,7 @@ export default function RightClickMenu({
               {h2Sections.map((section) => (
                 <button
                   key={`section-${section.actualIndex}`}
-                  className="text-left p-1 text-xs bg-blue-50 hover:bg-blue-100 rounded cursor-pointer truncate"
+                  className="cursor-pointer truncate rounded bg-slate-800 p-1 text-left text-xs text-slate-100 hover:bg-slate-700"
                   onClick={() => moveLineToSection(section.actualIndex)}
                   title={section.label}
                 >
@@ -741,11 +806,11 @@ export default function RightClickMenu({
               ))}
             </div>
           ) : (
-            <div className="text-xs text-gray-400 italic px-1 pb-1">No sections yet — create one above</div>
+            <div className="px-1 pb-1 text-xs italic text-slate-400">No sections yet — create one above</div>
           )}
         </div>
 
-        <div className="col-span-3 border-t-2 my-1"></div>
+        <div className="col-span-3 my-1 border-t border-slate-600"></div>
         
         {/* Color options as squares - always at bottom */}
         <div className="col-span-3 flex justify-center gap-1 py-1">
@@ -759,7 +824,7 @@ export default function RightClickMenu({
             />
           ))}
           <button
-            className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow bg-white border border-gray-300 relative"
+            className="relative h-6 w-6 rounded border border-slate-600 bg-slate-800 shadow transition-shadow hover:shadow-lg"
             title="Default"
             onClick={() => handleSetColor('default')}
           >

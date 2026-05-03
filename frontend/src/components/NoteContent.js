@@ -4,6 +4,7 @@ import { useNotes } from '../contexts/NotesContext';
 import InlineTagEditor, { parseLineTags, setLineTags, tagColor } from './InlineTagEditor';
 import InlineEditor from './InlineEditor';
 import NoteImages from './NoteImages';
+import ImageModal from './ImageModal';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import {
@@ -18,6 +19,8 @@ import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outl
 import { toast } from 'react-toastify';
 import { saveNoteToHistory } from '../utils/NoteHistoryUtils';
 import { decodeSensitiveContent, decodeSensitiveUrl, encodeSensitiveContent, encodeSensitiveLine, getStoredUrlForContent, hasEncodedContent, hasReversedUrls, isReversedUrl, REVERSED_URL_GLOBAL_PATTERN, restoreUrlsInText, reverseUrlsInText } from '../utils/SensitiveUrlUtils';
+import { recordLinkClick } from '../utils/LinkClickHistoryUtils';
+import { getInstagramReelsUrl } from '../utils/InstagramUrlUtils';
 
 const GIBBERISH_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%&!?*~^';
 
@@ -92,11 +95,14 @@ export default function NoteContent({
     setBulkDeleteNoteId = () => {},
     multiMoveNoteId = null,
     setFocusedNoteIndex = () => {},
+    onSetFocusedLine = null,
     addNote = null, // Add addNote prop
     // Super edit mode props
     isSuperEditMode = false,
     highlightedLineIndex = -1,
     highlightedLineText = '',
+    isLineFocusMode = false,
+    focusedLineIndex = -1,
     wasOpenedFromSuperEdit = false,
     setShowCopyToast = null,
     isFocused = false
@@ -111,6 +117,11 @@ export default function NoteContent({
             const noteId = url.split('note=')[1];
             navigate(`/notes?note=${noteId}`);
         }
+    };
+
+    const handleLinkClick = (url, customText = '') => {
+        setLastClickedUrl(url);
+        recordLinkClick(url, note?.id ?? null, customText);
     };
     
     // Use the bulkDeleteMode prop instead of local state
@@ -156,6 +167,9 @@ export default function NoteContent({
     const [sectionActionPopup, setSectionActionPopup] = useState(null);
     const [sectionAppendText, setSectionAppendText] = useState('');
     const [undoAction, setUndoAction] = useState(null);
+    const [modalImageUrl, setModalImageUrl] = useState(null);
+    const [modalImageLoading, setModalImageLoading] = useState(false);
+    const [modalImageScale, setModalImageScale] = useState(1);
     const hoverTimeoutRef = useRef(null);
     const contextMenuPinnedSectionRef = useRef(null);
     const quickAccessHighlightTimeoutRef = useRef(null);
@@ -310,6 +324,23 @@ export default function NoteContent({
         });
     };
 
+    const toggleAllSections = () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        contextMenuPinnedSectionRef.current = null;
+        setHoveredSection(null);
+
+        const allCollapsed = h2Sections.length > 0 && h2Sections.every(section => collapsedSections.has(section.actualIndex));
+        if (allCollapsed) {
+            setCollapsedSections(new Set());
+            void persistSectionState(showSectionQuickAccess, []);
+            return;
+        }
+
+        const nextCollapsedSections = new Set(h2Sections.map(section => section.actualIndex));
+        setCollapsedSections(nextCollapsedSections);
+        void persistSectionState(showSectionQuickAccess, h2Sections.map(section => section.label));
+    };
+
     // Code block state
     const [codeBlockMode, setCodeBlockMode] = useState(false);
     const [codeBlockSelectedRows, setCodeBlockSelectedRows] = useState(new Set());
@@ -374,8 +405,22 @@ export default function NoteContent({
             if (dragSelectStartRef.current == null) return;
             if (dragSelectMovedRef.current) {
                 suppressNextLineClickRef.current = true;
-                setBulkDeleteMode(true);
-                setBulkDeleteNoteId(note.id);
+                const selectedRange = getDragSelectRange(
+                    dragSelectState?.start ?? dragSelectStartRef.current,
+                    dragSelectState?.end ?? dragSelectStartRef.current
+                );
+
+                if (!multiMoveMode) {
+                    const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
+                    document.dispatchEvent(event);
+                }
+
+                setBulkDeleteMode(false);
+                setBulkDeleteNoteId(null);
+                setSelectedRows(new Set());
+                setMultiMoveSelectedRows(selectedRange);
+                validateMultiMoveSelection(selectedRange);
+
                 setTimeout(() => {
                     suppressNextLineClickRef.current = false;
                 }, 150);
@@ -395,6 +440,12 @@ export default function NoteContent({
                 setBulkDeleteMode(false);
                 setBulkDeleteNoteId(null);
             }
+            if (multiMoveMode) {
+                const event = new CustomEvent('toggleMultiMoveMode', { detail: { noteId: note.id } });
+                document.dispatchEvent(event);
+                setMultiMoveSelectedRows(new Set());
+                setMultiMoveError('');
+            }
         };
 
         document.addEventListener('pointerup', handlePointerUp);
@@ -403,7 +454,7 @@ export default function NoteContent({
             document.removeEventListener('pointerup', handlePointerUp);
             document.removeEventListener('keydown', handleKeyDown);
         };
-    }, [bulkDeleteMode, bulkDeleteNoteId, note.id]);
+    }, [bulkDeleteMode, bulkDeleteNoteId, dragSelectState, multiMoveMode, note.id]);
 
     useEffect(() => {
         const content = note?.content || '';
@@ -540,6 +591,115 @@ export default function NoteContent({
         };
     }, [note?.id, note?.content, multiMoveMode, multiMoveSelectedRows, multiMoveError]);
 
+    useEffect(() => {
+        const getLocalSectionHeadingInfo = (line = '') => {
+            let text = normalizeSubLinePrefix(line).trim();
+            let isH2 = false;
+            let changed = true;
+
+            while (changed) {
+                changed = false;
+                const colorMatch = text.match(/^\{<[^}]+>\}/);
+                if (colorMatch) {
+                    text = text.slice(colorMatch[0].length).trim();
+                    changed = true;
+                }
+                const legacyColorMatch = text.match(/^@\$%\^[^@]+@\$%\^/);
+                if (legacyColorMatch) {
+                    text = text.slice(legacyColorMatch[0].length).trim();
+                    changed = true;
+                }
+                if (text.startsWith('{meta::sub}')) {
+                    text = text.replace(/^\{meta::sub\}\s*/, '').trim();
+                    changed = true;
+                }
+                if (text.startsWith('{#h1#}')) {
+                    text = text.slice(6).trim();
+                    changed = true;
+                }
+                if (text.startsWith('{#h2#}')) {
+                    text = text.slice(6).trim();
+                    isH2 = true;
+                    changed = true;
+                }
+                if (text.startsWith('{#bold#}')) {
+                    text = text.slice(8).trim();
+                    changed = true;
+                }
+                if (text.startsWith('{#italics#}')) {
+                    text = text.slice(11).trim();
+                    changed = true;
+                }
+            }
+
+            const label = text
+                .replace(/\{#tags:[^#]*?#\}/g, '')
+                .replace(/\{#[^}]+#\}/g, '')
+                .trim();
+
+            return { isH2, label: label || 'Untitled section' };
+        };
+
+        const handleMoveSectionToNewNote = async (e) => {
+            if (!note || e?.detail?.noteId !== note.id || !addNote || !updateNote) return;
+
+            const clickedVisibleIndex = e?.detail?.lineIndex;
+            if (clickedVisibleIndex == null) return;
+
+            const localVisibleLineEntries = decodeSensitiveContent(note.content)
+                .split('\n')
+                .map((line, actualIndex) => ({ line: normalizeSubLinePrefix(line), actualIndex }))
+                .filter(({ line }) => !line.trim().startsWith('meta::'));
+            const sectionEntry = localVisibleLineEntries[clickedVisibleIndex];
+            if (!sectionEntry) return;
+
+            const sectionInfo = getLocalSectionHeadingInfo(sectionEntry.line);
+            if (!sectionInfo.isH2) return;
+
+            const lines = note.content.split('\n');
+            const sectionActualIndices = [sectionEntry.actualIndex];
+            for (let vi = clickedVisibleIndex + 1; vi < localVisibleLineEntries.length; vi++) {
+                const { line, actualIndex } = localVisibleLineEntries[vi];
+                const trimmed = line.trim();
+                if (trimmed.startsWith('{#h1#}') || trimmed.startsWith('{#h2#}')) break;
+                sectionActualIndices.push(actualIndex);
+            }
+
+            const sectionContent = sectionActualIndices
+                .map(actualIndex => lines[actualIndex])
+                .join('\n')
+                .trim();
+
+            if (!sectionContent) return;
+
+            const originalContent = note.content;
+            await addNote(sectionContent);
+
+            sectionActualIndices
+                .slice()
+                .sort((a, b) => b - a)
+                .forEach(actualIndex => lines.splice(actualIndex, 1));
+
+            await updateNote(note.id, reorderMetaTags(lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()));
+
+            setUndoAction({
+                label: `Section "${sectionInfo.label}" moved to new note`,
+                originalContent,
+                createdAt: Date.now()
+            });
+            if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+            undoTimeoutRef.current = setTimeout(() => {
+                setUndoAction(null);
+                undoTimeoutRef.current = null;
+            }, 10000);
+        };
+
+        document.addEventListener('moveSectionToNewNote', handleMoveSectionToNewNote);
+        return () => {
+            document.removeEventListener('moveSectionToNewNote', handleMoveSectionToNewNote);
+        };
+    }, [note, addNote, updateNote]);
+
     if (!note) {
         return null;
     }
@@ -578,45 +738,40 @@ export default function NoteContent({
         return content;
     };
 
-    const handleSaveText = async (noteId, url, customText, updatedContent = null) => {
-        console.log('[handleSaveText] CALLED', { noteId, url, customText, updatedContentLength: updatedContent?.length, isEditing });
+    const handleSaveText = async (noteId, newUrl, customText, updatedContent = null) => {
+        console.log('[handleSaveText] CALLED', { noteId, newUrl, customText, updatedContentLength: updatedContent?.length, isEditing });
         try {
-            let finalContent;
-
             const originalContent = note.content;
             const sourceContent = prepareContentForTextLinkEdit(updatedContent !== null ? updatedContent : originalContent);
             console.log('[handleSaveText] sourceContent (first 300 chars):', sourceContent?.slice(0, 300));
             const lines = sourceContent.split('\n');
             console.log('[handleSaveText] total lines:', lines.length);
-            const storedUrl = url;
-            const escapedStoredUrl = storedUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            console.log('[handleSaveText] hasReversedUrls:', hasReversedUrls(sourceContent), 'searchUrl:', JSON.stringify(storedUrl));
+            const searchUrl = isEditing ? urlForText : newUrl;
+            const escapedSearchUrl = searchUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            console.log('[handleSaveText] hasReversedUrls:', hasReversedUrls(sourceContent), 'searchUrl:', JSON.stringify(searchUrl), 'newUrl:', JSON.stringify(newUrl));
 
             const updatedLines = lines.map((line, i) => {
                 if (isEditing) {
-                    const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${escapedStoredUrl}\\)`);
-                    const matches = markdownRegex.test(line);
-                    if (matches) {
+                    const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${escapedSearchUrl}\\)`);
+                    if (markdownRegex.test(line)) {
                         console.log(`[handleSaveText] isEditing=true, MATCH on line ${i}:`, JSON.stringify(line));
-                        return line.replace(markdownRegex, `[${customText}](${storedUrl})`);
+                        return line.replace(markdownRegex, `[${customText}](${newUrl})`);
                     }
-                } else {
-                    if (line.includes(storedUrl)) {
-                        console.log(`[handleSaveText] isEditing=false, MATCH on line ${i}:`, JSON.stringify(line));
-                        return line.replace(storedUrl, `[${customText}](${storedUrl})`);
-                    }
+                } else if (line.includes(searchUrl)) {
+                    console.log(`[handleSaveText] isEditing=false, MATCH on line ${i}:`, JSON.stringify(line));
+                    return line.replace(searchUrl, `[${customText}](${newUrl})`);
                 }
                 return line;
             });
 
-            const anyChanged = updatedLines.some((l, i) => l !== lines[i]);
+            const anyChanged = updatedLines.some((line, i) => line !== lines[i]);
             console.log('[handleSaveText] any lines changed?', anyChanged);
             if (!anyChanged) {
-                console.warn('[handleSaveText] NO LINES MATCHED. url was:', JSON.stringify(url));
-                console.warn('[handleSaveText] All lines:', lines.map((l, i) => `${i}: ${JSON.stringify(l)}`));
+                console.warn('[handleSaveText] NO LINES MATCHED. searchUrl was:', JSON.stringify(searchUrl));
+                console.warn('[handleSaveText] All lines:', lines.map((line, i) => `${i}: ${JSON.stringify(line)}`));
             }
 
-            finalContent = restoreContentAfterTextLinkEdit(updatedLines.join('\n'), originalContent);
+            const finalContent = restoreContentAfterTextLinkEdit(updatedLines.join('\n'), originalContent);
             const reorderedContent = reorderMetaTags(finalContent);
             console.log('[handleSaveText] calling updateNote with noteId:', noteId);
             await updateNote(noteId, reorderedContent);
@@ -714,14 +869,62 @@ export default function NoteContent({
         .split('\n')
         .map((line, actualIndex) => ({ line: normalizeSubLinePrefix(line), actualIndex }))
         .filter(({ line }) => !line.trim().startsWith('meta::'));
+    const getSectionHeadingInfo = (line = '') => {
+        let text = normalizeSubLinePrefix(line).trim();
+        let isH2 = false;
+        let changed = true;
+
+        while (changed) {
+            changed = false;
+            const colorMatch = text.match(/^\{<[^}]+>\}/);
+            if (colorMatch) {
+                text = text.slice(colorMatch[0].length).trim();
+                changed = true;
+            }
+            const legacyColorMatch = text.match(/^@\$%\^[^@]+@\$%\^/);
+            if (legacyColorMatch) {
+                text = text.slice(legacyColorMatch[0].length).trim();
+                changed = true;
+            }
+            if (text.startsWith('{meta::sub}')) {
+                text = text.replace(/^\{meta::sub\}\s*/, '').trim();
+                changed = true;
+            }
+            if (text.startsWith('{#h1#}')) {
+                text = text.slice(6).trim();
+                changed = true;
+            }
+            if (text.startsWith('{#h2#}')) {
+                text = text.slice(6).trim();
+                isH2 = true;
+                changed = true;
+            }
+            if (text.startsWith('{#bold#}')) {
+                text = text.slice(8).trim();
+                changed = true;
+            }
+            if (text.startsWith('{#italics#}')) {
+                text = text.slice(11).trim();
+                changed = true;
+            }
+        }
+
+        const label = text
+            .replace(/\{#tags:[^#]*?#\}/g, '')
+            .replace(/\{#[^}]+#\}/g, '')
+            .trim();
+
+        return { isH2, label: label || 'Untitled section' };
+    };
     const h2Sections = visibleLineEntries
         .map(({ line, actualIndex }, visibleIndex) => ({ line, actualIndex, visibleIndex }))
-        .filter(({ line }) => line && line.trim().startsWith('{#h2#}'))
         .map(({ line, actualIndex, visibleIndex }) => ({
             actualIndex,
             visibleIndex,
-            label: line.trim().slice(6).trim() || 'Untitled section'
-        }));
+            ...getSectionHeadingInfo(line)
+        }))
+        .filter(({ isH2 }) => isH2)
+        .map(({ actualIndex, visibleIndex, label }) => ({ actualIndex, visibleIndex, label }));
 
     const getH2ContentLineEntries = () => {
         const entries = [];
@@ -923,7 +1126,7 @@ export default function NoteContent({
                                 while ((m = reversedUrlRegex.exec(line)) !== null) urls.add(decodeSensitiveUrl(m[0]));
                             }
                         });
-                        urls.forEach(url => window.open(url, '_blank', 'noopener,noreferrer'));
+                        urls.forEach(url => window.open(getInstagramReelsUrl(url), '_blank', 'noopener,noreferrer'));
                     }}
                     className="rounded px-1 py-0.5 text-[10px] font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
                     title="Open all links in this section"
@@ -1094,7 +1297,7 @@ export default function NoteContent({
             navigate(`/notes?note=${noteId}`);
         },
         lastClickedUrl,
-        onLinkClick: setLastClickedUrl,
+        onLinkClick: handleLinkClick,
         unclickableLinks,
         onCopyUrl: handleCopyUrl
     });
@@ -1163,7 +1366,18 @@ export default function NoteContent({
             alert('Failed to delete image. Please try again.');
         }
     };
-    
+
+    const openImageModal = (imageUrl) => {
+        setModalImageUrl(imageUrl);
+        setModalImageScale(1);
+        setModalImageLoading(true);
+    };
+
+    const closeImageModal = () => {
+        setModalImageUrl(null);
+        setModalImageLoading(false);
+        setModalImageScale(1);
+    };
 
     
 
@@ -1477,9 +1691,34 @@ export default function NoteContent({
         setEditedLineContent(stripLineFormatting(displayLine));
     };
 
-    const isInteractiveLineTarget = (target) => Boolean(
-        target?.closest?.('a, button, input, textarea, select, label, img, svg, [role="button"], [data-no-inline-edit="true"]')
-    );
+    const handleLineFocus = (idx, e = null) => {
+        if (suppressNextLineClickRef.current) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+        if (e && isInteractiveLineEvent(e)) return;
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (typeof onSetFocusedLine === 'function') {
+            onSetFocusedLine({ noteId: note.id, lineIndex: idx });
+        }
+    };
+
+    const isInteractiveLineTarget = (target) => {
+        if (!target?.closest) return false;
+        if (target.closest('a, button, input, textarea, select, label, img, svg, [data-no-inline-edit="true"]')) {
+            return true;
+        }
+
+        const roleButton = target.closest('[role="button"]');
+        return Boolean(roleButton && !roleButton.hasAttribute('data-note-id'));
+    };
 
     const isInteractiveLineEvent = (event) => {
         if (isInteractiveLineTarget(event.target)) return true;
@@ -1492,7 +1731,7 @@ export default function NoteContent({
             if (!node || !node.tagName) return false;
             const tagName = node.tagName.toLowerCase();
             return ['a', 'button', 'input', 'textarea', 'select', 'label', 'img', 'svg'].includes(tagName) ||
-                node.getAttribute?.('role') === 'button' ||
+                (node.getAttribute?.('role') === 'button' && !node.hasAttribute?.('data-note-id')) ||
                 node.getAttribute?.('data-no-inline-edit') === 'true';
         });
     };
@@ -1530,7 +1769,7 @@ export default function NoteContent({
         if (imageMarkdownUrl) {
             e.preventDefault();
             e.stopPropagation();
-            window.open(imageMarkdownUrl, '_blank', 'noopener,noreferrer');
+            openImageModal(imageMarkdownUrl);
             return;
         }
 
@@ -1538,7 +1777,7 @@ export default function NoteContent({
         if (markdownLinkUrl) {
             e.preventDefault();
             e.stopPropagation();
-            window.open(markdownLinkUrl, '_blank', 'noopener,noreferrer');
+            window.open(getInstagramReelsUrl(markdownLinkUrl), '_blank', 'noopener,noreferrer');
             return;
         }
 
@@ -1552,11 +1791,11 @@ export default function NoteContent({
             const openUrl = hasReversedUrls(note.content) && isReversedUrl(rawUrl)
                 ? decodeSensitiveUrl(rawUrl)
                 : rawUrl;
-            window.open(openUrl, '_blank', 'noopener,noreferrer');
+            window.open(getInstagramReelsUrl(openUrl), '_blank', 'noopener,noreferrer');
             return;
         }
 
-        handleTextClick(idx);
+        handleLineFocus(idx, e);
     };
 
     const handleSaveEdit = async (newText, idx, isH1, isH2) => {
@@ -2385,7 +2624,9 @@ export default function NoteContent({
     // Drag and drop handlers
     const handleDragStart = (e, lineIndex) => {
         if (isDragDisabled) return; // Disable drag in focus mode and sensitive notes.
-        if (!multiMoveMode && !e.target.closest('[data-line-drag-handle="true"]')) {
+        const isInteractiveTarget = e.target.closest('a, button, input, textarea, select, [contenteditable="true"]');
+        const isExplicitDragHandle = e.target.closest('[data-line-drag-handle="true"]');
+        if (!multiMoveMode && isInteractiveTarget && !isExplicitDragHandle) {
             e.preventDefault();
             return;
         }
@@ -2607,19 +2848,7 @@ export default function NoteContent({
     );
 
     const renderLineDragHandle = () => {
-        if (isDragDisabled || multiMoveMode) return null;
-        return (
-            <span
-                data-line-drag-handle="true"
-                data-no-drag-select="true"
-                draggable
-                className="mr-1 cursor-grab select-none rounded px-1 text-[10px] leading-none text-gray-300 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-500 active:cursor-grabbing group-hover:opacity-100"
-                title="Drag to reorder"
-                onPointerDown={(e) => e.stopPropagation()}
-            >
-                ⋮⋮
-            </span>
-        );
+        return null;
     };
 
     const getDragSelectClass = (idx) => {
@@ -2641,6 +2870,7 @@ export default function NoteContent({
 
         // Check if this line is highlighted in super edit mode
         const isHighlightedInSuperEdit = isSuperEditMode && idx === highlightedLineIndex;
+        const isFocusedLine = isLineFocusMode && idx === focusedLineIndex;
         const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
 
         if (React.isValidElement(line)) {
@@ -2677,6 +2907,12 @@ export default function NoteContent({
                     onDoubleClickCapture={(e) => {
                         if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                     }}
+                    onDoubleClick={(e) => {
+                        if (isInteractiveLineEvent(e) || isUrlOnly) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleTextClick(idx);
+                    }}
                     onClick={(e) => handleLineRowClick(e, idx, isUrlOnly)}
                     onMouseEnter={() => {
                         const pIdx = parentH2Map[actualIdx];
@@ -2693,6 +2929,8 @@ export default function NoteContent({
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         } ${
                             isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
+                        } ${
+                            isFocusedLine ? 'note-line-focused bg-blue-100 border-l-4 border-blue-500' : ''
                         } ${
                             draggedLineIndex === idx ? 'opacity-50' : ''
                         } ${
@@ -2781,7 +3019,7 @@ export default function NoteContent({
                                 if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                             },
                             onClick: (e) => {
-                                handleTextClick(idx);
+                                handleLineFocus(idx, e);
                             },
                             className: `${line.props.className || ''} ${
                                 rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
@@ -2837,6 +3075,8 @@ export default function NoteContent({
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`w-full py-4 relative group ${
                         dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
+                    } ${
+                        isFocusedLine ? 'note-line-focused bg-blue-100 border-l-4 border-blue-500' : ''
                     } ${!focusMode ? 'hover:bg-gray-50' : ''} ${getDragSelectClass(idx)}`}
                     style={{ paddingLeft: (indentFlags[idx] || 0) > 0 ? `calc(${(indentFlags[idx] || 0) * 2}rem + 2rem)` : undefined }}
                 >
@@ -2868,6 +3108,12 @@ export default function NoteContent({
                     onPointerDown={(e) => handleLinePointerDown(e, idx)}
                     onPointerEnter={() => handleLinePointerEnter(idx)}
                     onContextMenu={(e) => handleRightClick(e, idx)}
+                    onDoubleClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleTextClick(idx);
+                    }}
+                    onClick={(e) => handleLineFocus(idx, e)}
                     onMouseEnter={() => {
                         const actualIdx = visibleLineEntries[idx]?.actualIndex ?? idx;
                         const pIdx = parentH2Map[actualIdx];
@@ -2880,8 +3126,10 @@ export default function NoteContent({
                             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                         }
                     }}
-                    className={`cursor-text h-6 ${
+                    className={`group cursor-text flex w-full min-h-[1.75rem] items-center py-1 ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
+                    } ${
+                        isFocusedLine ? 'note-line-focused bg-blue-100 border-l-4 border-blue-500' : ''
                     } ${
                         draggedLineIndex === idx ? 'opacity-50' : ''
                     } ${
@@ -2889,6 +3137,7 @@ export default function NoteContent({
                     } ${
                         !focusMode ? 'hover:bg-gray-50' : ''
                     } ${getDragSelectClass(idx)}`}
+                    style={{ paddingLeft: `${(indentFlags[idx] || 0) * 2}rem` }}
                 >
                     {renderLineDragHandle()}
                 </div>
@@ -2918,6 +3167,12 @@ export default function NoteContent({
                 onDoubleClickCapture={(e) => {
                     if (isUrlOnly) handleLineRowClick(e, idx, isUrlOnly);
                 }}
+                onDoubleClick={(e) => {
+                    if (isInteractiveLineEvent(e) || isUrlOnly) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleTextClick(idx);
+                }}
                 onClick={(e) => handleLineRowClick(e, idx, isUrlOnly)}
                 className={`group cursor-text flex items-center ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
@@ -2926,6 +3181,8 @@ export default function NoteContent({
                         isH2 ? 'text-lg font-semibold text-gray-900' : ''
                     } ${
                         isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
+                    } ${
+                        isFocusedLine ? 'note-line-focused bg-blue-100 border-l-4 border-blue-500' : ''
                     } ${
                         draggedLineIndex === idx ? 'opacity-50' : ''
                     } ${
@@ -3020,7 +3277,12 @@ export default function NoteContent({
                                     // For regular text, wrap with click handler
                                     return (
                                         <div
-                                            onClick={() => handleTextClick(idx)}
+                                            onClick={(e) => handleLineFocus(idx, e)}
+                                            onDoubleClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleTextClick(idx);
+                                            }}
                                             className="cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded inline-flex min-w-0"
                                         >
                                             {content}
@@ -3110,7 +3372,7 @@ export default function NoteContent({
             className={`relative ${
             focusMode
                 ? 'bg-transparent p-2 border-0'
-                : 'bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed'
+                : 'text-gray-800 text-sm leading-relaxed'
         }`}>
             {showScramble && <SensitiveScrambleOverlay content={note.content} />}
             {undoAction && !focusMode && (
@@ -3246,21 +3508,11 @@ export default function NoteContent({
                         {tagsVisible ? 'Hide tags' : 'Show tags'}
                     </button>
                     <button
-                        onClick={() => {
-                            const allCollapsed = h2Sections.every(s => collapsedSections.has(s.actualIndex));
-                            if (allCollapsed) {
-                                setCollapsedSections(new Set());
-                                void persistSectionState(showSectionQuickAccess, []);
-                            } else {
-                                const nextCollapsedSections = new Set(h2Sections.map(s => s.actualIndex));
-                                setCollapsedSections(nextCollapsedSections);
-                                void persistSectionState(showSectionQuickAccess, h2Sections.map(s => s.label));
-                            }
-                        }}
+                        onClick={toggleAllSections}
                         className="text-xs text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded transition-colors"
-                        title={h2Sections.every(s => collapsedSections.has(s.actualIndex)) ? 'Expand all sections' : 'Collapse all sections'}
+                        title={h2Sections.every(section => collapsedSections.has(section.actualIndex)) ? 'Expand all sections' : 'Collapse all sections'}
                     >
-                        {h2Sections.every(s => collapsedSections.has(s.actualIndex)) ? '▶▶ expand all' : '▼▼ collapse all'}
+                        {h2Sections.every(section => collapsedSections.has(section.actualIndex)) ? '▶▶ expand all' : '▼▼ collapse all'}
                     </button>
                         </>
                     )}
@@ -3331,7 +3583,11 @@ export default function NoteContent({
                     </div>
                 </div>
             )}
-            <div className="whitespace-pre-wrap break-words break-all">
+            <div className={`whitespace-pre-wrap break-words break-all ${
+                focusMode
+                    ? ''
+                    : 'bg-gray-50 p-4 rounded-md border'
+            }`}>
                 {displayedContentLines.map(({ line, idx, actualIndex }) => {
                     const actualIdx = actualIndex;
                     const isHidden = !activeVisibleLineTagFilter && (
@@ -3361,6 +3617,7 @@ export default function NoteContent({
                 <NoteImages 
                     imageIds={imageIds} 
                     onDeleteImage={(imageId) => handleImageDelete(imageId)}
+                    onOpenImage={openImageModal}
                 />
                 {/* Drop zone at the bottom for dragging to last position */}
                 {!focusMode && (
@@ -3383,6 +3640,43 @@ export default function NoteContent({
                             dragOverLineIndex === contentLines.length ? 'bg-blue-100 border-t-2 border-blue-500' : ''
                         }`}
                     />
+                )}
+                {/* Add New Line Inline Editor */}
+                {addingLineNoteId === note.id && (
+                    <div className="mt-2" ref={newLineInputRef}>
+                        <InlineEditor
+                            text={newLineText}
+                            setText={setNewLineText}
+                            onSave={(newText) => {
+                                if (newText.trim()) {
+                                    const lines = note.content.split('\n');
+                                    // Encode the new line if the note uses sensitive URL encoding
+                                    const lineToAdd = hasReversedUrls(note.content)
+                                        ? reverseUrlsInText(newText.trim())
+                                        : newText.trim();
+                                    lines.push(lineToAdd);
+                                    updateNote(note.id, lines.join('\n'));
+                                }
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            onCancel={() => {
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            onDelete={() => {
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            isSuperEditMode={false}
+                            wasOpenedFromSuperEdit={false}
+                            lineIndex={-1}
+                            allNotes={allNotes}
+                            addNote={addNote}
+                            updateNote={updateNote}
+                            currentNoteId={note.id}
+                        />
+                    </div>
                 )}
                 {/* Plus button at the end of the last line */}
                 {!compressedView && !focusMode && (
@@ -3758,44 +4052,6 @@ export default function NoteContent({
                         )}
                     </div>
                 )}
-                
-                {/* Add New Line Inline Editor */}
-                {addingLineNoteId === note.id && (
-                    <div className="mt-2" ref={newLineInputRef}>
-                        <InlineEditor
-                            text={newLineText}
-                            setText={setNewLineText}
-                            onSave={(newText) => {
-                                if (newText.trim()) {
-                                    const lines = note.content.split('\n');
-                                    // Encode the new line if the note uses sensitive URL encoding
-                                    const lineToAdd = hasReversedUrls(note.content)
-                                        ? reverseUrlsInText(newText.trim())
-                                        : newText.trim();
-                                    lines.push(lineToAdd);
-                                    updateNote(note.id, lines.join('\n'));
-                                }
-                                setAddingLineNoteId(null);
-                                setNewLineText('');
-                            }}
-                            onCancel={() => {
-                                setAddingLineNoteId(null);
-                                setNewLineText('');
-                            }}
-                            onDelete={() => {
-                                setAddingLineNoteId(null);
-                                setNewLineText('');
-                            }}
-                            isSuperEditMode={false}
-                            wasOpenedFromSuperEdit={false}
-                            lineIndex={-1}
-                            allNotes={allNotes}
-                            addNote={addNote}
-                            updateNote={updateNote}
-                            currentNoteId={note.id}
-                        />
-                    </div>
-                )}
             </div>
             <AddTextModal
                 isOpen={showAddTextModal}
@@ -3807,6 +4063,14 @@ export default function NoteContent({
                 isEditing={isEditing}
                 initialText={currentCustomText}
                 noteContent={prepareContentForTextLinkEdit(note.content)}
+            />
+            <ImageModal
+                imageUrl={modalImageUrl}
+                isLoading={modalImageLoading}
+                scale={modalImageScale}
+                onScaleChange={setModalImageScale}
+                onImageLoad={() => setModalImageLoading(false)}
+                onClose={closeImageModal}
             />
         </div>
     );

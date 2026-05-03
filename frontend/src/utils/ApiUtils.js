@@ -101,6 +101,19 @@ export const deleteImageById = async (imageId) => {
   return await response.json();
 };
 
+export const uploadImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_BASE_URL}/images`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) throw new Error('Failed to upload image');
+  return await response.json();
+};
+
 export const deleteImagesFromNote = async (noteContent) => {
   const imageIds = extractImageIds(noteContent);
   const deletePromises = imageIds.map(imageId =>
@@ -126,6 +139,13 @@ export const deleteNoteWithImages = async (id, noteContent) => {
 
   // Then delete the note
   return await deleteNoteById(id);
+};
+
+export const listImages = async () => {
+  const response = await fetch(`${API_BASE_URL}/images`);
+  if (!response.ok) throw new Error('Failed to list images');
+  const data = await response.json();
+  return data.images || [];
 };
 
 export const loadAllNotes = async (searchText, noteDate) => {
@@ -455,6 +475,7 @@ export const defaultSettings = {
     linkNote: { visible: true, location: 'card' },
     merge: { visible: true, location: 'card' },
     copy: { visible: true, location: 'card' },
+    sortAlphabetically: { visible: true, location: 'card' },
     rawNote: { visible: true, location: 'card' },
     edit: { visible: true, location: 'card' },
     delete: { visible: true, location: 'card' }

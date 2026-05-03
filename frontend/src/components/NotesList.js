@@ -45,7 +45,9 @@ import RawNoteModal from './RawNoteModal';
 import LinkSelectionPopup from './LinkSelectionPopup';
 import { toast } from 'react-toastify';
 import UndoToast from './UndoToast';
-import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent, hasReversedUrls } from '../utils/SensitiveUrlUtils';
+import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent, hasReversedUrls, restoreUrlsInText } from '../utils/SensitiveUrlUtils';
+import { saveNoteToHistory } from '../utils/NoteHistoryUtils';
+import { getInstagramReelsUrl } from '../utils/InstagramUrlUtils';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -204,6 +206,10 @@ const NotesList = ({
       throw error;
     }
   };
+  const uploadImageRef = useRef(uploadImage);
+  useEffect(() => {
+    uploadImageRef.current = uploadImage;
+  });
   const [newLineText, setNewLineText] = useState('');
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -241,6 +247,9 @@ const NotesList = ({
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
   const safeNotesRef = useRef(safeNotes);
+  const [focusedLine, setFocusedLine] = useState({ noteId: null, lineIndex: null });
+  const focusedLineRef = useRef(focusedLine);
+  const [vimGPressed, setVimGPressed] = useState(false);
 
   // Bulk delete state
   const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
@@ -251,6 +260,10 @@ const NotesList = ({
   // Add state for note action popup
   const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
   const navigate = useNavigate();
+
+  const resetNoteActionPopup = () => {
+    setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 });
+  };
 
   // Update URL search parameters when focusedNoteIndex changes
   useEffect(() => {
@@ -263,20 +276,33 @@ const NotesList = ({
     if (focusedNote) {
       if (currentParams.get('note') !== focusedNote.id) {
         currentParams.set('note', focusedNote.id);
-        navigate({ search: currentParams.toString() }, { replace: true });
+        navigate(
+          { search: currentParams.toString() },
+          { replace: true, state: { skipNoteSearchSync: true } }
+        );
       }
     } else if (focusedNoteIndex === -1 && currentParams.has('note')) {
       // Clear the note parameter if no note is focused (e.g., focus back to search)
       currentParams.delete('note');
-      navigate({ search: currentParams.toString() }, { replace: true });
+      navigate(
+        { search: currentParams.toString() },
+        { replace: true, state: { skipNoteSearchSync: true } }
+      );
     }
   }, [focusedNoteIndex, safeNotes, location.pathname, location.search, navigate]);
 
   // Callback to set focused note index
   const handleSetFocusedNoteIndex = (index) => {
 
+    focusedNoteIndexRef.current = index;
     setFocusedNoteIndex(index);
+    setFocusedLine({ noteId: null, lineIndex: null });
   };
+
+  const handleSetFocusedLine = useCallback((lineFocus) => {
+    focusedLineRef.current = lineFocus;
+    setFocusedLine(lineFocus);
+  }, []);
 
   // Debug focused note changes
   useEffect(() => {
@@ -294,6 +320,367 @@ const NotesList = ({
   useEffect(() => {
     safeNotesRef.current = safeNotes;
   }, [safeNotes]);
+
+  useEffect(() => {
+    focusedLineRef.current = focusedLine;
+  }, [focusedLine]);
+
+  const getKeyboardVisibleLines = useCallback((note) => {
+    if (!note?.content) return [];
+
+    let displayContent = note.content;
+    if (hasEncodedContent(note.content)) {
+      displayContent = decodeSensitiveContent(note.content);
+    } else if (hasReversedUrls(note.content)) {
+      displayContent = note.content
+        .split('\n')
+        .map(line => line.trim().startsWith('meta::') ? line : restoreUrlsInText(line))
+        .join('\n');
+    }
+
+    return displayContent
+      .split('\n')
+      .map((line, actualIndex) => ({ line, actualIndex }))
+      .filter(({ line }) => !line.trim().startsWith('meta::'));
+  }, []);
+
+  const stripKeyboardLineFormatting = useCallback((line = '') => {
+    return line
+      .replace(/^\{<[^}]+>\}/, '')
+      .replace(/@\$%\^[^@]+@\$%\^/g, '')
+      .replace(/^\{#h1#\}/, '')
+      .replace(/^\{#h2#\}/, '')
+      .replace(/^\{#bold#\}/, '')
+      .replace(/^\{#italics#\}/, '')
+      .replace(/^\{meta::sub\}\s*/, '')
+      .replace(/^- /, '');
+  }, []);
+
+  const extractKeyboardLineFormatting = useCallback((line = '') => {
+    const formatting = {};
+    const newColorMatch = line.match(/^\{<([^}]+)>\}/);
+    if (newColorMatch) formatting.color = newColorMatch[0];
+    if (!formatting.color) {
+      const oldColorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
+      if (oldColorMatch) formatting.color = oldColorMatch[0];
+    }
+
+    const lineWithoutColor = line.replace(/^\{<[^}]+>\}/, '').replace(/@\$%\^[^@]+@\$%\^/g, '').trim();
+    if (/^\{#h1#\}/.test(lineWithoutColor)) formatting.isH1 = true;
+    else if (/^\{#h2#\}/.test(lineWithoutColor)) formatting.isH2 = true;
+    if (/^\{#bold#\}/.test(lineWithoutColor.replace(/^\{#h[12]#\}/, ''))) formatting.isBold = true;
+    if (/^\{#italics#\}/.test(lineWithoutColor.replace(/^\{#h[12]#\}/, '').replace(/^\{#bold#\}/, ''))) formatting.isItalics = true;
+    if (line.startsWith('- ')) formatting.isBullet = true;
+    return formatting;
+  }, []);
+
+  const scrollFocusedLineIntoView = useCallback((note, lineIndex) => {
+    const visibleLines = getKeyboardVisibleLines(note);
+    const actualIndex = visibleLines[lineIndex]?.actualIndex ?? lineIndex;
+    window.setTimeout(() => {
+      const lineElement = document.getElementById(`note-${note.id}-line-${actualIndex}`);
+      const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
+      (lineElement || noteElement)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 0);
+  }, [getKeyboardVisibleLines]);
+
+  const startInlineEditForFocusedLine = useCallback((note, lineIndex) => {
+    const visibleLines = getKeyboardVisibleLines(note);
+    const lineEntry = visibleLines[lineIndex];
+    if (!lineEntry) return;
+
+    saveNoteToHistory(note);
+    setEditingLine({
+      noteId: note.id,
+      lineIndex,
+      formatting: extractKeyboardLineFormatting(lineEntry.line)
+    });
+    setEditedLineContent(stripKeyboardLineFormatting(lineEntry.line));
+  }, [extractKeyboardLineFormatting, getKeyboardVisibleLines, stripKeyboardLineFormatting]);
+
+  const parseFocusedLineMarkup = useCallback((line = '') => {
+    let rest = line;
+    const colorMatch = rest.match(/^\{<[^}]+>\}/);
+    const color = colorMatch ? colorMatch[0] : '';
+    if (color) rest = rest.slice(color.length);
+
+    const indentMatch = rest.match(/^\t*/);
+    const indent = indentMatch ? indentMatch[0] : '';
+    rest = rest.slice(indent.length);
+
+    let heading = '';
+    if (rest.startsWith('{#h1#}')) {
+      heading = '{#h1#}';
+      rest = rest.slice(6);
+    } else if (rest.startsWith('{#h2#}')) {
+      heading = '{#h2#}';
+      rest = rest.slice(6);
+    }
+
+    let isBold = false;
+    if (rest.startsWith('{#bold#}')) {
+      isBold = true;
+      rest = rest.slice(8);
+    }
+
+    let isItalics = false;
+    if (rest.startsWith('{#italics#}')) {
+      isItalics = true;
+      rest = rest.slice(11);
+    }
+
+    return { color, indent, heading, isBold, isItalics, text: rest };
+  }, []);
+
+  const composeFocusedLineMarkup = useCallback(({ color = '', indent = '', heading = '', isBold = false, isItalics = false, text = '' }) => {
+    return `${color}${indent}${heading}${isBold ? '{#bold#}' : ''}${isItalics ? '{#italics#}' : ''}${text}`;
+  }, []);
+
+  const setFocusedLineColor = useCallback((line = '', color) => {
+    const existingColorMatch = line.match(/^\{<([^}]+)>\}/);
+    const cleanText = line
+      .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')
+      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2')
+      .replace(/@\$%\^[^@]+@\$%\^/g, '')
+      .replace(/^\{<[^}]+>\}/, '');
+    if (existingColorMatch?.[1]?.toLowerCase() === color.toLowerCase()) {
+      return cleanText;
+    }
+    return `{<${color}>}${cleanText}`;
+  }, []);
+
+  const clearFocusedLineFormatting = useCallback((line = '') => {
+    let nextLine = line
+      .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')
+      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2')
+      .replace(/@\$%\^[^@]+@\$%\^/g, '')
+      .replace(/^\{<[^}]+>\}/, '');
+
+    nextLine = nextLine
+      .replace(/^(?:\t|\{meta::sub\}\s*)+/, '')
+      .replace(/^\{#h1#\}/, '')
+      .replace(/^\{#h2#\}/, '')
+      .replace(/^\{#bold#\}/, '')
+      .replace(/^\{#italics#\}/, '')
+      .replace(/^- /, '');
+
+    return nextLine;
+  }, []);
+
+  const transformFocusedLineText = useCallback((line = '', transformer) => {
+    const markup = parseFocusedLineMarkup(line);
+    const tagMatch = markup.text.match(/(\s*\{#tags:[^#]*?#\})$/);
+    const tagSuffix = tagMatch ? tagMatch[1] : '';
+    const bodyText = tagMatch ? markup.text.slice(0, -tagSuffix.length) : markup.text;
+    return composeFocusedLineMarkup({
+      ...markup,
+      text: `${transformer(bodyText)}${tagSuffix}`
+    });
+  }, [composeFocusedLineMarkup, parseFocusedLineMarkup]);
+
+  const toFocusedLineTitleCase = useCallback((text = '') => {
+    return text.replace(/\b([A-Za-z])([A-Za-z]*)/g, (_, first, rest) =>
+      `${first.toUpperCase()}${rest.toLowerCase()}`
+    );
+  }, []);
+
+  const updateFocusedNoteContentRef = useCallback((noteId, content) => {
+    safeNotesRef.current = safeNotesRef.current.map(note =>
+      note.id === noteId ? { ...note, content } : note
+    );
+  }, []);
+
+  const getClipboardImageFiles = useCallback((clipboardData) => {
+    const items = clipboardData?.items;
+    if (!items) return [];
+
+    const files = [];
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      if (!item.type?.startsWith('image/')) continue;
+
+      const blob = item.getAsFile();
+      if (!blob) continue;
+
+      let extension = '.png';
+      if (item.type === 'image/jpeg') extension = '.jpg';
+      else if (item.type === 'image/gif') extension = '.gif';
+      else if (item.type === 'image/webp') extension = '.webp';
+
+      files.push(new File([blob], `clipboard-image${extension}`, { type: item.type }));
+    }
+
+    return files;
+  }, []);
+
+  const pasteClipboardIntoFocusedNote = useCallback(async (clipboardData) => {
+    const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+    if (!focusedNote) return false;
+
+    const pastedLines = [];
+    const text = clipboardData?.getData('text/plain');
+    if (text) {
+      pastedLines.push(...text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n'));
+    }
+
+    const imageFiles = getClipboardImageFiles(clipboardData);
+    for (const file of imageFiles) {
+      const response = await uploadImageRef.current(file);
+      if (response?.imageId) {
+        pastedLines.push(`meta::image::${response.imageId}`);
+      }
+    }
+
+    if (pastedLines.length === 0) return false;
+
+    saveNoteToHistory(focusedNote);
+    const lines = focusedNote.content ? focusedNote.content.split('\n') : [];
+    const currentFocusedLine = focusedLineRef.current;
+    const isLineFocusActive = currentFocusedLine.noteId === focusedNote.id && currentFocusedLine.lineIndex !== null;
+    let insertIndex = lines.length;
+
+    if (isLineFocusActive) {
+      const visibleLines = getKeyboardVisibleLines(focusedNote);
+      const lineEntry = visibleLines[currentFocusedLine.lineIndex];
+      if (lineEntry) {
+        insertIndex = lineEntry.actualIndex + 1;
+      }
+    }
+
+    lines.splice(insertIndex, 0, ...pastedLines);
+    const updatedContent = lines.join('\n');
+    updateFocusedNoteContentRef(focusedNote.id, updatedContent);
+    await updateNoteCallback(focusedNote.id, updatedContent);
+
+    if (isLineFocusActive) {
+      const nextFocus = {
+        noteId: focusedNote.id,
+        lineIndex: currentFocusedLine.lineIndex + pastedLines.length
+      };
+      focusedLineRef.current = nextFocus;
+      setFocusedLine(nextFocus);
+      scrollFocusedLineIntoView({ ...focusedNote, content: updatedContent }, nextFocus.lineIndex);
+    }
+
+    toast.success(imageFiles.length > 0 ? 'Pasted into focused note with image' : 'Pasted into focused note');
+    return true;
+  }, [
+    getClipboardImageFiles,
+    getKeyboardVisibleLines,
+    scrollFocusedLineIntoView,
+    updateFocusedNoteContentRef,
+    updateNoteCallback
+  ]);
+
+  const applyFocusedLineShortcut = useCallback((note, lineIndex, action) => {
+    const visibleLines = getKeyboardVisibleLines(note);
+    const lineEntry = visibleLines[lineIndex];
+    if (!lineEntry) return false;
+
+    const lines = note.content.split('\n');
+    const originalLine = lines[lineEntry.actualIndex] ?? '';
+    let nextLine = originalLine;
+    let nextFocusedLineIndex = lineIndex;
+
+    if (action === 'insertAbove' || action === 'insertBelow') {
+      saveNoteToHistory(note);
+      const insertIndex = action === 'insertAbove' ? lineEntry.actualIndex : lineEntry.actualIndex + 1;
+      lines.splice(insertIndex, 0, '');
+      nextFocusedLineIndex = action === 'insertAbove' ? lineIndex : lineIndex + 1;
+      const updatedContent = lines.join('\n');
+      updateFocusedNoteContentRef(note.id, updatedContent);
+      updateNoteCallback(note.id, updatedContent);
+      const nextFocus = { noteId: note.id, lineIndex: nextFocusedLineIndex };
+      focusedLineRef.current = nextFocus;
+      setFocusedLine(nextFocus);
+      scrollFocusedLineIntoView({ ...note, content: updatedContent }, nextFocusedLineIndex);
+      return true;
+    }
+
+    if (action === 'moveUp' || action === 'moveDown') {
+      const direction = action === 'moveUp' ? -1 : 1;
+      const targetLineIndex = lineIndex + direction;
+      const targetLineEntry = visibleLines[targetLineIndex];
+      if (!targetLineEntry) return true;
+
+      saveNoteToHistory(note);
+      const [movedLine] = lines.splice(lineEntry.actualIndex, 1);
+      lines.splice(targetLineEntry.actualIndex, 0, movedLine);
+      const updatedContent = lines.join('\n');
+      updateFocusedNoteContentRef(note.id, updatedContent);
+      updateNoteCallback(note.id, updatedContent);
+      const nextFocus = { noteId: note.id, lineIndex: targetLineIndex };
+      focusedLineRef.current = nextFocus;
+      setFocusedLine(nextFocus);
+      scrollFocusedLineIntoView({ ...note, content: updatedContent }, targetLineIndex);
+      return true;
+    }
+
+    if (action === 'delete') {
+      saveNoteToHistory(note);
+      if (visibleLines.length <= 1) {
+        lines[lineEntry.actualIndex] = '';
+      } else {
+        lines.splice(lineEntry.actualIndex, 1);
+        nextFocusedLineIndex = Math.max(0, Math.min(lineIndex, visibleLines.length - 2));
+      }
+      const updatedContent = lines.join('\n');
+      updateFocusedNoteContentRef(note.id, updatedContent);
+      updateNoteCallback(note.id, updatedContent);
+      const nextFocus = { noteId: note.id, lineIndex: nextFocusedLineIndex };
+      focusedLineRef.current = nextFocus;
+      setFocusedLine(nextFocus);
+      scrollFocusedLineIntoView(note, nextFocusedLineIndex);
+      return true;
+    }
+
+    if (action === 'indent') {
+      nextLine = `\t${originalLine}`;
+    } else if (action === 'outdent') {
+      if (originalLine.startsWith('\t')) {
+        nextLine = originalLine.slice(1);
+      } else {
+        nextLine = originalLine.replace(/^\{meta::sub\}\s*/, '');
+      }
+    } else if (action === 'orange') {
+      nextLine = setFocusedLineColor(originalLine, '#EA580C');
+    } else if (action === 'green') {
+      nextLine = setFocusedLineColor(originalLine, '#059669');
+    } else if (action === 'clearFormatting') {
+      nextLine = clearFocusedLineFormatting(originalLine);
+    } else if (action === 'uppercase') {
+      nextLine = transformFocusedLineText(originalLine, text => text.toUpperCase());
+    } else if (action === 'titleCase') {
+      nextLine = transformFocusedLineText(originalLine, toFocusedLineTitleCase);
+    } else {
+      const markup = parseFocusedLineMarkup(originalLine);
+      if (action === 'h1') markup.heading = markup.heading === '{#h1#}' ? '' : '{#h1#}';
+      if (action === 'h2') markup.heading = markup.heading === '{#h2#}' ? '' : '{#h2#}';
+      if (action === 'bold') markup.isBold = !markup.isBold;
+      if (action === 'italics') markup.isItalics = !markup.isItalics;
+      nextLine = composeFocusedLineMarkup(markup);
+    }
+
+    if (nextLine === originalLine) return true;
+
+    saveNoteToHistory(note);
+    lines[lineEntry.actualIndex] = nextLine;
+    const updatedContent = lines.join('\n');
+    updateFocusedNoteContentRef(note.id, updatedContent);
+    updateNoteCallback(note.id, updatedContent);
+    return true;
+  }, [
+    composeFocusedLineMarkup,
+    clearFocusedLineFormatting,
+    getKeyboardVisibleLines,
+    parseFocusedLineMarkup,
+    scrollFocusedLineIntoView,
+    setFocusedLineColor,
+    toFocusedLineTitleCase,
+    transformFocusedLineText,
+    updateFocusedNoteContentRef,
+    updateNoteCallback
+  ]);
 
   // Handle bulk delete mode toggle from keyboard
   useEffect(() => {
@@ -640,6 +1027,77 @@ const NotesList = ({
     };
   }, [showLinkPopupRef, showPastePopup, isModalOpen, linkPopupVisible, popupNoteText, rawNote, showNoteActionPopup.visible]);
 
+  useEffect(() => {
+    const handleFocusedNotePaste = async (e) => {
+      if (location.pathname !== '/notes') return;
+      if (focusedNoteIndexRef.current < 0) return;
+
+      const target = e.target;
+      const activeElement = document.activeElement;
+      const isInputContext = (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable ||
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.isContentEditable ||
+        target?.closest?.('input') ||
+        target?.closest?.('textarea') ||
+        activeElement?.closest?.('input') ||
+        activeElement?.closest?.('textarea')
+      );
+      if (isInputContext) return;
+
+      const isAddTextModalOpen = document.querySelector('[data-add-text-modal="true"]');
+      const isLinkEditPopupOpen = document.querySelector('[data-link-edit-popup="true"]');
+      const isLinkTextPopupOpen = document.querySelector('[data-link-text-popup="true"]');
+      const isInModal = target?.closest?.('[data-modal="true"]') || activeElement?.closest?.('[data-modal="true"]');
+      const isAnyPopupOpen = showLinkPopupRef.current ||
+        showPastePopup ||
+        isModalOpen ||
+        linkPopupVisible ||
+        popupNoteText ||
+        rawNote ||
+        showNoteActionPopup.visible ||
+        isAddTextModalOpen ||
+        isLinkEditPopupOpen ||
+        isLinkTextPopupOpen ||
+        isInModal;
+      if (isAnyPopupOpen) return;
+
+      const clipboardItems = e.clipboardData?.items;
+      const hasClipboardImage = clipboardItems
+        ? Array.from(clipboardItems).some(item => item.type?.startsWith('image/'))
+        : false;
+      const hasClipboardText = Boolean(e.clipboardData?.getData('text/plain'));
+      if (!hasClipboardText && !hasClipboardImage) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        await pasteClipboardIntoFocusedNote(e.clipboardData);
+      } catch (error) {
+        console.error('Error pasting into focused note:', error);
+        Alerts.error('Failed to paste into focused note');
+      }
+    };
+
+    document.addEventListener('paste', handleFocusedNotePaste, true);
+    return () => {
+      document.removeEventListener('paste', handleFocusedNotePaste, true);
+    };
+  }, [
+    location.pathname,
+    showPastePopup,
+    isModalOpen,
+    linkPopupVisible,
+    popupNoteText,
+    rawNote,
+    showNoteActionPopup.visible,
+    pasteClipboardIntoFocusedNote
+  ]);
+
   // Handle keyboard navigation between notes
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -712,16 +1170,153 @@ const NotesList = ({
         return;
       }
 
-      // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G and Shift+~)
-      if (!e.metaKey && !e.ctrlKey && !e.altKey &&
+      const currentFocusedLineForShortcut = focusedLineRef.current;
+      const isLineArrowShortcut = (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+        currentFocusedLineForShortcut.noteId !== null &&
+        currentFocusedLineForShortcut.lineIndex !== null &&
+        (e.shiftKey || e.metaKey);
+
+      // Only handle keys when not in an input/textarea and no modifier keys (except focused-line Shift/Cmd+Arrow, Shift+G, Shift+~, and Shift+Tab)
+      if ((!e.metaKey || isLineArrowShortcut) && !e.ctrlKey && !e.altKey &&
         e.target.tagName !== 'INPUT' &&
         e.target.tagName !== 'TEXTAREA' &&
         e.target.contentEditable !== 'true' &&
-        !(e.shiftKey && e.key !== 'G' && e.key !== '~') &&
+        !(e.shiftKey && e.key !== 'G' && e.key !== '~' && e.key !== 'Tab' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') &&
         !e.target.closest('textarea')) {
 
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
+        const currentFocusedLine = focusedLineRef.current;
+        const isLineFocusActive = currentFocusedLine.noteId !== null && currentFocusedLine.lineIndex !== null;
+
+        if (isLineFocusActive) {
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (!focusedNote || focusedNote.id !== currentFocusedLine.noteId) {
+            setFocusedLine({ noteId: null, lineIndex: null });
+            return;
+          }
+
+          const visibleLines = getKeyboardVisibleLines(focusedNote);
+          const lastLineIndex = Math.max(visibleLines.length - 1, 0);
+
+          if (e.key === 'g') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (vimGPressed) {
+              const nextFocus = { noteId: focusedNote.id, lineIndex: 0 };
+              focusedLineRef.current = nextFocus;
+              setFocusedLine(nextFocus);
+              scrollFocusedLineIntoView(focusedNote, 0);
+              setVimGPressed(false);
+              setVimNumberBuffer('');
+            } else {
+              setVimGPressed(true);
+              setTimeout(() => setVimGPressed(false), 400);
+            }
+            return;
+          }
+
+          if (e.key === 'G') {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextFocus = { noteId: focusedNote.id, lineIndex: lastLineIndex };
+            focusedLineRef.current = nextFocus;
+            setFocusedLine(nextFocus);
+            scrollFocusedLineIntoView(focusedNote, lastLineIndex);
+            setVimGPressed(false);
+            setVimNumberBuffer('');
+            return;
+          }
+
+          const lineShortcutMap = {
+            '1': 'h1',
+            '2': 'h2',
+            b: 'bold',
+            i: 'italics',
+            '5': 'orange',
+            '6': 'green',
+            '7': 'uppercase',
+            '8': 'titleCase',
+            '0': 'clearFormatting',
+            d: 'delete'
+          };
+          const shortcutAction = e.key === 'Tab'
+            ? (e.shiftKey ? 'outdent' : 'indent')
+            : lineShortcutMap[e.key.toLowerCase()];
+
+          if (shortcutAction) {
+            e.preventDefault();
+            e.stopPropagation();
+            applyFocusedLineShortcut(focusedNote, currentFocusedLine.lineIndex, shortcutAction);
+            return;
+          }
+
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const direction = e.key === 'ArrowUp' ? -1 : 1;
+            if (e.metaKey) {
+              applyFocusedLineShortcut(focusedNote, currentFocusedLine.lineIndex, direction === -1 ? 'insertAbove' : 'insertBelow');
+              return;
+            }
+            if (e.shiftKey) {
+              applyFocusedLineShortcut(focusedNote, currentFocusedLine.lineIndex, direction === -1 ? 'moveUp' : 'moveDown');
+              return;
+            }
+            const nextLineIndex = Math.max(0, Math.min(lastLineIndex, currentFocusedLine.lineIndex + direction));
+            setFocusedLine({ noteId: focusedNote.id, lineIndex: nextLineIndex });
+            scrollFocusedLineIntoView(focusedNote, nextLineIndex);
+            return;
+          }
+
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            startInlineEditForFocusedLine(focusedNote, currentFocusedLine.lineIndex);
+            return;
+          }
+
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            setFocusedLine({ noteId: null, lineIndex: null });
+            const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+            noteElement?.focus();
+            return;
+          }
+        }
+
+        if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0 && !isAnyNoteInSuperEditMode) {
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
+            e.target.tagName === 'TEXTAREA';
+          if (focusedNote && !isInlineEditorActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            const firstLineIndex = 0;
+            setFocusedLine({ noteId: focusedNote.id, lineIndex: firstLineIndex });
+            scrollFocusedLineIntoView(focusedNote, firstLineIndex);
+          }
+          return;
+        }
+
+        if (e.key.toLowerCase() === 'v' && focusedNoteIndexRef.current >= 0 && !isAnyNoteInSuperEditMode) {
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote) {
+            e.preventDefault();
+            e.stopPropagation();
+            setRawNote(focusedNote);
+          }
+          return;
+        }
+
+        if (e.key === 'Escape' && focusedNoteIndexRef.current >= 0 && !isAnyNoteInSuperEditMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          setFocusedNoteIndex(-1);
+          setFocusedLine({ noteId: null, lineIndex: null });
+          return;
+        }
 
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // Only handle note navigation if no note is in super edit mode
@@ -774,7 +1369,7 @@ const NotesList = ({
           }
         } else if (e.key === 'G') {
 
-        } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
+        } else if (e.key === 'ArrowRight' && focusedNoteIndexRef.current >= 0) {
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
             e.target.tagName === 'TEXTAREA';
@@ -910,20 +1505,43 @@ const NotesList = ({
         document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
-  }, [safeNotes.length, location.pathname, addingLineNoteId]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
+  }, [safeNotes.length, location.pathname, addingLineNoteId, applyFocusedLineShortcut, getKeyboardVisibleLines, scrollFocusedLineIntoView, startInlineEditForFocusedLine, vimGPressed]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
 
   // Reset focused note when notes change
   useEffect(() => {
+    const currentFocusedLine = focusedLineRef.current;
+    if (currentFocusedLine.noteId) {
+      const nextFocusedIndex = safeNotes.findIndex(note => note.id === currentFocusedLine.noteId);
+      if (nextFocusedIndex !== -1) {
+        setFocusedNoteIndex(nextFocusedIndex);
+        focusedNoteIndexRef.current = nextFocusedIndex;
+        return;
+      }
+    }
+
+    const currentFocusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+    if (currentFocusedNote) {
+      const nextFocusedIndex = safeNotes.findIndex(note => note.id === currentFocusedNote.id);
+      if (nextFocusedIndex !== -1) {
+        setFocusedNoteIndex(nextFocusedIndex);
+        focusedNoteIndexRef.current = nextFocusedIndex;
+        return;
+      }
+    }
+
     // If there's only one note and it's the one in the URL, focus it
     const urlParams = new URLSearchParams(location.search);
     const noteIdFromUrl = urlParams.get('note');
 
     if (safeNotes.length === 1 && noteIdFromUrl === safeNotes[0].id) {
       setFocusedNoteIndex(0);
+      focusedNoteIndexRef.current = 0;
     } else {
       setFocusedNoteIndex(-1);
+      focusedNoteIndexRef.current = -1;
+      setFocusedLine({ noteId: null, lineIndex: null });
     }
-  }, [safeNotes]);
+  }, [safeNotes, location.search]);
 
   // Focus link popup when it opens
   useEffect(() => {
@@ -965,13 +1583,13 @@ const NotesList = ({
           setSelectedLinkIndex(0);
         } else if (linkPopupLinks.length > 0 && selectedLinkIndex === 1) {
           // Open all links (only if links exist)
-          linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+          linkPopupLinks.forEach(link => window.open(getInstagramReelsUrl(link.url), '_blank'));
           setShowLinkPopup(false);
           setLinkPopupLinks([]);
           setSelectedLinkIndex(0);
         } else if (linkPopupLinks[selectedLinkIndex - 2]) {
           // Individual links (adjusted index due to new options)
-          window.open(linkPopupLinks[selectedLinkIndex - 2].url, '_blank');
+          window.open(getInstagramReelsUrl(linkPopupLinks[selectedLinkIndex - 2].url), '_blank');
           setShowLinkPopup(false);
           setLinkPopupLinks([]);
           setSelectedLinkIndex(0);
@@ -979,7 +1597,7 @@ const NotesList = ({
       } else if (e.key === 'a') {
         // Open all links in the popup
         linkPopupLinks.forEach(link => {
-          window.open(link.url, '_blank');
+          window.open(getInstagramReelsUrl(link.url), '_blank');
         });
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
@@ -1016,6 +1634,7 @@ const NotesList = ({
     const handleFocusFirstNote = () => {
       if (safeNotes.length > 0) {
         setFocusedNoteIndex(0);
+        focusedNoteIndexRef.current = 0;
         // Scroll to the first note
         const firstNote = safeNotes[0];
         if (firstNote) {
@@ -1032,6 +1651,7 @@ const NotesList = ({
     const handleClearFocusedNote = () => {
 
       setFocusedNoteIndex(-1);
+      setFocusedLine({ noteId: null, lineIndex: null });
 
     };
 
@@ -1227,7 +1847,6 @@ const NotesList = ({
 
   // Add Vim navigation state
   const [vimNumberBuffer, setVimNumberBuffer] = useState('');
-  const [vimGPressed, setVimGPressed] = useState(false);
 
   const handleVimKeyDown = useCallback((e) => {
     // First, check if any modal with input fields is open
@@ -1551,6 +2170,9 @@ const NotesList = ({
                     focusedNoteIndex={focusedNoteIndex}
                     setFocusedNoteIndex={setFocusedNoteIndex}
                     noteIndex={index}
+                    onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                    onSetFocusedLine={handleSetFocusedLine}
+                    focusedLine={focusedLine}
                     settings={settings}
                     addNote={addNotes}
                     setShowCopyToast={setShowCopyToast}
@@ -1636,6 +2258,8 @@ const NotesList = ({
                     setFocusedNoteIndex={setFocusedNoteIndex}
                     noteIndex={renderedPinnedNotes.length + index}
                     onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                    onSetFocusedLine={handleSetFocusedLine}
+                    focusedLine={focusedLine}
                     settings={settings}
                     addNote={addNotes}
                     setShowCopyToast={setShowCopyToast}
@@ -1743,6 +2367,8 @@ const NotesList = ({
                   setFocusedNoteIndex={setFocusedNoteIndex}
                   noteIndex={index}
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                  onSetFocusedLine={handleSetFocusedLine}
+                  focusedLine={focusedLine}
                   settings={settings}
                   addNote={addNotes}
                   setShowCopyToast={setShowCopyToast}
@@ -2166,17 +2792,18 @@ const NotesList = ({
           if (selected === 0) {
             // Open Links
             if (showNoteActionPopup.links.length === 1) {
-              window.open(showNoteActionPopup.links[0].url, '_blank');
+              window.open(getInstagramReelsUrl(showNoteActionPopup.links[0].url), '_blank');
             } else if (showNoteActionPopup.links.length > 1) {
               setLinkPopupLinks(showNoteActionPopup.links);
               setSelectedLinkIndex(0);
               setShowLinkPopup(true);
             }
-            setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 });
+            resetNoteActionPopup();
           } else if (selected === 1) {
-            setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 });
+            const noteId = showNoteActionPopup.noteId;
+            resetNoteActionPopup();
             setTimeout(() => {
-              const noteElement = document.querySelector(`[data-note-id="${showNoteActionPopup.noteId}"]`);
+              const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
               if (noteElement) {
                 const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
                 if (superEditButton) superEditButton.click();
@@ -2184,7 +2811,7 @@ const NotesList = ({
             }, 0);
           }
         }}
-        onClose={() => setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 })}
+        onClose={resetNoteActionPopup}
       />
     </div>
   );

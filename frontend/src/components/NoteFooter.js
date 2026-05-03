@@ -18,10 +18,12 @@ import {
   XMarkIcon,
   FolderIcon,
   StarIcon,
+  BarsArrowDownIcon,
 } from '@heroicons/react/24/solid';
 import { MapPinIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
+import UndoToast from './UndoToast';
 import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 import ConvertToBookmarkModal from './ConvertToBookmarkModal';
 import { encodeSensitiveContent, removeSensitiveMetadata } from '../utils/SensitiveUrlUtils';
@@ -65,6 +67,7 @@ const NoteFooter = ({
   focusMode = false,
   settings = {},
   mergeMode = false,
+  leftContent = null,
 }) => {
   // Get note card options configuration, with defaults
   const noteCardOptions = settings?.noteCardOptions || {
@@ -85,6 +88,7 @@ const NoteFooter = ({
     unclickableLinks: { visible: true, location: 'card' },
     merge: { visible: true, location: 'card' },
     copy: { visible: true, location: 'card' },
+    sortAlphabetically: { visible: true, location: 'card' },
     rawNote: { visible: true, location: 'card' },
     edit: { visible: true, location: 'card' },
     delete: { visible: true, location: 'card' }
@@ -105,6 +109,7 @@ const NoteFooter = ({
   const [showRemoveTagsConfirm, setShowRemoveTagsConfirm] = useState(false);
   const [showConvertToBookmarkModal, setShowConvertToBookmarkModal] = useState(false);
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [showMarkAsActions, setShowMarkAsActions] = useState(false);
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
@@ -130,6 +135,9 @@ const NoteFooter = ({
       if (!event.target.closest('[data-more-actions]')) {
         setShowMoreActions(false);
       }
+      if (!event.target.closest('[data-mark-as-actions]')) {
+        setShowMarkAsActions(false);
+      }
     };
 
     const handleEscapeKey = (event) => {
@@ -137,6 +145,7 @@ const NoteFooter = ({
         setShowPinPopup(false);
         setShowRawNote(false);
         setShowMoreActions(false);
+        setShowMarkAsActions(false);
       }
     };
 
@@ -256,6 +265,47 @@ const NoteFooter = ({
     toast.success(nextEnabled ? 'Links set to copy only' : 'Links are clickable again');
   };
 
+  const getAlphabeticalSortKey = (line = '') => {
+    const trimmedLine = line.trim();
+    const markdownLinkMatch = trimmedLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+
+    if (markdownLinkMatch) {
+      return markdownLinkMatch[1].trim() || markdownLinkMatch[2].trim();
+    }
+
+    return trimmedLine;
+  };
+
+  const handleSortAlphabetically = () => {
+    const originalContent = note.content;
+    const lines = originalContent.split('\n');
+    if (!window.confirm(`Sort all ${lines.length} lines in this note alphabetically?`)) return;
+
+    const sortedContent = lines
+      .map((line, index) => ({ line, index, sortKey: getAlphabeticalSortKey(line) }))
+      .sort((a, b) => {
+        const comparison = a.sortKey.localeCompare(b.sortKey, undefined, {
+          sensitivity: 'base',
+          numeric: true
+        });
+
+        return comparison || a.index - b.index;
+      })
+      .map(({ line }) => line)
+      .join('\n');
+
+    updateNote(note.id, sortedContent);
+
+    const toastId = `undo-${note.id}-${Date.now()}`;
+    toast((
+      <UndoToast
+        label="Sorted alphabetically"
+        onUndo={() => updateNote(note.id, originalContent)}
+        toastId={toastId}
+      />
+    ), { toastId, autoClose: 10000, closeButton: false, icon: false, style: { padding: '8px 12px' } });
+  };
+
   // Handle pin/unpin note functionality
   const handlePinNote = () => {
     const lines = note.content.split('\n');
@@ -369,9 +419,45 @@ const NoteFooter = ({
     toast.success('Note converted to web bookmark!');
   };
 
+  const markAsOptions = [
+    shouldShowOption('sensitive') && {
+      id: 'sensitive',
+      label: note.content.includes('meta::sensitive') ? 'Remove Sensitive' : 'Sensitive',
+      active: note.content.includes('meta::sensitive'),
+      icon: (
+        <span className={`h-4 w-4 text-xs font-semibold flex items-center justify-center ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500'}`}>
+          S
+        </span>
+      ),
+      onClick: handleSensitiveAction
+    },
+    shouldShowOption('watch') && {
+      id: 'watch',
+      label: note.content.includes('meta::watch::') ? 'Remove Watch' : 'Watch',
+      active: note.content.includes('meta::watch::'),
+      icon: <EyeIcon className={`h-4 w-4 ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500'}`} />,
+      onClick: () => handleAction('watch')
+    },
+    shouldShowOption('abbreviation') && {
+      id: 'abbreviation',
+      label: note.content.includes('meta::abbreviation::') ? 'Remove Abbreviation' : 'Abbreviation',
+      active: note.content.includes('meta::abbreviation::'),
+      icon: <TagIcon className={`h-4 w-4 ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500'}`} />,
+      onClick: () => handleAction('abbreviation')
+    },
+    shouldShowOption('workstream') && {
+      id: 'workstream',
+      label: note.content.includes('meta::workstream::') ? 'Remove Workstream' : 'Workstream',
+      active: note.content.includes('meta::workstream::'),
+      icon: <FolderIcon className={`h-4 w-4 ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500'}`} />,
+      onClick: () => handleAction('workstream')
+    }
+  ].filter(Boolean);
+
   return (
-    <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
-      <div className="flex items-center space-x-2">
+    <div className="flex items-center justify-between gap-3 px-4 py-2 text-xs text-gray-500">
+      <div className="flex min-w-0 flex-1 items-center space-x-2">
+        {leftContent}
         {/* Left side - Created date */}
         {showCreatedDate && !focusMode && (
           <span className="text-gray-400">
@@ -384,21 +470,41 @@ const NoteFooter = ({
       <div className="flex items-center rounded-lg bg-transparent transition-colors duration-200 group-hover:bg-gray-50">
 
 
-        {/* Watch, Pin, and Sensitive Group - Keep these in right panel */}
-        {(shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
-         (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
-         (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card') ? (
+        {/* Mark-as and pin group */}
+        {markAsOptions.length > 0 ||
+         (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ? (
           <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            {shouldShowOption('watch') && getOptionLocation('watch') === 'card' && (
-              <button
-                onClick={() => handleAction('watch')}
-                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${note.content.includes('meta::watch::') ? 'bg-green-100 text-green-700' : 'text-gray-600'
-                  }`}
-              >
-                <EyeIcon className={`h-4 w-4 ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500'
-                  }`} />
-                <span>Watch</span>
-              </button>
+            {markAsOptions.length > 0 && (
+              <div className="relative" data-mark-as-actions>
+                <button
+                  onClick={() => setShowMarkAsActions((show) => !show)}
+                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+                >
+                  <TagIcon className="h-4 w-4 text-gray-500" />
+                  <span>Mark as</span>
+                  <ChevronDownIcon className="h-3 w-3 text-gray-400" />
+                </button>
+
+                {showMarkAsActions && (
+                  <div className="absolute bottom-full left-0 mb-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      {markAsOptions.map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            option.onClick();
+                            setShowMarkAsActions(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${option.active ? 'bg-gray-50 font-medium' : ''}`}
+                        >
+                          {option.icon}
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {shouldShowOption('pin') && getOptionLocation('pin') === 'card' && (
@@ -413,30 +519,17 @@ const NoteFooter = ({
               </button>
             )}
 
-            {shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card' && (
-              <button
-                onClick={handleSensitiveAction}
-                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${note.content.includes('meta::sensitive') ? 'bg-orange-100 text-orange-700' : 'text-gray-600'
-                  }`}
-              >
-                <span className={`text-xs font-semibold ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500'
-                  }`}>
-                  S
-                </span>
-                <span>Sensitive</span>
-              </button>
-            )}
           </div>
         ) : null}
 
         {/* Separator */}
-        {((shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
-          (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
-          (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card')) &&
+        {(markAsOptions.length > 0 ||
+          (shouldShowOption('pin') && getOptionLocation('pin') === 'card')) &&
          ((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
           (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
           (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
           (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
           (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
           (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
@@ -493,6 +586,7 @@ const NoteFooter = ({
           (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
           (shouldShowOption('merge') && getOptionLocation('merge') === 'card')) &&
          ((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
           (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
           (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
@@ -501,6 +595,7 @@ const NoteFooter = ({
 
         {/* View and Copy Group */}
         {((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card')) ? (
           <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             {shouldShowOption('copy') && getOptionLocation('copy') === 'card' && (
@@ -513,6 +608,17 @@ const NoteFooter = ({
               >
                 <ClipboardIcon className="h-4 w-4 text-gray-500" />
                 <span>Copy</span>
+              </button>
+            )}
+
+            {shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card' && (
+              <button
+                onClick={handleSortAlphabetically}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+                title="Sort all note lines alphabetically"
+              >
+                <BarsArrowDownIcon className="h-4 w-4 text-gray-500" />
+                <span>Sort A-Z</span>
               </button>
             )}
 
@@ -532,6 +638,7 @@ const NoteFooter = ({
 
         {/* Separator */}
         {((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card') ||
           (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card')) &&
          ((shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
           (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
@@ -586,22 +693,22 @@ const NoteFooter = ({
 
         {/* Separator before More Actions */}
         {(() => {
-          const hasCardOptions = (shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
+          const hasCardOptions = markAsOptions.length > 0 ||
             (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
-            (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card') ||
             (shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
             (shouldShowOption('unclickableLinks') && getOptionLocation('unclickableLinks') === 'card') ||
             (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
             (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+            (shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'card') ||
             (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
             (shouldShowOption('convertToBookmark') && getOptionLocation('convertToBookmark') === 'card') ||
             (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
             (shouldShowOption('delete') && getOptionLocation('delete') === 'card');
           
           const hasMoreOptions = [
-            'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
+            'pin', 'bookmark',
             'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
-            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'sortAlphabetically', 'rawNote', 'edit', 'delete'
           ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
           
           return hasCardOptions && hasMoreOptions;
@@ -613,9 +720,9 @@ const NoteFooter = ({
         {/* Show More Actions button if any option is configured to be in 'more' */}
         {(() => {
           const hasMoreOptions = [
-            'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
+            'pin', 'bookmark',
             'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
-            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+            'todoLow', 'pinLines', 'linkNote', 'unclickableLinks', 'merge', 'copy', 'sortAlphabetically', 'rawNote', 'edit', 'delete'
           ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
           
           return hasMoreOptions ? (
@@ -643,32 +750,6 @@ const NoteFooter = ({
                         >
                           <BookmarkIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500'}`} />
                           Bookmark
-                        </button>
-                      )}
-                      
-                      {shouldShowOption('abbreviation') && getOptionLocation('abbreviation') === 'more' && (
-                        <button
-                          onClick={() => {
-                            handleAction('abbreviation');
-                            setShowMoreActions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                        >
-                          <TagIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500'}`} />
-                          Mark as Abbreviation
-                        </button>
-                      )}
-                      
-                      {shouldShowOption('workstream') && getOptionLocation('workstream') === 'more' && (
-                        <button
-                          onClick={() => {
-                            handleAction('workstream');
-                            setShowMoreActions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                        >
-                          <FolderIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500'}`} />
-                          Workstream
                         </button>
                       )}
                       
@@ -779,23 +860,6 @@ const NoteFooter = ({
                         </>
                       )}
                       
-                      {/* Options that can be moved from card to more */}
-                      {shouldShowOption('watch') && getOptionLocation('watch') === 'more' && (
-                        <>
-                          <div className="border-t border-gray-200 my-1"></div>
-                          <button
-                            onClick={() => {
-                              handleAction('watch');
-                              setShowMoreActions(false);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                          >
-                            <EyeIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500'}`} />
-                            Watch
-                          </button>
-                        </>
-                      )}
-                      
                       {shouldShowOption('pin') && getOptionLocation('pin') === 'more' && (
                         <button
                           onClick={() => {
@@ -808,22 +872,6 @@ const NoteFooter = ({
                           {note.content.includes('meta::notes_pinned') ? 'Unpin Note' : 'Pin Note'}
                         </button>
                       )}
-                      
-                      {shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'more' && (
-                        <button
-                          onClick={() => {
-                            handleSensitiveAction();
-                            setShowMoreActions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                        >
-                          <span className={`h-4 w-4 text-xs font-semibold flex items-center justify-center mr-2 ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500'}`}>
-                            S
-                          </span>
-                          {note.content.includes('meta::sensitive') ? 'Remove Sensitive' : 'Mark as Sensitive'}
-                        </button>
-                      )}
-                      
                       {shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'more' && (
                         <>
                           <div className="border-t border-gray-200 my-1"></div>
@@ -872,6 +920,19 @@ const NoteFooter = ({
                         </>
                       )}
                       
+                      {shouldShowOption('sortAlphabetically') && getOptionLocation('sortAlphabetically') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleSortAlphabetically();
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <BarsArrowDownIcon className="h-4 w-4 mr-2 text-gray-500" />
+                          Sort A-Z
+                        </button>
+                      )}
+
                       {shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'more' && (
                         <button
                           onClick={() => {

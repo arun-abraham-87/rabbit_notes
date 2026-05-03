@@ -245,11 +245,17 @@ app.get('/api/images', (req, res) => {
         const filePath = path.join(IMAGES_DIR, file);
         return fs.lstatSync(filePath).isFile();
       })
-      .map(file => ({
-        filename: file,
-        id: path.parse(file).name, // UUID without extension
-        extension: path.extname(file).slice(1).toLowerCase() // extension without dot
-      }));
+      .map(file => {
+        const filePath = path.join(IMAGES_DIR, file);
+        const stats = fs.statSync(filePath);
+
+        return {
+          filename: file,
+          id: path.parse(file).name, // UUID without extension
+          extension: path.extname(file).slice(1).toLowerCase(), // extension without dot
+          size: stats.size
+        };
+      });
 
     res.json({ images });
   } catch (err) {

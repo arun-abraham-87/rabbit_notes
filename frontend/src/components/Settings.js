@@ -689,6 +689,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
                   linkNote: 'Link Note',
                   merge: 'Merge/Select',
                   copy: 'Copy to Clipboard',
+                  sortAlphabetically: 'Sort A-Z',
                   rawNote: 'View Raw Note',
                   edit: 'Edit',
                   delete: 'Delete'

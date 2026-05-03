@@ -2,6 +2,7 @@ import React from 'react';
 import { clickableDateRegex } from '../components/NotesList';
 import { formatAndAgeDate } from './DateUtils';
 import { decodeSensitiveUrl, isReversedUrl, REVERSED_URL_PATTERN } from './SensitiveUrlUtils';
+import { getInstagramReelsUrl } from './InstagramUrlUtils';
 
 // Import the link type indicator function from TextUtils
 const getLinkTypeIndicator = (url) => {
@@ -404,7 +405,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`link-${idx}-${match.index}`}
-            href={originalUrl}
+            href={getInstagramReelsUrl(originalUrl)}
             className="text-blue-600 underline cursor-pointer"
             title={originalUrl}
             onClick={(e) => {
@@ -426,7 +427,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`link-${idx}-${match.index}`}
-            href={originalUrl}
+            href={getInstagramReelsUrl(originalUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -446,7 +447,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`url-${idx}-${match.index}`}
-            href={match[4]}
+            href={getInstagramReelsUrl(match[4])}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -463,7 +464,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`url-fallback-${idx}-${match.index}`}
-            href={match[4]}
+            href={getInstagramReelsUrl(match[4])}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -486,7 +487,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`reversed-url-${idx}-${match.index}`}
-            href={originalUrl}
+            href={getInstagramReelsUrl(originalUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -505,7 +506,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
         elements.push(
           <a
             key={`reversed-url-fallback-${idx}-${match.index}`}
-            href={decodeSensitiveUrl(match[5])}
+            href={getInstagramReelsUrl(decodeSensitiveUrl(match[5]))}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 underline"
@@ -545,7 +546,15 @@ export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateT
     result = [<em key={`italic-line-${idx}`}>{result}</em>];
   }
   if (lineColor) {
-    result = [<span key={`color-line-${idx}`} style={{ color: lineColor }}>{result}</span>];
+    result = [
+      <span
+        key={`color-line-${idx}`}
+        className="note-line-colored"
+        style={{ '--note-line-color': lineColor }}
+      >
+        {result}
+      </span>
+    ];
   }
 
   return result;

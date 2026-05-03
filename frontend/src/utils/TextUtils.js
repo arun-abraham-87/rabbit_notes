@@ -1,6 +1,7 @@
 import React from 'react';
 import { decodeSensitiveContent, decodeSensitiveUrl, hasReversedUrls as contentHasReversedUrls, isReversedUrl, normalizeLegacySensitiveMarkdownLinks } from './SensitiveUrlUtils';
 import { normalizeSubLinePrefix } from './genUtils';
+import { getInstagramReelsUrl } from './InstagramUrlUtils';
 
 /**
  * Comprehensive function to parse and format note content
@@ -261,10 +262,12 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, a
 
     // Step 4: Apply line-level formatting (bold, italic, color) extracted from prefixes
     if (isBoldLine || isItalicLine || color) {
-      const style = color ? { color } : undefined;
+      const style = color ? { '--note-line-color': color } : undefined;
+      const className = color ? `${element.props.className || ''} note-line-colored`.trim() : element.props.className;
       const fontWeight = isBoldLine ? 'bold' : undefined;
       const fontStyle = isItalicLine ? 'italic' : undefined;
       element = React.cloneElement(element, {
+        className,
         style: { ...(element.props.style || {}), ...(style || {}), ...(fontWeight ? { fontWeight } : {}), ...(fontStyle ? { fontStyle } : {}) }
       });
     }
@@ -601,7 +604,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     }
   };
 
-  const renderUrlLink = ({ key, url, children, title = null, showTextButton = null, onTextButtonClick = null, textButtonLabel = 'Add text', textButtonClassName = 'px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150' }) => (
+  const renderUrlLink = ({ key, url, children, title = null, displayText = '', showTextButton = null, onTextButtonClick = null, textButtonLabel = 'Add text', textButtonClassName = 'px-1 py-0.5 text-xs font-medium text-white bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150' }) => (
     <span key={key} className="inline-flex items-center gap-1">
       {unclickableLinks ? (
         <>
@@ -619,11 +622,11 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         </>
       ) : (
         <a
-          href={url}
+          href={getInstagramReelsUrl(url)}
           target="_blank"
           rel="noopener noreferrer"
           className={url === lastClickedUrl ? "font-bold underline text-red-600 hover:text-red-800" : "text-blue-600 underline hover:text-blue-800"}
-          onClick={(e) => { e.stopPropagation(); onLinkClick?.(url); }}
+          onClick={(e) => { e.stopPropagation(); onLinkClick?.(url, displayText); }}
           title={title || url}
         >
           {children}
@@ -665,6 +668,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       key: `url-${lineIndex}`,
       url,
       children: hostname,
+      displayText: hostname,
       showTextButton: true,
       onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(url); }
     });
@@ -687,6 +691,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       key: `url-${lineIndex}`,
       url: originalUrl,
       children: hostname,
+      displayText: hostname,
       showTextButton: true,
       onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(originalUrl); }
     });
@@ -790,11 +795,12 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
                   renderUrlLink({
                     key: `url-${lineIndex}-before-wiki-${i}-${j}`,
                     url: originalUrl,
+                    displayText: beforeLink.customText,
                     children: linkIndicator ? (
                       <>
-                        {beforeLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                        {highlightSearchTerm(beforeLink.customText, searchTerm, `text-${lineIndex}-before-wiki-link-label-${i}-${j}`)} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
                       </>
-                    ) : beforeLink.customText
+                    ) : highlightSearchTerm(beforeLink.customText, searchTerm, `text-${lineIndex}-before-wiki-link-label-${i}-${j}`)
                   })
                 );
                 beforeLastIndex = beforeLink.endIndex;
@@ -880,11 +886,12 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
               renderUrlLink({
                 key: `url-${lineIndex}-after-wiki-${j}`,
                 url: originalUrl,
+                displayText: afterLink.customText,
                 children: linkIndicator ? (
                   <>
-                    {afterLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                    {highlightSearchTerm(afterLink.customText, searchTerm, `text-${lineIndex}-after-wiki-link-label-${j}`)} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
                   </>
-                ) : afterLink.customText
+                ) : highlightSearchTerm(afterLink.customText, searchTerm, `text-${lineIndex}-after-wiki-link-label-${j}`)
               })
             );
             afterLastIndex = afterLink.endIndex;
@@ -932,11 +939,12 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         const linkElement = renderUrlLink({
           key: `url-${lineIndex}-${i}`,
           url: originalUrl,
+          displayText: linkMatch.customText,
           children: linkIndicator ? (
             <>
-              {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+              {highlightSearchTerm(linkMatch.customText, searchTerm, `text-${lineIndex}-link-label-${i}`)} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
             </>
-          ) : linkMatch.customText,
+          ) : highlightSearchTerm(linkMatch.customText, searchTerm, `text-${lineIndex}-link-label-${i}`),
           showTextButton: true,
           onTextButtonClick: (e) => { e.stopPropagation(); onEditText && onEditText(originalUrl, linkMatch.customText); },
           textButtonLabel: 'Edit',
@@ -1042,6 +1050,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
               key: `url-${lineIndex}-${i}`,
               url,
               children: hostname,
+              displayText: hostname,
               showTextButton: true,
               onTextButtonClick: (e) => { e.stopPropagation(); onAddText && onAddText(url); }
             })

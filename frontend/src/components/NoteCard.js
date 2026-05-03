@@ -5,6 +5,8 @@ import NoteCardFooter from './NoteCardFooter';
 import NoteTagBar from './NoteTagBar';
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
 import { DevModeInfo } from '../utils/DevUtils';
+import { clearLinkClickHistory, recordLinkClick, removeLinkClickHistoryItem } from '../utils/LinkClickHistoryUtils';
+import { getInstagramReelsUrl } from '../utils/InstagramUrlUtils';
 
 
 const NoteCard = ({
@@ -64,6 +66,8 @@ const NoteCard = ({
   setFocusedNoteIndex = () => {},
   noteIndex = -1,
   onSetFocusedNoteIndex,
+  onSetFocusedLine,
+  focusedLine = { noteId: null, lineIndex: null },
   settings = {},
   addNote = null,
   mergeMode = false,
@@ -78,6 +82,9 @@ const NoteCard = ({
   const [wasOpenedFromSuperEdit, setWasOpenedFromSuperEdit] = useState(false);
   const [keySequence, setKeySequence] = useState('');
   const [lastEditedLineIndex, setLastEditedLineIndex] = useState(-1);
+  const [removedRecentUrls, setRemovedRecentUrls] = useState(new Set());
+  const [recentLinkMenu, setRecentLinkMenu] = useState(null);
+  const [recentLinksCleared, setRecentLinksCleared] = useState(false);
 
   // --- Vim navigation state for super edit mode ---
   const [vimNumberBuffer, setVimNumberBuffer] = useState('');
@@ -86,6 +93,15 @@ const NoteCard = ({
 
   // Check if this note is focused
   const isFocused = focusedNoteIndex === noteIndex;
+  const isLineFocusMode = focusedLine?.noteId === note.id && focusedLine?.lineIndex !== null;
+  const handleSetFocusedLine = (lineFocus) => {
+    if (typeof onSetFocusedNoteIndex === 'function' && !isFocused) {
+      onSetFocusedNoteIndex(noteIndex);
+    }
+    if (typeof onSetFocusedLine === 'function') {
+      onSetFocusedLine(lineFocus);
+    }
+  };
   
   // Debug logging
   if (isFocused) {
@@ -639,6 +655,107 @@ const NoteCard = ({
   
   // Add a simple test div to verify developer mode is working
   const testDevMode = settings?.developerMode || false;
+
+  if (note.isGeneratedRecentLinksNote) {
+    const [title, ...contentLines] = (note.content || '').split('\n').filter(line => !line.startsWith('meta::'));
+    const visibleContentLines = recentLinksCleared ? [] : contentLines.filter((line) => {
+      const markdownMatch = line.match(/^- \[([^\]]+)\]\(([^)]+)\) - (.+)$/);
+      return !markdownMatch || !removedRecentUrls.has(markdownMatch[2]);
+    });
+    const handleRemoveRecentLink = (url) => {
+      removeLinkClickHistoryItem(url);
+      setRemovedRecentUrls((previous) => {
+        const next = new Set(previous);
+        next.add(url);
+        return next;
+      });
+      setRecentLinkMenu(null);
+    };
+    const handleClearAllRecentLinks = () => {
+      if (!window.confirm('Clear all recent clicked links?')) return;
+
+      clearLinkClickHistory();
+      setRemovedRecentUrls(new Set());
+      setRecentLinksCleared(true);
+      setRecentLinkMenu(null);
+    };
+
+    return (
+      <div
+        className="note-card flex flex-col px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
+        onClick={() => setRecentLinkMenu(null)}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-gray-900">{title || 'Recent clicked links'}</h2>
+          {visibleContentLines.length > 0 && (
+            <button
+              type="button"
+              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearAllRecentLinks();
+              }}
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+        <div className="space-y-2 text-sm text-gray-800">
+          {visibleContentLines.length === 0 ? (
+            <div>No note links clicked yet.</div>
+          ) : visibleContentLines.map((line, index) => {
+            const markdownMatch = line.match(/^- \[([^\]]+)\]\(([^)]+)\) - (.+)$/);
+            if (!markdownMatch) {
+              return <div key={index}>{line}</div>;
+            }
+
+            const [, label, url, detail] = markdownMatch;
+            return (
+              <div
+                key={url}
+                className="flex flex-wrap items-baseline gap-2"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRecentLinkMenu({ url, x: e.clientX, y: e.clientY });
+                }}
+              >
+                <a
+                  href={getInstagramReelsUrl(url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-800 break-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    recordLinkClick(url, null, label);
+                  }}
+                >
+                  {label}
+                </a>
+                <span className="text-gray-500">{detail}</span>
+              </div>
+            );
+          })}
+        </div>
+        {recentLinkMenu && (
+          <div
+            className="fixed z-50 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg"
+            style={{ left: recentLinkMenu.x, top: recentLinkMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100"
+              onClick={() => handleRemoveRecentLink(recentLinkMenu.url)}
+            >
+              Remove from recents
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
   
   return (
     <DevModeInfo 
@@ -648,6 +765,7 @@ const NoteCard = ({
       <div
         key={note.id}
         data-note-id={note.id}
+        data-note-line-focus={isLineFocusMode ? 'true' : undefined}
         onContextMenu={(e) => onContextMenu(e, note)}
         onClick={(e) => {
           if (isSuperEditMode) {
@@ -667,7 +785,7 @@ const NoteCard = ({
             e.stopPropagation();
             onSetFocusedNoteIndex(noteIndex);
           }
-          // Increment click counter when Enter or 'l' is pressed on a focused note
+          // Keep Enter from bubbling to page-level shortcuts while a note is focused.
           if ((e.key === 'Enter' || e.key === 'l') && isFocused && !isSuperEditMode) {
             // Don't handle if the target is a textarea or input
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.closest('textarea') || e.target.closest('input')) {
@@ -677,12 +795,12 @@ const NoteCard = ({
             e.stopPropagation();
           }
         }}
-        className={`group flex flex-col cursor-pointer ${
+        className={`note-card group flex flex-col cursor-pointer ${
           focusMode
             ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white'
             : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'
         } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''} ${
-          isFocused ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
+          isFocused ? 'note-card-focused ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
         } ${mergeMode && selectedMergeNotes.includes(note.id) ? (mainMergeNoteId === note.id ? 'ring-2 ring-purple-600 border-purple-400' : 'ring-2 ring-purple-300 border-purple-300') : ''}`}
         style={{
           backgroundColor: isFocused ? '#eff6ff' : undefined,
@@ -787,30 +905,17 @@ const NoteCard = ({
           setBulkDeleteNoteId={setBulkDeleteNoteId}
           multiMoveNoteId={multiMoveNoteId}
           setFocusedNoteIndex={setFocusedNoteIndex}
+          onSetFocusedLine={handleSetFocusedLine}
           isSuperEditMode={isSuperEditMode}
           highlightedLineIndex={highlightedLineIndex}
           highlightedLineText={highlightedLineText}
+          isLineFocusMode={isLineFocusMode}
+          focusedLineIndex={isLineFocusMode ? focusedLine.lineIndex : -1}
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
           allNotes={fullNotesList}
           addNote={addNote}
           isFocused={isFocused}
         />
-        {!focusMode && (
-          <div className="flex items-center space-x-4 px-4 py-2">
-            <NoteTagBar
-              note={note}
-              updateNote={updateNote}
-              duplicateUrlNoteIds={duplicateUrlNoteIds}
-              duplicateWithinNoteIds={duplicateWithinNoteIds}
-              urlShareSpaceNoteIds={urlShareSpaceNoteIds}
-              focusMode={focusMode}
-              onNavigate={onNavigate}
-              allNotes={allNotes}
-              setSearchQuery={setSearchQuery}
-            />
-          </div>
-        )}
-
         <NoteCardLinkedNotes
           note={note}
           allNotes={fullNotesList}
@@ -832,6 +937,20 @@ const NoteCard = ({
           focusMode={focusMode}
           settings={settings}
           mergeMode={mergeMode}
+          leftContent={!focusMode ? (
+            <NoteTagBar
+              note={note}
+              updateNote={updateNote}
+              duplicateUrlNoteIds={duplicateUrlNoteIds}
+              duplicateWithinNoteIds={duplicateWithinNoteIds}
+              urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+              focusMode={focusMode}
+              onNavigate={onNavigate}
+              allNotes={allNotes}
+              setSearchQuery={setSearchQuery}
+              compact
+            />
+          ) : null}
         />
       </div>
     </div>

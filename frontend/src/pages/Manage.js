@@ -1,20 +1,117 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { loadAllNotes, updateNoteById, listJournals, loadJournal, createNote, exportAllNotes } from '../utils/ApiUtils';
-import JSZip from 'jszip';
+import { deleteImageById, loadAllNotes, updateNoteById, listImages, exportAllNotes, uploadImage } from '../utils/ApiUtils';
 import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent } from '../utils/SensitiveUrlUtils';
+import { extractImageIds } from '../utils/NotesUtils';
+
+const LARGE_IMAGE_THRESHOLD_BYTES = 750 * 1024;
+const API_BASE_URL = 'http://localhost:5001/api';
+const IMAGE_ID_REGEX = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi;
+
+const formatFileSize = (bytes = 0) => {
+  if (!bytes) return '0 KB';
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+  return `${Math.round(bytes / 1024)} KB`;
+};
+
+const getNoteTitle = (content = '') => {
+  return content
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => line && !line.startsWith('meta::')) || 'Untitled note';
+};
+
+const extractReferencedImageIds = (content = '') => {
+  const metaImageIds = extractImageIds(content);
+  const uuidMatches = content.match(IMAGE_ID_REGEX) || [];
+  return Array.from(new Set([
+    ...metaImageIds,
+    ...uuidMatches.map(id => id.toLowerCase())
+  ]));
+};
+
+const escapeRegExp = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const loadImageElement = (url) => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => resolve(image);
+  image.onerror = reject;
+  image.src = url;
+});
+
+const canvasToBlob = (canvas, type, quality) => new Promise((resolve) => {
+  canvas.toBlob(resolve, type, quality);
+});
+
+const compressImageBlob = async (imageUrl, originalSize) => {
+  const image = await loadImageElement(imageUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const candidates = [];
+  for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42, 0.32, 0.24, 0.18, 0.12, 0.08]) {
+    const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+    if (blob) candidates.push({ blob, quality });
+  }
+
+  const smallerCandidates = candidates.filter(candidate => candidate.blob.size < originalSize);
+  if (smallerCandidates.length === 0) return null;
+
+  return smallerCandidates.reduce((smallest, candidate) => (
+    candidate.blob.size < smallest.blob.size ? candidate : smallest
+  ));
+};
+
+const replaceImageReferences = (content, oldImage, newImage) => {
+  const oldId = oldImage.id;
+  const oldFilename = oldImage.filename;
+  const oldExtension = oldImage.extension;
+  const newId = newImage.imageId;
+  const newFilename = newImage.filename;
+  const newImageUrl = newImage.imageUrl;
+  const absoluteNewImageUrl = `http://localhost:5001${newImageUrl}`;
+
+  let updatedContent = content
+    .replace(new RegExp(escapeRegExp(`/api/images/${oldFilename}`), 'g'), newImageUrl)
+    .replace(new RegExp(escapeRegExp(`http://localhost:5001/api/images/${oldFilename}`), 'g'), absoluteNewImageUrl)
+    .replace(new RegExp(escapeRegExp(oldFilename), 'g'), newFilename);
+
+  if (oldExtension) {
+    updatedContent = updatedContent.replace(
+      new RegExp(`${escapeRegExp(oldId)}\\.${escapeRegExp(oldExtension)}`, 'gi'),
+      newFilename
+    );
+  }
+
+  return updatedContent.replace(new RegExp(escapeRegExp(oldId), 'gi'), newId);
+};
 
 const Manage = () => {
   const [activeTab, setActiveTab] = useState('notes');
   const [activeSubTab, setActiveSubTab] = useState('search-replace');
   const [searchText, setSearchText] = useState('');
+  const [submittedSearchText, setSubmittedSearchText] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [addText, setAddText] = useState('');
   const [useRegex, setUseRegex] = useState(false);
+  const [submittedUseRegex, setSubmittedUseRegex] = useState(false);
   const [notes, setNotes] = useState([]);
   const [matchingNotes, setMatchingNotes] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [regexError, setRegexError] = useState('');
+  const [images, setImages] = useState([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [imageSizesLoading, setImageSizesLoading] = useState(false);
+  const [imagesError, setImagesError] = useState('');
+  const [hasLoadedImages, setHasLoadedImages] = useState(false);
+  const [compressingImageId, setCompressingImageId] = useState(null);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -25,27 +122,48 @@ const Manage = () => {
   }, []);
 
   useEffect(() => {
-    if (searchText.trim()) {
+    if (activeSubTab !== 'large-images' || hasLoadedImages || imagesLoading) return;
+
+    const fetchImages = async () => {
+      try {
+        setImagesLoading(true);
+        setImagesError('');
+        const imageList = await listImages();
+        setImages(imageList);
+        setHasLoadedImages(true);
+      } catch (error) {
+        setImagesError(error.message);
+        toast.error('Error loading images: ' + error.message);
+      } finally {
+        setImagesLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, [activeSubTab, hasLoadedImages, imagesLoading]);
+
+  useEffect(() => {
+    if (submittedSearchText.trim()) {
       try {
         let matches;
-        if (useRegex) {
+        if (submittedUseRegex) {
           // Test if the regex is valid
           try {
-            new RegExp(searchText);
+            new RegExp(submittedSearchText);
             setRegexError('');
           } catch (e) {
             setRegexError('Invalid regular expression');
             return;
           }
           
-          const regex = new RegExp(searchText, 'g');
+          const regex = new RegExp(submittedSearchText, 'g');
           matches = notes.filter(note => regex.test(note.content));
           
           // Reset regex lastIndex for next test
           regex.lastIndex = 0;
         } else {
           // Split search text by commas and trim whitespace
-          const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+          const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
           
           if (searchTerms.length > 1) {
             // AND condition: all terms must be present
@@ -57,7 +175,7 @@ const Manage = () => {
           } else {
             // Single term search
             matches = notes.filter(note => 
-              note.content.toLowerCase().includes(searchText.toLowerCase())
+              note.content.toLowerCase().includes(submittedSearchText.toLowerCase())
             );
           }
         }
@@ -65,12 +183,12 @@ const Manage = () => {
         
         // Count total occurrences
         const count = matches.reduce((total, note) => {
-          if (useRegex) {
-            const regex = new RegExp(searchText, 'g');
+          if (submittedUseRegex) {
+            const regex = new RegExp(submittedSearchText, 'g');
             const matches = note.content.match(regex);
             return total + (matches ? matches.length : 0);
           } else {
-            const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+            const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
             return total + searchTerms.reduce((termTotal, term) => {
               // Escape special characters for regex
               const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -89,11 +207,50 @@ const Manage = () => {
       setTotalMatches(0);
       setRegexError('');
     }
-  }, [searchText, notes, useRegex]);
+  }, [submittedSearchText, notes, submittedUseRegex]);
 
-  const handleReplace = async () => {
+  useEffect(() => {
+    if (activeSubTab !== 'large-images' || images.length === 0) return;
+
+    const imagesMissingSize = images.filter(image => typeof image.size !== 'number');
+    if (imagesMissingSize.length === 0) return;
+
+    const fetchMissingImageSizes = async () => {
+      try {
+        setImageSizesLoading(true);
+        const imagesWithSizes = await Promise.all(images.map(async (image) => {
+          if (typeof image.size === 'number') return image;
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/images/${image.filename}`, { method: 'HEAD' });
+            const contentLength = Number(response.headers.get('content-length'));
+            return {
+              ...image,
+              size: Number.isFinite(contentLength) ? contentLength : 0
+            };
+          } catch (error) {
+            return {
+              ...image,
+              size: 0
+            };
+          }
+        }));
+        setImages(imagesWithSizes);
+      } finally {
+        setImageSizesLoading(false);
+      }
+    };
+
+    fetchMissingImageSizes();
+  }, [activeSubTab, images]);
+
+  const handleSearchSubmit = () => {
     if (!searchText.trim()) {
       toast.error('Please enter search text');
+      setSubmittedSearchText('');
+      setMatchingNotes([]);
+      setTotalMatches(0);
+      setRegexError('');
       return;
     }
 
@@ -101,24 +258,44 @@ const Manage = () => {
       try {
         new RegExp(searchText);
       } catch (e) {
+        setRegexError('Invalid regular expression');
+        return;
+      }
+    }
+
+    setRegexError('');
+    setSubmittedSearchText(searchText);
+    setSubmittedUseRegex(useRegex);
+  };
+
+  const handleReplace = async () => {
+    if (!submittedSearchText.trim()) {
+      toast.error('Please submit a search first');
+      return;
+    }
+
+    if (submittedUseRegex) {
+      try {
+        new RegExp(submittedSearchText);
+      } catch (e) {
         toast.error('Invalid regular expression');
         return;
       }
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to replace "${searchText}" with "${replaceText}" in ${matchingNotes.length} notes (${totalMatches} occurrences)?`
+      `Are you sure you want to replace "${submittedSearchText}" with "${replaceText}" in ${matchingNotes.length} notes (${totalMatches} occurrences)?`
     );
 
     if (confirmed) {
       try {
         for (const note of matchingNotes) {
           let updatedContent;
-          if (useRegex) {
-            const regex = new RegExp(searchText, 'g');
+          if (submittedUseRegex) {
+            const regex = new RegExp(submittedSearchText, 'g');
             updatedContent = note.content.replace(regex, replaceText);
           } else {
-            const regex = new RegExp(searchText, 'gi');
+            const regex = new RegExp(submittedSearchText, 'gi');
             updatedContent = note.content.replace(regex, replaceText);
           }
           await updateNoteById(note.id, updatedContent);
@@ -128,6 +305,7 @@ const Manage = () => {
         const data = await loadAllNotes('', null);
         setNotes(data.notes);
         setSearchText('');
+        setSubmittedSearchText('');
         setReplaceText('');
       } catch (error) {
         toast.error('Error replacing text: ' + error.message);
@@ -136,14 +314,14 @@ const Manage = () => {
   };
 
   const handleAdd = async () => {
-    if (!searchText.trim() || !addText.trim()) {
-      toast.error('Please enter both search text and text to add');
+    if (!submittedSearchText.trim() || !addText.trim()) {
+      toast.error('Please submit a search and enter text to add');
       return;
     }
 
-    if (useRegex) {
+    if (submittedUseRegex) {
       try {
-        new RegExp(searchText);
+        new RegExp(submittedSearchText);
       } catch (e) {
         toast.error('Invalid regular expression');
         return;
@@ -171,12 +349,12 @@ const Manage = () => {
               const line = lines[i];
               let matches = false;
               
-              if (useRegex) {
-                const regex = new RegExp(searchText, 'g');
+              if (submittedUseRegex) {
+                const regex = new RegExp(submittedSearchText, 'g');
                 matches = regex.test(line);
                 regex.lastIndex = 0; // Reset regex state
               } else {
-                matches = line.toLowerCase().includes(searchText.toLowerCase());
+                matches = line.toLowerCase().includes(submittedSearchText.toLowerCase());
               }
 
               if (matches) {
@@ -202,6 +380,7 @@ const Manage = () => {
         const data = await loadAllNotes('', null);
         setNotes(data.notes);
         setSearchText('');
+        setSubmittedSearchText('');
         setAddText('');
       } catch (error) {
         toast.error('Error adding text: ' + error.message);
@@ -254,6 +433,86 @@ const Manage = () => {
       toast.error('Error during export: ' + error.message);
     }
   };
+
+  const refreshImages = async () => {
+    setImagesLoading(true);
+    setImagesError('');
+    try {
+      const imageList = await listImages();
+      setImages(imageList);
+      setHasLoadedImages(true);
+      return imageList;
+    } finally {
+      setImagesLoading(false);
+    }
+  };
+
+  const handleReduceImageSize = async (image) => {
+    if (!window.confirm(`Compress ${image.filename} without changing width or height?`)) {
+      return;
+    }
+
+    const originalSize = image.size || 0;
+    if (!originalSize) {
+      toast.error('Image size is not loaded yet. Try Refresh first.');
+      return;
+    }
+
+    try {
+      setCompressingImageId(image.id);
+      const imageUrl = `${API_BASE_URL}/images/${image.filename}`;
+      const compressed = await compressImageBlob(imageUrl, originalSize);
+
+      if (!compressed) {
+        toast.info('Could not make this image smaller without changing width and height');
+        return;
+      }
+
+      const compressedFile = new File([compressed.blob], `${image.id}-compressed.jpg`, {
+        type: 'image/jpeg'
+      });
+      const uploadedImage = await uploadImage(compressedFile);
+      const updatedNotes = notes.filter(note => extractReferencedImageIds(note.content).includes(image.id.toLowerCase()));
+
+      for (const note of updatedNotes) {
+        const updatedContent = replaceImageReferences(note.content, image, uploadedImage);
+        if (updatedContent !== note.content) {
+          await updateNoteById(note.id, updatedContent);
+        }
+      }
+
+      await deleteImageById(image.id).catch(() => null);
+      const notesData = await loadAllNotes('', null);
+      setNotes(notesData.notes);
+      await refreshImages();
+
+      toast.success(`Reduced image from ${formatFileSize(originalSize)} to ${formatFileSize(compressed.blob.size)}`);
+    } catch (error) {
+      toast.error('Error reducing image size: ' + error.message);
+    } finally {
+      setCompressingImageId(null);
+    }
+  };
+
+  const largeImageNotes = (() => {
+    const imageById = new Map(images.map(image => [image.id.toLowerCase(), image]));
+    return notes
+      .flatMap(note => {
+        const imageIds = extractReferencedImageIds(note.content);
+        return imageIds
+          .map(imageId => {
+            const image = imageById.get(imageId);
+            if (!image || image.size <= LARGE_IMAGE_THRESHOLD_BYTES) return null;
+            return {
+              note,
+              image,
+              imageUrl: `${API_BASE_URL}/images/${image.filename}`
+            };
+          })
+          .filter(Boolean);
+      })
+      .sort((a, b) => b.image.size - a.image.size);
+  })();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -337,6 +596,16 @@ const Manage = () => {
                   >
                     Encode Sensitive Notes
                   </button>
+                  <button
+                    onClick={() => setActiveSubTab('large-images')}
+                    className={`py-2 px-4 text-sm font-medium ${
+                      activeSubTab === 'large-images'
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Large Images
+                  </button>
                 </nav>
               </div>
 
@@ -371,7 +640,7 @@ const Manage = () => {
                       )}
                       {!useRegex && searchText.includes(',') && (
                         <p className="mt-1 text-sm text-gray-600">
-                          Searching for notes containing ALL of: {searchText.split(',').map(term => term.trim()).filter(term => term).join(', ')}
+                          Will search for notes containing ALL of: {searchText.split(',').map(term => term.trim()).filter(term => term).join(', ')}
                         </p>
                       )}
                     </div>
@@ -389,7 +658,19 @@ const Manage = () => {
                       />
                     </div>
 
-                    {searchText && !regexError && (
+                    <button
+                      onClick={handleSearchSubmit}
+                      disabled={!searchText.trim()}
+                      className={`px-4 py-2 rounded-md text-white ${
+                        !searchText.trim()
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      Submit Search
+                    </button>
+
+                    {submittedSearchText && !regexError && (
                       <div className="text-sm text-gray-600">
                         Found {totalMatches} occurrences in {matchingNotes.length} notes
                       </div>
@@ -397,9 +678,9 @@ const Manage = () => {
 
                     <button
                       onClick={handleReplace}
-                      disabled={!searchText || matchingNotes.length === 0 || regexError}
+                      disabled={!submittedSearchText || matchingNotes.length === 0 || regexError}
                       className={`px-4 py-2 rounded-md text-white ${
-                        !searchText || matchingNotes.length === 0 || regexError
+                        !submittedSearchText || matchingNotes.length === 0 || regexError
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
@@ -417,15 +698,15 @@ const Manage = () => {
                         {matchingNotes.map((note) => {
                           // Create a preview of the replacement
                           let previewContent = note.content;
-                          if (useRegex) {
+                          if (submittedUseRegex) {
                             try {
-                              const regex = new RegExp(searchText, 'g');
+                              const regex = new RegExp(submittedSearchText, 'g');
                               previewContent = note.content.replace(regex, replaceText);
                             } catch (e) {
                               previewContent = note.content;
                             }
                           } else {
-                            const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                            const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
                             searchTerms.forEach(term => {
                               const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                               const regex = new RegExp(escapedTerm, 'gi');
@@ -447,11 +728,11 @@ const Manage = () => {
                                   <div className="text-sm font-medium text-gray-700 mb-2">Original:</div>
                                   <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
                                     {note.content.split('\n').map((line, index) => {
-                                      if (useRegex) {
+                                      if (submittedUseRegex) {
                                         try {
-                                          const regex = new RegExp(searchText, 'g');
+                                          const regex = new RegExp(submittedSearchText, 'g');
                                           if (regex.test(line)) {
-                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            const parts = line.split(new RegExp(`(${submittedSearchText})`, 'g'));
                                             return (
                                               <div key={index} className="mb-1">
                                                 {parts.map((part, i) => (
@@ -473,7 +754,7 @@ const Manage = () => {
                                           return <div key={index} className="mb-1">{line}</div>;
                                         }
                                       } else {
-                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
                                         let lineToShow = line;
                                         let hasMatch = false;
 
@@ -507,7 +788,7 @@ const Manage = () => {
                                   <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
                                     {previewContent.split('\n').map((line, index) => {
                                       // Highlight the replaced text
-                                      if (useRegex) {
+                                      if (submittedUseRegex) {
                                         try {
                                           const regex = new RegExp(replaceText, 'g');
                                           if (regex.test(line)) {
@@ -533,7 +814,7 @@ const Manage = () => {
                                           return <div key={index} className="mb-1">{line}</div>;
                                         }
                                       } else {
-                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
                                         let lineToShow = line;
                                         let hasMatch = false;
 
@@ -614,7 +895,19 @@ const Manage = () => {
                       />
                     </div>
 
-                    {searchText && !regexError && (
+                    <button
+                      onClick={handleSearchSubmit}
+                      disabled={!searchText.trim()}
+                      className={`px-4 py-2 rounded-md text-white ${
+                        !searchText.trim()
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      Submit Search
+                    </button>
+
+                    {submittedSearchText && !regexError && (
                       <div className="text-sm text-gray-600">
                         Found {totalMatches} matching lines in {matchingNotes.length} notes
                       </div>
@@ -622,9 +915,9 @@ const Manage = () => {
 
                     <button
                       onClick={handleAdd}
-                      disabled={!addText || !searchText || matchingNotes.length === 0 || regexError}
+                      disabled={!addText || !submittedSearchText || matchingNotes.length === 0 || regexError}
                       className={`px-4 py-2 rounded-md text-white ${
-                        !addText || !searchText || matchingNotes.length === 0 || regexError
+                        !addText || !submittedSearchText || matchingNotes.length === 0 || regexError
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
@@ -654,12 +947,12 @@ const Manage = () => {
                               const line = lines[i];
                               let matches = false;
                               
-                              if (useRegex) {
-                                const regex = new RegExp(searchText, 'g');
+                              if (submittedUseRegex) {
+                                const regex = new RegExp(submittedSearchText, 'g');
                                 matches = regex.test(line);
                                 regex.lastIndex = 0; // Reset regex state
                               } else {
-                                matches = line.toLowerCase().includes(searchText.toLowerCase());
+                                matches = line.toLowerCase().includes(submittedSearchText.toLowerCase());
                               }
 
                               if (matches) {
@@ -692,11 +985,11 @@ const Manage = () => {
                                   <div className="text-sm font-medium text-gray-700 mb-2">Current:</div>
                                   <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
                                     {note.content.split('\n').map((line, index) => {
-                                      if (useRegex) {
+                                      if (submittedUseRegex) {
                                         try {
-                                          const regex = new RegExp(searchText, 'g');
+                                          const regex = new RegExp(submittedSearchText, 'g');
                                           if (regex.test(line)) {
-                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            const parts = line.split(new RegExp(`(${submittedSearchText})`, 'g'));
                                             return (
                                               <div key={index} className="mb-1">
                                                 {parts.map((part, i) => (
@@ -718,7 +1011,7 @@ const Manage = () => {
                                           return <div key={index} className="mb-1">{line}</div>;
                                         }
                                       } else {
-                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
                                         let lineToShow = line;
                                         let hasMatch = false;
 
@@ -760,11 +1053,11 @@ const Manage = () => {
                                         );
                                       }
                                       
-                                      if (useRegex) {
+                                      if (submittedUseRegex) {
                                         try {
-                                          const regex = new RegExp(searchText, 'g');
+                                          const regex = new RegExp(submittedSearchText, 'g');
                                           if (regex.test(line)) {
-                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            const parts = line.split(new RegExp(`(${submittedSearchText})`, 'g'));
                                             return (
                                               <div key={index} className="mb-1">
                                                 {parts.map((part, i) => (
@@ -786,7 +1079,7 @@ const Manage = () => {
                                           return <div key={index} className="mb-1">{line}</div>;
                                         }
                                       } else {
-                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        const searchTerms = submittedSearchText.split(',').map(term => term.trim()).filter(term => term);
                                         let lineToShow = line;
                                         let hasMatch = false;
 
@@ -917,6 +1210,119 @@ const Manage = () => {
                       );
                     })()}
                   </div>
+                </div>
+              )}
+
+              {activeSubTab === 'large-images' && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                      Notes With Images Over 750 KB
+                    </h3>
+                    <p className="text-blue-700">
+                      Finds notes with <code className="bg-blue-100 px-1 rounded">meta::image::</code> references where the stored image file is larger than 750 KB.
+                    </p>
+                  </div>
+
+                  {(imagesLoading || imageSizesLoading) && (
+                    <div className="text-center py-8 text-gray-500">
+                      Loading image sizes...
+                    </div>
+                  )}
+
+                  {imagesError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
+                      {imagesError}
+                    </div>
+                  )}
+
+                  {!imagesLoading && !imageSizesLoading && !imagesError && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Matching Images: {largeImageNotes.length}
+                        </h3>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await refreshImages();
+                            } catch (error) {
+                              setImagesError(error.message);
+                              toast.error('Error refreshing images: ' + error.message);
+                            }
+                          }}
+                          className="px-4 py-2 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+
+                      {largeImageNotes.length > 0 ? (
+                        <div className="space-y-4">
+                          {largeImageNotes.map(({ note, image, imageUrl }) => (
+                            <div
+                              key={`${note.id}-${image.id}`}
+                              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="flex gap-4">
+                                <a
+                                  href={imageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="shrink-0"
+                                  title="Open image"
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={image.filename}
+                                    className="w-24 h-24 object-cover rounded border border-gray-200"
+                                  />
+                                </a>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <span className="text-sm text-gray-600">Note ID: {note.id}</span>
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                                      {formatFileSize(image.size)}
+                                    </span>
+                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                      {image.extension || 'file'}
+                                    </span>
+                                  </div>
+                                  <div className="text-gray-900 font-medium truncate mb-2">
+                                    {getNoteTitle(note.content)}
+                                  </div>
+                                  <div className="text-xs text-gray-500 font-mono break-all mb-3">
+                                    {image.filename}
+                                  </div>
+                                  <a
+                                    href={`/#/?search=id:${note.id}`}
+                                    className="text-sm text-blue-600 hover:text-blue-800"
+                                  >
+                                    Open note
+                                  </a>
+                                  <button
+                                    onClick={() => handleReduceImageSize(image)}
+                                    disabled={compressingImageId === image.id}
+                                    className={`ml-4 px-3 py-1.5 rounded-md text-sm font-medium ${
+                                      compressingImageId === image.id
+                                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                                    }`}
+                                  >
+                                    {compressingImageId === image.id ? 'Reducing...' : 'Reduce size'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No note images over 750 KB found.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

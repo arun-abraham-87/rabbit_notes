@@ -1,4 +1,5 @@
 import React from 'react';
+import { getInstagramReelsUrl } from '../utils/InstagramUrlUtils';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 
 export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, linkPopupLinks, setLinkPopupLinks, selectedLinkIndex, setSelectedLinkIndex, sourceNoteId, setPopupNoteText }) {
@@ -9,7 +10,7 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
       data-link-popup
       tabIndex={0}
     >
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+      <div className="link-selection-popup bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>
           <button
@@ -26,9 +27,9 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {/* Edit option - always first */}
           <div
-            className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+            className={`link-selection-option p-3 rounded-lg border cursor-pointer transition-colors ${
               selectedLinkIndex === 0
-                ? 'bg-blue-100 border-blue-300 text-blue-800'
+                ? 'link-selection-option-selected bg-blue-100 border-blue-300 text-blue-800'
                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
             onClick={() => {
@@ -49,13 +50,13 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
           {/* Open all links option - only show if there are links */}
           {linkPopupLinks.length > 0 && (
             <div
-              className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+            className={`link-selection-option p-3 rounded-lg border cursor-pointer transition-colors ${
                 selectedLinkIndex === 1
-                  ? 'bg-blue-100 border-blue-300 text-blue-800'
+                  ? 'link-selection-option-selected bg-blue-100 border-blue-300 text-blue-800'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
               }`}
               onClick={() => {
-                linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+                linkPopupLinks.forEach(link => window.open(getInstagramReelsUrl(link.url), '_blank'));
                 setShowLinkPopup(false);
                 setLinkPopupLinks([]);
                 setSelectedLinkIndex(0);
@@ -72,13 +73,13 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
           {linkPopupLinks.map((link, index) => (
             <div
               key={index}
-              className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+              className={`link-selection-option p-3 rounded-lg border cursor-pointer transition-colors ${
                 selectedLinkIndex === index + 2
-                  ? 'bg-blue-100 border-blue-300 text-blue-800'
+                  ? 'link-selection-option-selected bg-blue-100 border-blue-300 text-blue-800'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
               }`}
               onClick={() => {
-                window.open(link.url, '_blank');
+                window.open(getInstagramReelsUrl(link.url), '_blank');
                 setShowLinkPopup(false);
                 setLinkPopupLinks([]);
                 setSelectedLinkIndex(0);
@@ -97,4 +98,4 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
       </div>
     </div>
   );
-} 
+}

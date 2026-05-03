@@ -23,13 +23,13 @@ export default function NoteTagBar({
   showCreatedDate = false,
   onNavigate,
   allNotes,
-  setSearchQuery
+  setSearchQuery,
+  compact = false
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const metaTags = extractMetaTags(note.content);
   const metaTagCount = Object.values(metaTags).reduce((total, tags) => total + tags.length, 0);
-  const hasDuplicateActions = duplicateUrlNoteIds.has(note.id) || duplicateWithinNoteIds.has(note.id);
-  const hasMetaTagContent = metaTagCount > 0 || hasDuplicateActions;
+  const hasMetaTagContent = metaTagCount > 0;
 
   const removeTag = (tagType, value = '') => {
     const prefix = `meta::${tagType}`;
@@ -144,8 +144,8 @@ export default function NoteTagBar({
   if (focusMode || (!hasMetaTagContent && !showCreatedDate)) return null;
 
   return (
-    <div className="w-full">
-      <div className="mb-1 flex items-center gap-2">
+    <div className={`${compact ? 'relative min-w-0' : 'w-full'} opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100`}>
+      <div className={`${compact ? '' : 'mb-1'} flex items-center gap-2`}>
         {hasMetaTagContent && (
           <button
             type="button"
@@ -167,7 +167,7 @@ export default function NoteTagBar({
         )}
       </div>
       {isExpanded && (
-        <div className="flex flex-wrap gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-2">
+        <div className={`${compact ? 'absolute bottom-full left-0 z-40 mb-1 w-[min(36rem,calc(100vw-4rem))] shadow-lg' : ''} flex flex-wrap gap-2 rounded-lg border border-gray-100 bg-gray-50/95 p-2`}>
           {/* Todo Tags with Priority */}
           {metaTags.todo.map((todoDate, index) => (
             <React.Fragment key={`todo-group-${index}`}>

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { deleteImageById, loadAllNotes, updateNoteById, listImages, exportAllNotes, uploadImage } from '../utils/ApiUtils';
 import { decodeSensitiveContent, encodeSensitiveContent, hasEncodedContent } from '../utils/SensitiveUrlUtils';
 import { extractImageIds } from '../utils/NotesUtils';
+import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const LARGE_IMAGE_THRESHOLD_BYTES = 750 * 1024;
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -94,6 +95,7 @@ const replaceImageReferences = (content, oldImage, newImage) => {
 };
 
 const Manage = () => {
+  const { openEditor } = useNoteEditor();
   const [activeTab, setActiveTab] = useState('notes');
   const [activeSubTab, setActiveSubTab] = useState('search-replace');
   const [searchText, setSearchText] = useState('');
@@ -1395,12 +1397,13 @@ const Manage = () => {
                                   <div className="text-xs text-gray-500 font-mono break-all mb-3">
                                     {image.filename}
                                   </div>
-                                  <a
-                                    href={`/#/?search=id:${note.id}`}
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditor('edit', note.content, note.id)}
                                     className="text-sm text-blue-600 hover:text-blue-800"
                                   >
                                     Open note
-                                  </a>
+                                  </button>
                                   <button
                                     onClick={() => handleReduceImageSize(image)}
                                     disabled={compressingImageId === image.id}

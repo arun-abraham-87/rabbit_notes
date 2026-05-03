@@ -673,11 +673,46 @@ html.dark .reminder-action-more:hover {
   color: #1d4ed8;
 }
 
+.super-critical-reviews-row-label {
+  color: #2563eb;
+}
+
 .super-critical-reviews-add,
 .super-critical-review-chip {
   background-color: #ffffff;
   border-color: #bfdbfe;
   color: #1e3a8a;
+}
+
+.regular-watchlist-review-chip {
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.timed-watchlist-review-chip {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.timed-watchlist-review-days-pill {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.timed-watchlist-review-once-pill {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.timed-watchlist-review-recurring-pill {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.review-chip-link-text {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .super-critical-reviews-add:hover,
@@ -715,26 +750,30 @@ html.dark .reminder-action-more:hover {
   color: #1e3a8a;
 }
 
-.super-critical-review-unmark {
+.super-critical-review-action-menu {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #111827;
+}
+
+.super-critical-review-action-menu-item {
+  color: #1f2937;
+}
+
+.super-critical-review-action-menu-item:hover,
+.super-critical-review-action-menu-item:focus {
   background-color: #eff6ff;
-  border-color: #93c5fd;
   color: #1d4ed8;
 }
 
-.super-critical-review-unmark:hover {
-  background-color: #dbeafe;
-}
-
-.super-critical-review-delete {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  color: #475569;
-}
-
-.super-critical-review-delete:hover {
-  background-color: #fee2e2;
-  border-color: #fecaca;
+.super-critical-review-action-menu-delete {
   color: #b91c1c;
+}
+
+.super-critical-review-action-menu-delete:hover,
+.super-critical-review-action-menu-delete:focus {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .super-critical-review-preview {
@@ -771,11 +810,44 @@ html.dark .super-critical-reviews-title {
   color: #bfdbfe !important;
 }
 
+html.dark .super-critical-reviews-row-label {
+  color: #bfdbfe !important;
+}
+
 html.dark .super-critical-reviews-add,
 html.dark .super-critical-review-chip {
   background-color: #1e3a8a !important;
   border-color: #2563eb !important;
   color: #dbeafe !important;
+}
+
+html.dark .regular-watchlist-review-chip {
+  border-color: #475569 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .timed-watchlist-review-chip {
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+html.dark .timed-watchlist-review-days-pill {
+  background-color: #1d4ed8 !important;
+  color: #eff6ff !important;
+}
+
+html.dark .timed-watchlist-review-once-pill {
+  background-color: #3b1120 !important;
+  color: #fecdd3 !important;
+}
+
+html.dark .timed-watchlist-review-recurring-pill {
+  background-color: #0c4a6e !important;
+  color: #e0f2fe !important;
+}
+
+html.dark .review-chip-link-text {
+  color: #bfdbfe !important;
 }
 
 html.dark .super-critical-reviews-add:hover,
@@ -815,25 +887,29 @@ html.dark .super-critical-reviews-cancel:hover {
   color: #eff6ff !important;
 }
 
-html.dark .super-critical-review-unmark {
+html.dark .super-critical-review-action-menu {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .super-critical-review-action-menu-item {
+  color: #e5e7eb !important;
+}
+
+html.dark .super-critical-review-action-menu-item:hover,
+html.dark .super-critical-review-action-menu-item:focus {
   background-color: rgba(30, 58, 138, 0.72) !important;
-  border-color: #3b82f6 !important;
   color: #dbeafe !important;
 }
 
-html.dark .super-critical-review-unmark:hover {
-  background-color: #1d4ed8 !important;
+html.dark .super-critical-review-action-menu-delete {
+  color: #fecdd3 !important;
 }
 
-html.dark .super-critical-review-delete {
-  background-color: #111827 !important;
-  border-color: #334155 !important;
-  color: #cbd5e1 !important;
-}
-
-html.dark .super-critical-review-delete:hover {
+html.dark .super-critical-review-action-menu-delete:hover,
+html.dark .super-critical-review-action-menu-delete:focus {
   background-color: #3b1120 !important;
-  border-color: #be123c !important;
   color: #fecdd3 !important;
 }
 
@@ -1371,4 +1447,127 @@ html.dark .note-editor-link-row {
 .dev-mode-badge:hover .dev-mode-text {
     max-width: none;
     overflow: visible;
+}
+
+.weather-rainy-card {
+    background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 55%, #ffffff 100%);
+}
+
+.weather-rainy-animation {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.weather-rainy-animation span {
+    position: absolute;
+    top: -18px;
+    width: 2px;
+    height: 18px;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.55));
+    animation-name: rainy;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.weather-rainy-animation span:nth-child(1) { left: 8%; animation-duration: 0.9s; animation-delay: -0.2s; }
+.weather-rainy-animation span:nth-child(2) { left: 24%; animation-duration: 1.1s; animation-delay: -0.6s; }
+.weather-rainy-animation span:nth-child(3) { left: 42%; animation-duration: 0.8s; animation-delay: -0.1s; }
+.weather-rainy-animation span:nth-child(4) { left: 58%; animation-duration: 1.2s; animation-delay: -0.8s; }
+.weather-rainy-animation span:nth-child(5) { left: 74%; animation-duration: 0.95s; animation-delay: -0.4s; }
+.weather-rainy-animation span:nth-child(6) { left: 90%; animation-duration: 1.05s; animation-delay: -0.7s; }
+
+@keyframes rainy {
+    0% {
+        transform: translate3d(0, -20px, 0) rotate(12deg);
+        opacity: 0;
+    }
+    12% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(-24px, 132px, 0) rotate(12deg);
+        opacity: 0;
+    }
+}
+
+.weather-forecast-animation {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.weather-forecast-animation-sunny span {
+    position: absolute;
+    right: 9px;
+    top: 18px;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(250, 204, 21, 0.85) 0%, rgba(250, 204, 21, 0.45) 45%, rgba(250, 204, 21, 0) 72%);
+    box-shadow: 0 0 16px rgba(250, 204, 21, 0.45);
+    animation: sunny 2.4s ease-in-out infinite;
+}
+
+.weather-forecast-animation-rainy span {
+    position: absolute;
+    top: -12px;
+    width: 2px;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.55));
+    animation-name: rainy;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.weather-forecast-animation-rainy span:nth-child(1) { right: 12px; animation-duration: 0.9s; animation-delay: -0.2s; }
+.weather-forecast-animation-rainy span:nth-child(2) { right: 25px; animation-duration: 1.05s; animation-delay: -0.5s; }
+.weather-forecast-animation-rainy span:nth-child(3) { right: 38px; animation-duration: 0.8s; animation-delay: -0.1s; }
+
+.weather-forecast-animation-cloudy span {
+    position: absolute;
+    right: 9px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.25);
+    animation: cloudy 4s ease-in-out infinite;
+}
+
+.weather-forecast-animation-cloudy span:nth-child(1) {
+    top: 18px;
+    width: 34px;
+    height: 15px;
+}
+
+.weather-forecast-animation-cloudy span:nth-child(2) {
+    top: 12px;
+    right: 20px;
+    width: 24px;
+    height: 20px;
+    animation-delay: -1.4s;
+}
+
+@keyframes sunny {
+    0%, 100% {
+        transform: scale(0.92) rotate(0deg);
+        opacity: 0.55;
+    }
+    50% {
+        transform: scale(1.08) rotate(12deg);
+        opacity: 0.9;
+    }
+}
+
+@keyframes cloudy {
+    0%, 100% {
+        transform: translateX(0);
+        opacity: 0.45;
+    }
+    50% {
+        transform: translateX(-8px);
+        opacity: 0.75;
+    }
 }

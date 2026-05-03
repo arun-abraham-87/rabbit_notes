@@ -124,12 +124,29 @@ const NotesList = ({
   const [pastedImageForEditor, setPastedImageForEditor] = useState(null);
   const [imagePreviewForEditor, setImagePreviewForEditor] = useState(null);
 
+  const clearEditorImagePreview = () => {
+    setPastedImageForEditor(null);
+    setImagePreviewForEditor(previousPreview => {
+      if (previousPreview) URL.revokeObjectURL(previousPreview);
+      return null;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewForEditor) {
+        URL.revokeObjectURL(imagePreviewForEditor);
+      }
+    };
+  }, [imagePreviewForEditor]);
+
   // Compress image while maintaining dimensions
   const compressImage = (file, quality = 0.8) => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
 
       img.onload = () => {
         // Keep original dimensions
@@ -141,13 +158,21 @@ const NotesList = ({
 
         // Convert to blob with compression
         canvas.toBlob(
-          (blob) => resolve(blob),
+          (blob) => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(blob);
+          },
           'image/jpeg', // Convert to JPEG for better compression
           quality
         );
       };
 
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
     });
   };
 
@@ -2444,8 +2469,7 @@ const NotesList = ({
                   setPopupNoteText(null);
 
                   // Clear image state
-                  setPastedImageForEditor(null);
-                  setImagePreviewForEditor(null);
+                  clearEditorImagePreview();
 
                   // Clear the text mode flag
                   localStorage.removeItem('openInTextMode');
@@ -2484,8 +2508,7 @@ const NotesList = ({
                   setPopupNoteText(null);
 
                   // Clear image state
-                  setPastedImageForEditor(null);
-                  setImagePreviewForEditor(null);
+                  clearEditorImagePreview();
 
                   // Clear the text mode flag
                   localStorage.removeItem('openInTextMode');
@@ -2505,8 +2528,7 @@ const NotesList = ({
                 setPopupNoteText(null);
 
                 // Clear image state
-                setPastedImageForEditor(null);
-                setImagePreviewForEditor(null);
+                clearEditorImagePreview();
 
                 // Clear the text mode flag
                 localStorage.removeItem('openInTextMode');
@@ -2532,7 +2554,10 @@ const NotesList = ({
                 const file = new File([blob], `clipboard-image${extension}`, { type: blob.type });
 
                 setPastedImageForEditor(file);
-                setImagePreviewForEditor(URL.createObjectURL(file));
+                setImagePreviewForEditor(previousPreview => {
+                  if (previousPreview) URL.revokeObjectURL(previousPreview);
+                  return URL.createObjectURL(file);
+                });
               }}
             />
 
@@ -2557,8 +2582,7 @@ const NotesList = ({
                       </div>
                       <button
                         onClick={() => {
-                          setPastedImageForEditor(null);
-                          setImagePreviewForEditor(null);
+                          clearEditorImagePreview();
                         }}
                         className="flex items-center gap-1 px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150 text-sm"
                       >

@@ -6,6 +6,14 @@
 
 const STORAGE_KEY = 'noteHistory';
 const MAX_HISTORY_SIZE = 5;
+const MAX_HISTORY_CONTENT_CHARS = 8000;
+
+const compactHistoryNote = (note) => ({
+  ...note,
+  content: typeof note.content === 'string'
+    ? note.content.slice(0, MAX_HISTORY_CONTENT_CHARS)
+    : note.content
+});
 
 /**
  * Save a note to history
@@ -25,7 +33,7 @@ export const saveNoteToHistory = (note) => {
     const filteredHistory = existingHistory.filter(item => item.id !== note.id);
     
     // Add the new note at the beginning
-    const newHistory = [note, ...filteredHistory];
+    const newHistory = [compactHistoryNote(note), ...filteredHistory.map(compactHistoryNote)];
     
     // Keep only the most recent MAX_HISTORY_SIZE notes (FIFO)
     const trimmedHistory = newHistory.slice(0, MAX_HISTORY_SIZE);
@@ -97,4 +105,3 @@ export const removeNoteFromHistory = (noteId) => {
     console.error('[NoteHistory] Error removing note from history:', error);
   }
 };
-

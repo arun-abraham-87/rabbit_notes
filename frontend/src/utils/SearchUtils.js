@@ -2,6 +2,30 @@ import MiniSearch from 'minisearch';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
+const MAX_INDEXED_CONTENT_CHARS = 12000;
+
+const normalizeSearchContent = (content) => {
+  if (typeof content !== 'string') return '';
+
+  return content
+    .split('\n')
+    .filter(line => {
+      const trimmed = line.trim();
+      return !trimmed.startsWith('meta::image::') && !trimmed.startsWith('data:image/');
+    })
+    .join('\n')
+    .slice(0, MAX_INDEXED_CONTENT_CHARS);
+};
+
+const buildSearchDocument = (note) => {
+  const content = normalizeSearchContent(note.content);
+  return {
+    id: note.id,
+    content,
+    title: content.split('\n')[0] || '',
+    created_datetime: note.created_datetime
+  };
+};
 
 // Create a new MiniSearch instance
 const miniSearch = new MiniSearch({
@@ -29,12 +53,7 @@ export const initializeSearchIndex = (notes) => {
   // Add all notes to the index
   const documents = notes
     .filter(note => note && note.content) // Filter out invalid notes
-    .map(note => ({
-      id: note.id,
-      content: note.content,
-      title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
-      created_datetime: note.created_datetime
-    }));
+    .map(buildSearchDocument);
   
   miniSearch.addAll(documents);
   isInitialized = true;
@@ -56,12 +75,7 @@ export const searchNotes = (query) => {
 export const addNoteToIndex = (note) => {
   if (!note || !note.content || !isInitialized) return;
   
-  const document = {
-    id: note.id,
-    content: note.content,
-    title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
-    created_datetime: note.created_datetime
-  };
+  const document = buildSearchDocument(note);
   
   miniSearch.add(document);
 };
@@ -70,12 +84,7 @@ export const addNoteToIndex = (note) => {
 export const updateNoteInIndex = (note) => {
   if (!note || !note.content || !isInitialized) return;
   
-  const document = {
-    id: note.id,
-    content: note.content,
-    title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
-    created_datetime: note.created_datetime
-  };
+  const document = buildSearchDocument(note);
   
   miniSearch.replace(document);
 };
@@ -85,6 +94,12 @@ export const removeNoteFromIndex = (noteId) => {
   if (!noteId || !isInitialized) return;
   
   miniSearch.remove({ id: noteId });
+};
+
+export const clearSearchIndex = () => {
+  if (!isInitialized) return;
+  miniSearch.removeAll();
+  isInitialized = false;
 };
 
 export const getRecentSearches = () => {

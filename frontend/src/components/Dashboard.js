@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AlertsProvider, TodayEventsBar, BackupAlert } from './Alerts.js';
+import { AlertsProvider, BackupAlert } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
 import { loadAllNotes, createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils.js';
@@ -8,7 +8,6 @@ import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, Plus
 import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
 import EventManager from './EventManager.js';
-import FlaggedReviewDues from './FlaggedReviewDues.js';
 import StockPrice from './Stocks.js';
 import ExchangeRates from './ExchangeRates.js';
 import Weather from './Weather.js';
@@ -16,22 +15,45 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 import EditEventModal from './EditEventModal.js';
 import WatchedTrackers from './WatchedTrackers.js';
-import NoteCardContent from './NoteCardContent.js';
+import ReminderWatchCard from './ReminderWatchCard.js';
 
 import TrackedInfoCards from './TrackedInfoCards.js';
 import Countdown from './Countdown.js';
 import CustomCalendar from './CustomCalendar.js';
 import { useLeftPanel } from '../contexts/LeftPanelContext.js';
 import { useNoteEditor } from '../contexts/NoteEditorContext.js';
-import { DEFAULT_APP_FONT, applyAppFont } from '../utils/FontUtils';
-import { withTimerMeta } from '../utils/TimerUtils';
-import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
+import { getTimerStatus, TIMER_CADENCE_PREFIX, withTimerMeta } from '../utils/TimerUtils';
+import { addCurrentDateToLocalStorage, findDueRemindersAsNotes, getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 import {
   DASHBOARD_EVENT_FILTERS_SETTING_KEY,
   readNoteBackedSettingFromNotes,
   saveNoteBackedSetting,
 } from '../utils/NoteBackedSettingsUtils';
 import { CheckIcon, FireIcon, ExclamationTriangleIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+
+const loadDashboardStockPriceHistory = () => {
+  try {
+    const cached = localStorage.getItem('stockPriceHistory');
+    const parsed = cached ? JSON.parse(cached) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(item => item && typeof item.price === 'number' && item.timestamp)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const getDashboardStockPriceChange = (history) => {
+  if (!history || history.length < 2) return null;
+  const latest = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (!latest || !previous) return null;
+  return {
+    direction: latest.price === previous.price ? 'same' : latest.price > previous.price ? 'up' : 'down',
+    amount: Math.abs(latest.price - previous.price),
+    percent: previous.price ? Math.abs(((latest.price - previous.price) / previous.price) * 100) : null
+  };
+};
 
 const AddOptionsPopup = ({ isOpen, onClose, onAddNote, onAddWatch, onAddSuperCritical, onAddTimer, onAddEvent, onAddDeadline, onAddHoliday }) => {
   useEffect(() => {
@@ -365,7 +387,15 @@ function toYMD(date) {
 }
 
 const API_HABITS = 'http://localhost:5001/api/habits';
+const API_QUICK_LISTS = `${API_HABITS}/quick-lists`;
+const API_COSTCO_FUEL_PRICES = 'http://localhost:5001/api/realestate/costco-fuel-prices';
+const COSTCO_FUEL_CACHE_KEY = 'costcoFuelPricesData';
+const COSTCO_FUEL_HISTORY_KEY = 'costcoFuelPricesHistory';
 const TINY_HABIT_TAG_FALLBACK = 'Untagged';
+const clampTinyHabitsPanelWidth = (width) => {
+  const maxWidth = typeof window === 'undefined' ? 720 : Math.min(720, Math.floor(window.innerWidth * 0.55));
+  return Math.min(maxWidth, Math.max(320, width));
+};
 
 const normalizeTinyHabitTag = (tag) => (typeof tag === 'string' ? tag.trim() : '');
 const getTinyHabitTagLabel = (habit) => normalizeTinyHabitTag(habit?.tag) || TINY_HABIT_TAG_FALLBACK;
@@ -382,12 +412,38 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
   const [adding, setAdding] = React.useState(false);
   const [newName, setNewName] = React.useState('');
   const [newTag, setNewTag] = React.useState('');
+  const [quickLists, setQuickLists] = React.useState([]);
+  const [newQuickListTitle, setNewQuickListTitle] = React.useState('');
+  const [newQuickListItems, setNewQuickListItems] = React.useState({});
+  const [quickNotes, setQuickNotes] = React.useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dashboardQuickNotes') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+  const [newQuickNoteText, setNewQuickNoteText] = React.useState('');
+  const [editingQuickListId, setEditingQuickListId] = React.useState(null);
+  const [editingQuickListTitle, setEditingQuickListTitle] = React.useState('');
+  const [editingQuickItem, setEditingQuickItem] = React.useState(null);
+  const [editingQuickItemText, setEditingQuickItemText] = React.useState('');
+  const [editingQuickNoteId, setEditingQuickNoteId] = React.useState(null);
+  const [editingQuickNoteText, setEditingQuickNoteText] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [editName, setEditName] = React.useState('');
   const [editTag, setEditTag] = React.useState('');
   const [hideDone, setHideDone] = React.useState(false);
   const [groupByTag, setGroupByTag] = React.useState(true);
   const [selectedDate, setSelectedDate] = React.useState(toYMD(new Date()));
+  const [collapseMode, setCollapseMode] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('tinyHabitsDashboardCollapseMode');
+      return ['open', 'half', 'full'].includes(saved) ? saved : 'open';
+    } catch {
+      return 'open';
+    }
+  });
   const today = toYMD(new Date());
   const isToday = selectedDate === today;
 
@@ -406,13 +462,25 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
     Promise.all([
       fetch(API_HABITS).then(r => r.json()).catch(() => []),
       fetch(`${API_HABITS}/completions`).then(r => r.json()).catch(() => ({})),
-    ]).then(([h, c]) => {
+      fetch(API_QUICK_LISTS).then(r => r.json()).catch(() => []),
+    ]).then(([h, c, lists]) => {
       setHabits(Array.isArray(h) ? h.filter(x => x.active && x.frequency === 'daily').map(normalizeTinyHabit) : []);
       setCompletions(typeof c === 'object' ? c : {});
+      setQuickLists(Array.isArray(lists) ? lists : []);
     });
   }, []);
 
   React.useEffect(() => { load(); }, [load]);
+
+  const saveQuickNotes = (updater) => {
+    setQuickNotes(current => {
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      try {
+        localStorage.setItem('dashboardQuickNotes', JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const toggle = async (habitId) => {
     const prev = !!(completions[selectedDate]?.[habitId]);
@@ -465,6 +533,127 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
     } catch { /* ignore */ }
   };
 
+  const handleAddQuickList = async () => {
+    const title = newQuickListTitle.trim();
+    if (!title) return;
+    try {
+      const res = await fetch(API_QUICK_LISTS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const created = await res.json();
+      setQuickLists(lists => [...lists, created]);
+      setNewQuickListTitle('');
+    } catch { /* ignore */ }
+  };
+
+  const handleRenameQuickList = async (listId) => {
+    const title = editingQuickListTitle.trim();
+    if (!title) return;
+    try {
+      const res = await fetch(`${API_QUICK_LISTS}/${listId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const updated = await res.json();
+      setQuickLists(lists => lists.map(list => list.id === listId ? updated : list));
+      setEditingQuickListId(null);
+      setEditingQuickListTitle('');
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteQuickList = async (listId) => {
+    if (!window.confirm('Delete this quick list?')) return;
+    try {
+      await fetch(`${API_QUICK_LISTS}/${listId}`, { method: 'DELETE' });
+      setQuickLists(lists => lists.filter(list => list.id !== listId));
+    } catch { /* ignore */ }
+  };
+
+  const handleAddQuickListItem = async (listId) => {
+    const text = (newQuickListItems[listId] || '').trim();
+    if (!text) return;
+    try {
+      const res = await fetch(`${API_QUICK_LISTS}/${listId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const created = await res.json();
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId ? { ...list, items: [...(list.items || []), created] } : list
+      )));
+      setNewQuickListItems(values => ({ ...values, [listId]: '' }));
+    } catch { /* ignore */ }
+  };
+
+  const handleUpdateQuickListItem = async (listId, itemId, updates) => {
+    try {
+      const res = await fetch(`${API_QUICK_LISTS}/${listId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const updated = await res.json();
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId
+          ? { ...list, items: (list.items || []).map(item => item.id === itemId ? updated : item) }
+          : list
+      )));
+      setEditingQuickItem(null);
+      setEditingQuickItemText('');
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteQuickListItem = async (listId, itemId) => {
+    try {
+      await fetch(`${API_QUICK_LISTS}/${listId}/items/${itemId}`, { method: 'DELETE' });
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId
+          ? { ...list, items: (list.items || []).filter(item => item.id !== itemId) }
+          : list
+      )));
+    } catch { /* ignore */ }
+  };
+
+  const handleAddQuickNote = () => {
+    const text = newQuickNoteText.trim();
+    if (!text) return;
+    saveQuickNotes(notes => [
+      { id: Date.now().toString(), text, createdAt: new Date().toISOString() },
+      ...notes,
+    ]);
+    setNewQuickNoteText('');
+  };
+
+  const handleSaveQuickNoteEdit = (noteId) => {
+    const text = editingQuickNoteText.trim();
+    if (!text) {
+      saveQuickNotes(notes => notes.filter(note => note.id !== noteId));
+    } else {
+      saveQuickNotes(notes => notes.map(note => note.id === noteId ? { ...note, text } : note));
+    }
+    setEditingQuickNoteId(null);
+    setEditingQuickNoteText('');
+  };
+
+  const handleDeleteQuickNote = (noteId) => {
+    saveQuickNotes(notes => notes.filter(note => note.id !== noteId));
+  };
+
+  const handleConvertQuickNote = async (note) => {
+    const text = (note?.text || '').trim();
+    if (!text) return;
+    try {
+      await createNote(text);
+      handleDeleteQuickNote(note.id);
+    } catch (error) {
+      console.error('Failed to convert quick note:', error);
+    }
+  };
+
   const [doneCollapsed, setDoneCollapsed] = React.useState(true);
   const doneCount = habits.filter(h => completions[selectedDate]?.[h.id]).length;
   const pct = habits.length > 0 ? Math.round((doneCount / habits.length) * 100) : 0;
@@ -494,6 +683,33 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
 
   const visibleGroups = groupHabits(visibleHabits);
   const doneGroups = groupHabits(doneHabits);
+  const isFullyCollapsed = collapseMode === 'full';
+  const isHalfCollapsed = collapseMode === 'half';
+  const displayLimit = isHalfCollapsed ? 8 : Number.POSITIVE_INFINITY;
+
+  const limitGroups = (groups, limit) => {
+    if (!Number.isFinite(limit)) return groups;
+    let remaining = limit;
+    return groups.reduce((acc, group) => {
+      if (remaining <= 0) return acc;
+      const habitsForGroup = group.habits.slice(0, remaining);
+      if (habitsForGroup.length > 0) {
+        acc.push({ ...group, habits: habitsForGroup });
+        remaining -= habitsForGroup.length;
+      }
+      return acc;
+    }, []);
+  };
+
+  const displayedGroups = limitGroups(visibleGroups, displayLimit);
+  const hiddenPreviewCount = Math.max(0, visibleHabits.length - displayedGroups.reduce((sum, group) => sum + group.habits.length, 0));
+
+  const setStoredCollapseMode = (mode) => {
+    setCollapseMode(mode);
+    try {
+      localStorage.setItem('tinyHabitsDashboardCollapseMode', mode);
+    } catch { /* ignore */ }
+  };
 
   const renderHabitRow = (habit, doneSection = false) => {
     const isDone = !!(completions[selectedDate]?.[habit.id]);
@@ -571,6 +787,27 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
       <div className="mb-1 mt-2 border-b border-gray-200 pb-1 flex items-center justify-between">
         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Tiny Habits</h2>
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border border-gray-200 bg-white p-0.5">
+            {[
+              { value: 'open', label: 'open' },
+              { value: 'half', label: 'half' },
+              { value: 'full', label: 'full' },
+            ].map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setStoredCollapseMode(option.value)}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                  collapseMode === option.value
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-blue-600'
+                }`}
+                title={option.value === 'open' ? 'Open Tiny Habits' : option.value === 'half' ? 'Collapse Tiny Habits halfway' : 'Collapse Tiny Habits fully'}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setActivePage('tiny-habits')} className="text-xs text-blue-500 hover:text-blue-700 transition-colors">See all →</button>
           {onHide && (
             <button onClick={onHide} className="text-xs text-gray-400 hover:text-gray-600 transition-colors" title="Hide panel">‹ hide</button>
@@ -580,7 +817,7 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
       <div className="bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
 
         {/* Date nav */}
-        <div className="flex items-center justify-between mb-3">
+        <div className={`flex items-center justify-between ${isFullyCollapsed ? 'mb-0' : 'mb-3'}`}>
           <button onClick={() => shiftDate(-1)} className="p-0.5 text-gray-400 hover:text-gray-700 transition-colors">
             <ChevronLeftIcon className="h-4 w-4" />
           </button>
@@ -607,7 +844,7 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
         </div>
 
         {/* Progress bar + hide done toggle */}
-        {habits.length > 0 && (
+        {habits.length > 0 && !isFullyCollapsed && (
           <div className="flex items-center gap-2 mb-3">
             <div className="flex-1 bg-gray-100 rounded-full h-1.5">
               <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -633,8 +870,9 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
         )}
 
         {/* Habit rows */}
+        {!isFullyCollapsed && (
         <div className="space-y-1.5">
-          {visibleGroups.map(({ label, habits: groupedHabits }) => (
+          {displayedGroups.map(({ label, habits: groupedHabits }) => (
             <div key={label || 'all'} className="space-y-1.5">
               {label && (
                 <div className="flex items-center gap-2 pt-1">
@@ -653,10 +891,20 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
           {hideDone && pendingHabits.length === 0 && doneHabits.length > 0 && (
             <div className="text-xs text-gray-400 py-1">All done for today! 🎉</div>
           )}
+          {hiddenPreviewCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setStoredCollapseMode('open')}
+              className="w-full rounded-md border border-dashed border-gray-200 px-2 py-1 text-xs text-gray-400 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+            >
+              Show {hiddenPreviewCount} more
+            </button>
+          )}
         </div>
+        )}
 
         {/* Collapsed done section (only when hideDone is on) */}
-        {hideDone && doneHabits.length > 0 && (
+        {hideDone && doneHabits.length > 0 && !isFullyCollapsed && (
           <div className="mt-2 pt-2 border-t border-gray-100">
             <button
               onClick={() => setDoneCollapsed(c => !c)}
@@ -686,7 +934,7 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
         )}
 
         {/* Full-width add */}
-        {adding ? (
+        {!isFullyCollapsed && (adding ? (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex items-start gap-2">
               <div className="flex-1 space-y-2">
@@ -724,7 +972,264 @@ const TinyHabitsDashboardWidget = ({ setActivePage, onHide }) => {
             <PlusIcon className="h-3.5 w-3.5" />
             Add habit
           </button>
-        )}
+        ))}
+      </div>
+      <div className="mt-3 bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Quick Lists</h3>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+            <input
+              value={newQuickListTitle}
+              onChange={e => setNewQuickListTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAddQuickList();
+                if (e.key === 'Escape') setNewQuickListTitle('');
+              }}
+              placeholder="Add list"
+              className="min-w-0 max-w-[8rem] rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+            />
+            <button
+              type="button"
+              onClick={handleAddQuickList}
+              className="flex h-7 w-7 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
+              title="Add list"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {quickLists.map(list => {
+            const items = Array.isArray(list.items) ? list.items : [];
+            const incomplete = items.filter(item => !item.done).length;
+            const isEditingList = editingQuickListId === list.id;
+
+            return (
+              <div key={list.id} className="rounded-lg border border-gray-100 bg-gray-50/50 p-2">
+                <div className="mb-1.5 flex items-center gap-2">
+                  {isEditingList ? (
+                    <input
+                      autoFocus
+                      value={editingQuickListTitle}
+                      onChange={e => setEditingQuickListTitle(e.target.value)}
+                      onBlur={() => handleRenameQuickList(list.id)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenameQuickList(list.id);
+                        if (e.key === 'Escape') {
+                          setEditingQuickListId(null);
+                          setEditingQuickListTitle('');
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded border border-blue-300 px-1.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-300"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingQuickListId(list.id);
+                        setEditingQuickListTitle(list.title || '');
+                      }}
+                      className="min-w-0 flex-1 truncate text-left text-xs font-semibold text-gray-700"
+                      title="Edit list title"
+                    >
+                      {list.title || 'Untitled list'}
+                    </button>
+                  )}
+                  <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+                    {incomplete}/{items.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuickList(list.id)}
+                    className="text-gray-300 transition-colors hover:text-red-500"
+                    title="Delete list"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  {items.map(item => {
+                    const isEditingItem = editingQuickItem?.listId === list.id && editingQuickItem?.itemId === item.id;
+                    return (
+                      <div key={item.id} className="group flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQuickListItem(list.id, item.id, { done: !item.done })}
+                          className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
+                            item.done ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {item.done && <CheckIcon className="h-3 w-3" />}
+                        </button>
+                        {isEditingItem ? (
+                          <input
+                            autoFocus
+                            value={editingQuickItemText}
+                            onChange={e => setEditingQuickItemText(e.target.value)}
+                            onBlur={() => handleUpdateQuickListItem(list.id, item.id, { text: editingQuickItemText })}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleUpdateQuickListItem(list.id, item.id, { text: editingQuickItemText });
+                              if (e.key === 'Escape') {
+                                setEditingQuickItem(null);
+                                setEditingQuickItemText('');
+                              }
+                            }}
+                            className="min-w-0 flex-1 rounded border border-blue-300 px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingQuickItem({ listId: list.id, itemId: item.id });
+                              setEditingQuickItemText(item.text || '');
+                            }}
+                            className={`min-w-0 flex-1 truncate text-left text-xs ${item.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                            title="Edit item"
+                          >
+                            {item.text}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuickListItem(list.id, item.id)}
+                          className="text-gray-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+                          title="Delete item"
+                        >
+                          <XMarkIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <div className="py-1 text-xs text-gray-400">No items yet.</div>
+                  )}
+                </div>
+
+                <div className="mt-2 flex items-center gap-1.5">
+                  <input
+                    value={newQuickListItems[list.id] || ''}
+                    onChange={e => setNewQuickListItems(values => ({ ...values, [list.id]: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleAddQuickListItem(list.id);
+                      if (e.key === 'Escape') setNewQuickListItems(values => ({ ...values, [list.id]: '' }));
+                    }}
+                    placeholder="Add item"
+                    className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuickListItem(list.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded border border-blue-200 bg-white text-blue-600 transition-colors hover:bg-blue-50"
+                    title="Add item"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {quickLists.length === 0 && (
+            <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center text-xs text-gray-400">
+              Add a quick list here.
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Quick Notes</h3>
+        </div>
+
+        <div className="flex items-start gap-1.5">
+          <textarea
+            value={newQuickNoteText}
+            onChange={e => setNewQuickNoteText(e.target.value)}
+            onKeyDown={e => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAddQuickNote();
+              if (e.key === 'Escape') setNewQuickNoteText('');
+            }}
+            placeholder="Add a quick note"
+            rows={2}
+            className="min-w-0 flex-1 resize-none rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+          />
+          <button
+            type="button"
+            onClick={handleAddQuickNote}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
+            title="Add quick note"
+          >
+            <PlusIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {quickNotes.map(note => {
+            const isEditingNote = editingQuickNoteId === note.id;
+            return (
+              <div key={note.id} className="rounded-lg border border-gray-100 bg-gray-50/50 p-2">
+                {isEditingNote ? (
+                  <textarea
+                    autoFocus
+                    value={editingQuickNoteText}
+                    onChange={e => setEditingQuickNoteText(e.target.value)}
+                    onBlur={() => handleSaveQuickNoteEdit(note.id)}
+                    onKeyDown={e => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSaveQuickNoteEdit(note.id);
+                      if (e.key === 'Escape') {
+                        setEditingQuickNoteId(null);
+                        setEditingQuickNoteText('');
+                      }
+                    }}
+                    rows={3}
+                    className="w-full resize-none rounded border border-blue-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingQuickNoteId(note.id);
+                      setEditingQuickNoteText(note.text || '');
+                    }}
+                    className="w-full whitespace-pre-wrap text-left text-xs leading-relaxed text-gray-700"
+                    title="Edit quick note"
+                  >
+                    {note.text}
+                  </button>
+                )}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="truncate text-[10px] text-gray-400">
+                    {note.createdAt ? new Date(note.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : 'Quick note'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleConvertQuickNote(note)}
+                      className="rounded border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-blue-600 transition-colors hover:bg-blue-50"
+                      title="Convert to note"
+                    >
+                      To note
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteQuickNote(note.id)}
+                      className="text-gray-300 transition-colors hover:text-red-500"
+                      title="Delete quick note"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {quickNotes.length === 0 && (
+            <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center text-xs text-gray-400">
+              Capture quick notes here.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -746,18 +1251,29 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
   const [notesHasOverflow, setNotesHasOverflow] = useState(false);
   const [eventNotesHasOverflow, setEventNotesHasOverflow] = useState(false);
+  const [eventNotesScrolledRight, setEventNotesScrolledRight] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   const [showHabitsPanel, setShowHabitsPanel] = useState(() => {
     try { return localStorage.getItem('showHabitsPanel') !== 'false'; } catch { return true; }
   });
+  const [tinyHabitsPanelWidth, setTinyHabitsPanelWidth] = useState(() => {
+    try {
+      return clampTinyHabitsPanelWidth(Number(localStorage.getItem('tinyHabitsPanelWidth')) || 384);
+    } catch {
+      return 384;
+    }
+  });
+  const [isResizingTinyHabitsPanel, setIsResizingTinyHabitsPanel] = useState(false);
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
   const [showAddOptionsPopup, setShowAddOptionsPopup] = useState(false);
   const [showAlertsHelpPopup, setShowAlertsHelpPopup] = useState(false);
+  const [isAlertsRemindersExpanded, setIsAlertsRemindersExpanded] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
+  const [isAddingTemporaryEvent, setIsAddingTemporaryEvent] = useState(false);
   const [activeFilters, setActiveFilters] = useState(() => {
     try {
       const saved = localStorage.getItem('defaultEventFilters');
@@ -769,14 +1285,44 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   const [lastLoginTime, setLastLoginTime] = useState(null);
   const [activePopup, setActivePopup] = useState(null);
   const [dashboardDataRefreshTick, setDashboardDataRefreshTick] = useState(0);
-  const [showFontSelector, setShowFontSelector] = useState(false);
-  const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
+  const [costcoFuelPrices, setCostcoFuelPrices] = useState(() => {
+    try {
+      const cached = localStorage.getItem(COSTCO_FUEL_CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [costcoFuelHistory, setCostcoFuelHistory] = useState(() => {
+    try {
+      const cached = localStorage.getItem(COSTCO_FUEL_HISTORY_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [costcoFuelLoading, setCostcoFuelLoading] = useState(false);
+  const [showCostcoFuelCache, setShowCostcoFuelCache] = useState(false);
+  const [showAnalogClock, setShowAnalogClock] = useState(() => {
+    try { return localStorage.getItem('dashboardShowAnalogClock') !== 'false'; } catch { return true; }
+  });
+  const [showTimeBuddy, setShowTimeBuddy] = useState(() => {
+    try { return localStorage.getItem('dashboardShowTimeBuddy') !== 'false'; } catch { return true; }
+  });
+  const [clockFace, setClockFace] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardClockFace');
+      return ['classic', 'minimal', 'numbers'].includes(saved) ? saved : 'classic';
+    } catch {
+      return 'classic';
+    }
+  });
   const [showQuickSuperCriticalAdd, setShowQuickSuperCriticalAdd] = useState(false);
   const [quickSuperCriticalTitle, setQuickSuperCriticalTitle] = useState('');
   const [activeSuperCriticalPreviewId, setActiveSuperCriticalPreviewId] = useState(null);
+  const [superCriticalActionMenu, setSuperCriticalActionMenu] = useState(null);
   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
   const [calendarPopupStyle, setCalendarPopupStyle] = useState({ top: 0, left: 16, width: 1100 });
-  const fontSelectorRef = useRef(null);
   const quickSuperCriticalInputRef = useRef(null);
   const superCriticalPreviewOpenTimeoutRef = useRef(null);
   const superCriticalPreviewCloseTimeoutRef = useRef(null);
@@ -796,11 +1342,33 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Apply selected font globally
   useEffect(() => {
-    applyAppFont(selectedFont);
-    localStorage.setItem('appFont', selectedFont);
-  }, [selectedFont]);
+    if (!isResizingTinyHabitsPanel) return;
+
+    const handleMouseMove = (event) => {
+      const nextWidth = clampTinyHabitsPanelWidth(window.innerWidth - event.clientX);
+      setTinyHabitsPanelWidth(nextWidth);
+      localStorage.setItem('tinyHabitsPanelWidth', String(nextWidth));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingTinyHabitsPanel(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingTinyHabitsPanel]);
 
   useEffect(() => {
     if (loadedDashboardFilterDefaultsRef.current || !Array.isArray(notes)) return;
@@ -828,6 +1396,25 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     }
   }, [showQuickSuperCriticalAdd]);
 
+  useEffect(() => {
+    if (!superCriticalActionMenu) return;
+
+    const closeActionMenu = () => setSuperCriticalActionMenu(null);
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeActionMenu();
+    };
+
+    document.addEventListener('click', closeActionMenu);
+    document.addEventListener('contextmenu', closeActionMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('click', closeActionMenu);
+      document.removeEventListener('contextmenu', closeActionMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [superCriticalActionMenu]);
+
   useEffect(() => () => {
     if (calendarHoverTimeoutRef.current) {
       clearTimeout(calendarHoverTimeoutRef.current);
@@ -842,58 +1429,65 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
 
   useEffect(() => {
     const handleDashboardDataUpdated = () => setDashboardDataRefreshTick(tick => tick + 1);
+    document.addEventListener('stockPriceUpdated', handleDashboardDataUpdated);
     document.addEventListener('exchangeRatesUpdated', handleDashboardDataUpdated);
     document.addEventListener('weatherUpdated', handleDashboardDataUpdated);
     return () => {
+      document.removeEventListener('stockPriceUpdated', handleDashboardDataUpdated);
       document.removeEventListener('exchangeRatesUpdated', handleDashboardDataUpdated);
       document.removeEventListener('weatherUpdated', handleDashboardDataUpdated);
     };
   }, []);
 
-  // Close font selector on outside click
   useEffect(() => {
-    if (!showFontSelector) return;
-    const handleClick = (e) => {
-      if (fontSelectorRef.current && !fontSelectorRef.current.contains(e.target)) {
-        setShowFontSelector(false);
+    const getMelbourneDateKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Melbourne' });
+    const readStoredFuelData = (key, fallback) => {
+      try {
+        const cached = localStorage.getItem(key);
+        return cached ? JSON.parse(cached) : fallback;
+      } catch {
+        return fallback;
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showFontSelector]);
+    const saveFuelSnapshot = (data) => {
+      const snapshot = { ...data, cacheDateKey: getMelbourneDateKey() };
+      const previousHistory = readStoredFuelData(COSTCO_FUEL_HISTORY_KEY, []);
+      const nextHistory = [
+        snapshot,
+        ...previousHistory.filter(item => item?.fetchedAt !== snapshot.fetchedAt),
+      ].slice(0, 20);
 
-  const availableFonts = [
-    DEFAULT_APP_FONT,
-    'Arial',
-    'Helvetica',
-    'Verdana',
-    'Tahoma',
-    'Trebuchet MS',
-    'Georgia',
-    'Times New Roman',
-    'Garamond',
-    'Courier New',
-    'Monaco',
-    'Menlo',
-    'Consolas',
-    'SF Pro Display',
-    'SF Mono',
-    'Inter',
-    'Roboto',
-    'Open Sans',
-    'Lato',
-    'Montserrat',
-    'Raleway',
-    'Poppins',
-    'Nunito',
-    'Quicksand',
-    'Comic Sans MS',
-    'Impact',
-    'Lucida Console',
-    'Palatino Linotype',
-    'Book Antiqua',
-    'Segoe UI',
-  ];
+      setCostcoFuelPrices(snapshot);
+      setCostcoFuelHistory(nextHistory);
+      localStorage.setItem(COSTCO_FUEL_CACHE_KEY, JSON.stringify(snapshot));
+      localStorage.setItem(COSTCO_FUEL_HISTORY_KEY, JSON.stringify(nextHistory));
+    };
+    const fetchCostcoFuelPrices = async (force = false) => {
+      const cached = readStoredFuelData(COSTCO_FUEL_CACHE_KEY, null);
+      if (!force && cached?.cacheDateKey === getMelbourneDateKey()) {
+        setCostcoFuelPrices(cached);
+        setCostcoFuelHistory(readStoredFuelData(COSTCO_FUEL_HISTORY_KEY, []));
+        return;
+      }
+
+      setCostcoFuelLoading(true);
+      try {
+        const response = await fetch(API_COSTCO_FUEL_PRICES);
+        if (!response.ok) throw new Error(`Fuel price request failed: ${response.status}`);
+        const data = await response.json();
+        saveFuelSnapshot(data);
+      } catch (error) {
+        console.error('Error fetching Costco fuel prices:', error);
+      } finally {
+        setCostcoFuelLoading(false);
+      }
+    };
+
+    fetchCostcoFuelPrices();
+    const handleRefreshCostcoFuelPrices = () => fetchCostcoFuelPrices(true);
+    document.addEventListener('refreshCostcoFuelPrices', handleRefreshCostcoFuelPrices);
+    return () => document.removeEventListener('refreshCostcoFuelPrices', handleRefreshCostcoFuelPrices);
+  }, []);
 
   // Load selected timezones from localStorage on component mount
   useEffect(() => {
@@ -935,14 +1529,30 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     day: 'numeric'
   });
 
-  const getNoteTitle = (note) => (
-    (note?.content || '')
-      .split('\n')
-      .find(line => line.trim() && !line.trim().startsWith('meta::'))
+  const getNoteTitle = (note) => {
+    const lines = (note?.content || '').split('\n');
+    const eventDescription = lines
+      .find(line => line.trim().startsWith('event_description:'))
+      ?.replace(/^event_description:/, '')
+      ?.trim();
+
+    if (eventDescription) return eventDescription;
+
+    return lines
+      .find(line => {
+        const trimmed = line.trim();
+        return trimmed &&
+          !trimmed.startsWith('meta::') &&
+          !trimmed.startsWith('event_description:') &&
+          !trimmed.startsWith('event_date:') &&
+          !trimmed.startsWith('event_notes:') &&
+          !trimmed.startsWith('event_recurring_type:') &&
+          !trimmed.startsWith('event_tags:');
+      })
       ?.replace(/^\{#h[12]#\}/, '')
       ?.replace(/^\{#bold#\}/, '')
-      ?.trim() || 'Untitled review'
-  );
+      ?.trim() || 'Untitled review';
+  };
 
   const removeMetaLine = (content, metaLine) => (
     (content || '')
@@ -954,6 +1564,52 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   );
 
   const noop = () => {};
+
+  const updateDashboardNote = async (noteId, updatedContent) => {
+    const response = await updateNoteById(noteId, updatedContent);
+    const nextContent = response && response.content ? response.content : updatedContent;
+    setNotes(prevNotes => prevNotes.map(existingNote => (
+      existingNote.id === noteId
+        ? { ...existingNote, content: nextContent }
+        : existingNote
+    )));
+    return response;
+  };
+
+  const handleSuperCriticalMarkForReview = (noteId) => {
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    delete reviews[noteId];
+    localStorage.setItem('noteReviews', JSON.stringify(reviews));
+  };
+
+  const handleSuperCriticalMarkAsReminder = async (noteId) => {
+    const note = (notes || []).find(existingNote => existingNote.id === noteId);
+    if (!note?.content) return;
+
+    const updatedContent = note.content.includes('meta::reminder')
+      ? note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::reminder'))
+        .join('\n')
+        .trim()
+      : `${note.content}\nmeta::reminder`;
+
+    try {
+      await updateDashboardNote(noteId, updatedContent);
+    } catch (error) {
+      console.error('Error updating reminder state:', error);
+      alert('Failed to update reminder: ' + error.message);
+    }
+  };
+
+  const getSuperCriticalWatchAge = (note) => {
+    const watchDateMatch = note?.content?.match(/meta::watch::(\d{4}-\d{2}-\d{2})/);
+    if (!watchDateMatch) return 0;
+
+    const watchDate = new Date(watchDateMatch[1]);
+    const now = new Date();
+    return Math.ceil((now - watchDate) / (1000 * 60 * 60 * 24));
+  };
 
   const handleSuperCriticalPreviewEnter = (noteId) => {
     if (superCriticalPreviewCloseTimeoutRef.current) {
@@ -981,18 +1637,18 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
 
   const renderSuperCriticalReviewPreview = (note, isVisible) => (
     <div
-      className={`super-critical-review-preview absolute left-0 top-full z-50 mt-2 w-[min(520px,calc(100vw-3rem))] rounded-xl border p-3 text-left shadow-xl ${isVisible ? 'block' : 'hidden'}`}
+      className={`super-critical-review-preview absolute left-0 top-full z-50 mt-2 w-[min(820px,calc(100vw-3rem))] rounded-xl border p-3 text-left shadow-xl ${isVisible ? 'block' : 'hidden'}`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="super-critical-review-preview-title mb-2 truncate text-xs font-bold uppercase tracking-wide">
         {getNoteTitle(note)}
       </div>
-      <div className="super-critical-review-preview-body max-h-80 overflow-y-auto rounded-lg border p-3 text-sm">
-        <NoteCardContent
-          note={note}
+      <div className="super-critical-review-preview-body max-h-[70vh] overflow-y-auto rounded-lg border p-3 text-sm">
+        <ReminderWatchCard
+          notes={[note]}
           searchQuery=""
           duplicatedUrlColors={{}}
-          editingLine={{ noteId: null, lineIndex: null }}
+          editingLine={null}
           setEditingLine={noop}
           editedLineContent=""
           setEditedLineContent={noop}
@@ -1012,21 +1668,67 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           newLineText=""
           setNewLineText={noop}
           newLineInputRef={{ current: null }}
-          compressedView={true}
-          updateNote={noop}
-          focusMode={true}
-          allNotes={notes || []}
-          addNote={noop}
+          updateNote={updateDashboardNote}
+          onContextMenu={noop}
+          isWatchList={true}
+          getNoteAge={getSuperCriticalWatchAge}
+          onReview={handleSuperCriticalMarkForReview}
+          onCadenceChange={handleSuperCriticalMarkForReview}
+          onEdit={(selectedNote) => openEditor('edit', selectedNote.content, selectedNote.id)}
+          onMarkForReview={handleSuperCriticalMarkForReview}
+          onMarkAsReminder={handleSuperCriticalMarkAsReminder}
         />
       </div>
     </div>
   );
 
-  const superCriticalReviews = (notes || []).filter(note =>
-    note?.content?.includes(SUPER_CRITICAL_REVIEW_META)
+  const isTimedReview = (note) => (
+    !!note?.content?.split('\n').some(line => line.trim().startsWith(TIMER_CADENCE_PREFIX))
   );
+  const isReminderReview = (note) => (
+    !!note?.content?.split('\n').some(line => line.trim().startsWith('meta::reminder'))
+  );
+  const superCriticalReviews = (notes || []).filter(note =>
+    note?.content?.includes(SUPER_CRITICAL_REVIEW_META) &&
+    !isTimedReview(note) &&
+    !isReminderReview(note)
+  );
+  const timedWatchlistReviews = (notes || []).filter(note =>
+    isTimedReview(note) &&
+    !isReminderReview(note)
+  ).sort((a, b) => {
+    const aStatus = getTimerStatus(a);
+    const bStatus = getTimerStatus(b);
+    const aDays = aStatus?.days ?? Number.MAX_SAFE_INTEGER;
+    const bDays = bStatus?.days ?? Number.MAX_SAFE_INTEGER;
+
+    return aDays - bDays;
+  });
+  const regularWatchlistReviews = (notes || []).filter(note =>
+    note?.content?.includes('meta::watch') &&
+    !note?.content?.includes(SUPER_CRITICAL_REVIEW_META) &&
+    !isTimedReview(note) &&
+    !isReminderReview(note)
+  );
+  const reminderReviews = findDueRemindersAsNotes(notes || []).filter(note =>
+    !note?.content?.includes(SUPER_CRITICAL_REVIEW_META)
+  );
+  const reviewStripCount = superCriticalReviews.length + timedWatchlistReviews.length + regularWatchlistReviews.length + reminderReviews.length;
+
+  const handleAcknowledgeAllReminderReviews = () => {
+    reminderReviews.forEach(note => addCurrentDateToLocalStorage(note.id));
+    setDashboardDataRefreshTick(tick => tick + 1);
+  };
+
+  const handleAcknowledgeReminderReview = (event, noteId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    addCurrentDateToLocalStorage(noteId);
+    setDashboardDataRefreshTick(tick => tick + 1);
+  };
 
   const handleUnmarkSuperCriticalReview = async (note) => {
+    setSuperCriticalActionMenu(null);
     const updatedContent = removeMetaLine(note?.content, SUPER_CRITICAL_REVIEW_META);
 
     try {
@@ -1044,6 +1746,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   };
 
   const handleDeleteSuperCriticalReview = async (noteId) => {
+    setSuperCriticalActionMenu(null);
     if (!window.confirm('Delete this super critical review?')) return;
 
     try {
@@ -1056,6 +1759,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   };
 
   const scrollToReviewDue = (noteId) => {
+    setSuperCriticalActionMenu(null);
     const scrollToTarget = () => {
       const target = document.querySelector(`[data-review-id="${noteId}"]`) ||
         document.querySelector('[data-section="review-overdue"]');
@@ -1069,6 +1773,138 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     }
 
     scrollToTarget();
+  };
+
+  const handleSuperCriticalActionMenu = (event, noteId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = typeof event.clientX === 'number' && event.clientX > 0 ? event.clientX : rect.left;
+    const y = typeof event.clientY === 'number' && event.clientY > 0 ? event.clientY : rect.bottom + 4;
+    setActiveSuperCriticalPreviewId(null);
+    setSuperCriticalActionMenu({
+      noteId,
+      x: Math.min(x, window.innerWidth - 190),
+      y: Math.min(y, window.innerHeight - 94)
+    });
+  };
+
+  const getTimedReviewDaysLabel = (note) => {
+    const timerStatus = getTimerStatus(note);
+    if (!timerStatus || timerStatus.days == null) return 'No date';
+    if (timerStatus.expired) return `${timerStatus.daysExpired}d overdue`;
+    if (timerStatus.days === 0) return 'Today';
+    if (timerStatus.days === 1) return '1 day';
+    return `${timerStatus.days} days`;
+  };
+
+  const getFirstNoteUrl = (note) => {
+    const content = note?.content || '';
+    const markdownMatch = content.match(/\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/);
+    if (markdownMatch) return markdownMatch[1];
+
+    return content.match(/https?:\/\/[^\s)]+/)?.[0] || '';
+  };
+
+  const handleReviewChipClick = (note) => {
+    const url = getFirstNoteUrl(note);
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const renderReviewChip = (note, { isSuperCritical = false, isTimed = false, canAcknowledge = false } = {}) => {
+    const isPreviewVisible = activeSuperCriticalPreviewId === note.id;
+    const canUnmarkSuperCritical = isSuperCritical || note?.content?.includes(SUPER_CRITICAL_REVIEW_META);
+    const timerStatus = isTimed ? getTimerStatus(note) : null;
+    const firstNoteUrl = getFirstNoteUrl(note);
+
+    return (
+      <div
+        key={note.id}
+        className="group relative"
+        onContextMenu={(event) => handleSuperCriticalActionMenu(event, note.id)}
+        onMouseEnter={() => handleSuperCriticalPreviewEnter(note.id)}
+        onMouseLeave={handleSuperCriticalPreviewLeave}
+      >
+        <button
+          type="button"
+          onClick={() => handleReviewChipClick(note)}
+          onContextMenu={(event) => handleSuperCriticalActionMenu(event, note.id)}
+          onKeyDown={(event) => {
+            if ((event.shiftKey && event.key === 'F10') || event.key === 'ContextMenu') {
+              handleSuperCriticalActionMenu(event, note.id);
+            }
+          }}
+          className={`super-critical-review-chip max-w-xs rounded-full border px-3 py-1 text-left text-xs font-semibold shadow-sm transition-colors ${firstNoteUrl ? 'cursor-pointer' : 'cursor-default'} ${isTimed ? 'timed-watchlist-review-chip' : 'truncate'} ${isSuperCritical ? '' : 'regular-watchlist-review-chip'}`}
+          title={firstNoteUrl ? 'Open first URL. Right click for actions.' : 'No URL found. Right click for actions.'}
+        >
+          {isTimed ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <span className={`truncate ${firstNoteUrl ? 'review-chip-link-text' : ''}`}>{getNoteTitle(note)}</span>
+              <span className="timed-watchlist-review-days-pill flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                {getTimedReviewDaysLabel(note)}
+              </span>
+              <span className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${timerStatus?.once ? 'timed-watchlist-review-once-pill' : 'timed-watchlist-review-recurring-pill'}`}>
+                {timerStatus?.once ? 'Once' : 'Recurring'}
+              </span>
+            </span>
+          ) : (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className={`truncate ${firstNoteUrl ? 'review-chip-link-text' : ''}`}>{getNoteTitle(note)}</span>
+              {canAcknowledge && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => handleAcknowledgeReminderReview(event, note.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      handleAcknowledgeReminderReview(event, note.id);
+                    }
+                  }}
+                  className="ml-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 transition-colors hover:bg-blue-50"
+                  title="Acknowledge reminder"
+                >
+                  <CheckIcon className="h-3 w-3" />
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+        {superCriticalActionMenu?.noteId === note.id && (
+          <div
+            className="super-critical-review-action-menu fixed z-[100] min-w-44 overflow-hidden rounded-lg border py-1 text-sm shadow-xl"
+            style={{ left: superCriticalActionMenu.x, top: superCriticalActionMenu.y }}
+            onClick={(event) => event.stopPropagation()}
+            onContextMenu={(event) => event.preventDefault()}
+          >
+            <button
+              type="button"
+              onClick={() => scrollToReviewDue(note.id)}
+              className="super-critical-review-action-menu-item w-full px-3 py-2 text-left text-xs font-semibold"
+            >
+              Go to note
+            </button>
+            {canUnmarkSuperCritical && (
+              <button
+                type="button"
+                onClick={() => handleUnmarkSuperCriticalReview(note)}
+                className="super-critical-review-action-menu-item w-full px-3 py-2 text-left text-xs font-semibold"
+              >
+                Unmark
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleDeleteSuperCriticalReview(note.id)}
+              className="super-critical-review-action-menu-item super-critical-review-action-menu-delete w-full px-3 py-2 text-left text-xs font-semibold"
+            >
+              Delete
+            </button>
+          </div>
+        )}
+        {renderSuperCriticalReviewPreview(note, isPreviewVisible)}
+      </div>
+    );
   };
 
   // Function to format timezone time in compact form
@@ -1163,6 +1999,18 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     }
   };
 
+  const resetEventNotesScroll = () => {
+    if (eventNotesScrollRef.current) {
+      smoothScroll(eventNotesScrollRef.current, 0);
+    }
+  };
+
+  const updateEventNotesScrollState = () => {
+    if (eventNotesScrollRef.current) {
+      setEventNotesScrolledRight(eventNotesScrollRef.current.scrollLeft > 8);
+    }
+  };
+
   // Check for overflow in containers
   const checkOverflow = () => {
     if (eventsScrollRef.current) {
@@ -1176,6 +2024,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     if (eventNotesScrollRef.current) {
       const hasOverflow = eventNotesScrollRef.current.scrollWidth > eventNotesScrollRef.current.clientWidth;
       setEventNotesHasOverflow(hasOverflow);
+      setEventNotesScrolledRight(hasOverflow && eventNotesScrollRef.current.scrollLeft > 8);
     }
   };
 
@@ -1464,6 +2313,15 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     setEditingEvent(null);
     setIsAddingDeadline(false);
     setIsAddingHoliday(false);
+    setIsAddingTemporaryEvent(false);
+    setShowEditEventModal(true);
+  };
+
+  const handleAddTemporaryEvent = () => {
+    setEditingEvent(null);
+    setIsAddingDeadline(false);
+    setIsAddingHoliday(false);
+    setIsAddingTemporaryEvent(true);
     setShowEditEventModal(true);
   };
 
@@ -1478,6 +2336,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     setEditingEvent({ content: formatEventDateContent(date) });
     setIsAddingDeadline(false);
     setIsAddingHoliday(false);
+    setIsAddingTemporaryEvent(false);
     setShowEditEventModal(true);
   };
 
@@ -1486,6 +2345,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     setEditingEvent(null);
     setIsAddingDeadline(true);
     setIsAddingHoliday(false);
+    setIsAddingTemporaryEvent(false);
     setShowEditEventModal(true);
   };
 
@@ -1494,6 +2354,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
     setEditingEvent(null);
     setIsAddingDeadline(false);
     setIsAddingHoliday(true);
+    setIsAddingTemporaryEvent(false);
     setShowEditEventModal(true);
   };
 
@@ -1555,7 +2416,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
   }[baseTimezone] || '🌐';
 
   return (
-    <div className="container mx-auto px-4 pb-8">
+    <div className="w-full pl-14 pr-0 pb-8">
       {/* Show only reminders when showRemindersOnly is true */}
       {showRemindersOnly ? (
         <div className="mb-8">
@@ -1588,13 +2449,14 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
         <div className="flex gap-6 items-start">
           {/* ── Main content column ── */}
           <div className="flex-1 min-w-0">
-          {/* Super Critical Reviews */}
-          {superCriticalReviews.length > 0 && (
-            <div className="mb-4">
-              <div className="super-critical-reviews-panel mt-3 rounded-xl border p-3 shadow-sm">
+          {/* Review Strip */}
+          {reviewStripCount > 0 && (
+            <div className="mb-4 mt-3 space-y-3">
+              {superCriticalReviews.length > 0 && (
+                <div className="super-critical-reviews-panel rounded-xl border p-3 shadow-sm">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="super-critical-reviews-title text-xs font-bold uppercase tracking-wide">
-                    Super critical reviews ({superCriticalReviews.length})
+                    Super critical ({superCriticalReviews.length})
                   </div>
                   <button
                     type="button"
@@ -1650,54 +2512,70 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     </div>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  {superCriticalReviews.map(note => {
-                    const isPreviewVisible = activeSuperCriticalPreviewId === note.id;
-                    return (
-                    <div
-                      key={note.id}
-                      className="group relative"
-                      onMouseEnter={() => handleSuperCriticalPreviewEnter(note.id)}
-                      onMouseLeave={handleSuperCriticalPreviewLeave}
+                  <div className="flex flex-wrap gap-2">
+                    {superCriticalReviews.map(note => renderReviewChip(note, { isSuperCritical: true }))}
+                  </div>
+                </div>
+              )}
+              {timedWatchlistReviews.length > 0 && (
+                <div className="super-critical-reviews-panel rounded-xl border p-3 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="super-critical-reviews-title text-xs font-bold uppercase tracking-wide">
+                      Timed ({timedWatchlistReviews.length})
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddOptionsPopup(true)}
+                      className="super-critical-reviews-add inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors"
                     >
+                      <PlusIcon className="h-3 w-3" />
+                      Add
+                    </button>
+                  </div>
+                    <div className="flex flex-wrap gap-2">
+                      {timedWatchlistReviews.map(note => renderReviewChip(note, { isTimed: true }))}
+                    </div>
+                </div>
+              )}
+              {regularWatchlistReviews.length > 0 && (
+                <div className="super-critical-reviews-panel rounded-xl border p-3 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="super-critical-reviews-title text-xs font-bold uppercase tracking-wide">
+                      Watchlist ({regularWatchlistReviews.length})
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddWatch}
+                      className="super-critical-reviews-add inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors"
+                    >
+                      <PlusIcon className="h-3 w-3" />
+                      Add
+                    </button>
+                  </div>
+                    <div className="flex flex-wrap gap-2">
+                      {regularWatchlistReviews.map(note => renderReviewChip(note))}
+                    </div>
+                </div>
+              )}
+              {reminderReviews.length > 0 && (
+                <div className="super-critical-reviews-panel rounded-xl border p-3 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                      <div className="super-critical-reviews-title text-xs font-bold uppercase tracking-wide">
+                        Reminders ({reminderReviews.length})
+                      </div>
                       <button
                         type="button"
-                        onClick={() => scrollToReviewDue(note.id)}
-                        className="super-critical-review-chip max-w-xs truncate rounded-full border px-3 py-1 text-left text-xs font-semibold shadow-sm transition-colors pr-24"
-                        title="Jump to this review due card"
+                        onClick={handleAcknowledgeAllReminderReviews}
+                        className="super-critical-reviews-add rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors"
                       >
-                        {getNoteTitle(note)}
+                        Acknowledge all
                       </button>
-                      <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUnmarkSuperCriticalReview(note);
-                          }}
-                          className="super-critical-review-unmark rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors"
-                          title="Remove super critical marker"
-                        >
-                          Unmark
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteSuperCriticalReview(note.id);
-                          }}
-                          className="super-critical-review-delete rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors"
-                          title="Delete review"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                      {renderSuperCriticalReviewPreview(note, isPreviewVisible)}
                     </div>
-                    );
-                  })}
+                    <div className="flex flex-wrap gap-2">
+                      {reminderReviews.map(note => renderReviewChip(note, { canAcknowledge: true }))}
+                    </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1705,7 +2583,6 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           <div className="mb-4">
             <BackupAlert notes={notes} />
           </div>
-
 
           {/* First Row: Date and Timezone Display (Full Width) */}
           <div className={`mb-4 ${isPinned ? 'pt-8' : ''}`}>
@@ -1737,49 +2614,69 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     <span>{baseTimezoneFlag}</span>
                     <span>{baseTimezoneLabel}</span>
                   </div>
-                  {/* Font Selector */}
-                  <div className="relative" ref={fontSelectorRef}>
-                    <button
-                      onClick={() => setShowFontSelector(!showFontSelector)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                      title="Change font"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAnalogClock(value => {
+                        const next = !value;
+                        localStorage.setItem('dashboardShowAnalogClock', String(next));
+                        return next;
+                      });
+                    }}
+                    className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                      showAnalogClock ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                    }`}
+                    title={showAnalogClock ? 'Hide analog clocks' : 'Show analog clocks'}
+                  >
+                    Clock
+                  </button>
+                  {showAnalogClock && (
+                    <select
+                      value={clockFace}
+                      onChange={(event) => {
+                        setClockFace(event.target.value);
+                        localStorage.setItem('dashboardClockFace', event.target.value);
+                      }}
+                      className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      title="Clock face"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="4 7 4 4 20 4 20 7" />
-                        <line x1="9" y1="20" x2="15" y2="20" />
-                        <line x1="12" y1="4" x2="12" y2="20" />
-                      </svg>
-                    </button>
-                    {showFontSelector && (
-                      <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-72 overflow-y-auto">
-                        <div className="p-2 border-b border-gray-100">
-                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Font</div>
-                        </div>
-                        {availableFonts.map((font) => (
-                          <button
-                            key={font}
-                            onClick={() => { setSelectedFont(font); setShowFontSelector(false); }}
-                            className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors ${selectedFont === font ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                            style={{ fontFamily: font === DEFAULT_APP_FONT ? 'inherit' : `"${font}", sans-serif` }}
-                          >
-                            {font}
-                            {selectedFont === font && <span className="float-right text-blue-500">&#10003;</span>}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                      <option value="classic">Classic</option>
+                      <option value="minimal">Minimal</option>
+                      <option value="numbers">Numbers</option>
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTimeBuddy(value => {
+                        const next = !value;
+                        localStorage.setItem('dashboardShowTimeBuddy', String(next));
+                        return next;
+                      });
+                    }}
+                    className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                      showTimeBuddy ? 'bg-blue-50 text-blue-700' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                    }`}
+                    title={showTimeBuddy ? 'Hide Time Buddy' : 'Show Time Buddy'}
+                  >
+                    Time Buddy
+                  </button>
                 </div>
               </div>
 
               {/* Timezone Cards Display */}
               {showTimezones && (
                 <div className="mb-6 w-full">
-                  <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+                  <TimeZoneDisplay
+                    selectedTimezones={selectedTimezones}
+                    showAnalogClock={showAnalogClock}
+                    showTimeBuddy={showTimeBuddy}
+                    clockFace={clockFace}
+                  />
                 </div>
               )}
 
-              {/* Stock Information, Exchange Rates, and Weather - Button Row */}
+              {/* Stock Information, Exchange Rates, Fuel Prices, and Weather - Button Row */}
               {showTimezones && (() => {
                 let stockPrice = null;
                 let stockSymbol = '';
@@ -1788,6 +2685,8 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   const c = localStorage.getItem('stockPriceData');
                   if (c) { const d = JSON.parse(c); stockPrice = d.price; stockSymbol = d.symbol || ''; }
                 } catch (e) { }
+                const stockPriceHistory = loadDashboardStockPriceHistory();
+                const stockPriceChange = getDashboardStockPriceChange(stockPriceHistory);
 
                 const getMarketInfo = () => {
                   const now = new Date();
@@ -1839,6 +2738,50 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 const tomorrowCondition = weather
                   ? ((weather.tomorrowRainSum > 0 || weather.tomorrowPrecipSum > 0) ? 'Showers' : weather.tomorrowMax > 25 ? 'Sunny' : 'Cloudy')
                   : null;
+                const isRainyWeather = weatherCondition === 'Rainy' || weatherCondition === 'Showers';
+                const formatFuelPrice = (price) => {
+                  if (price == null || price === '') return '—';
+                  if (typeof price === 'string' || typeof price === 'number') return price;
+                  if (typeof price === 'object') return price.cheapest || price.current || price.price || price.average || '—';
+                  return '—';
+                };
+                const fuelPriceToNumber = (price) => {
+                  const formatted = formatFuelPrice(price);
+                  if (formatted === '—') return null;
+                  const match = String(formatted).match(/\d+(?:\.\d+)?/);
+                  return match ? Number(match[0]) : null;
+                };
+                const getFuelSnapshotAverage = (snapshot) => {
+                  if (!snapshot) return null;
+                  const values = [
+                    fuelPriceToNumber(snapshot.unleaded),
+                    fuelPriceToNumber(snapshot.diesel),
+                  ].filter(value => Number.isFinite(value));
+                  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+                };
+                const latestFuelAverage = getFuelSnapshotAverage(costcoFuelHistory?.[0] || costcoFuelPrices);
+                const previousFuelAverage = getFuelSnapshotAverage(costcoFuelHistory?.[1]);
+                const fuelTrend = latestFuelAverage != null && previousFuelAverage != null
+                  ? {
+                      direction: latestFuelAverage === previousFuelAverage ? 'same' : latestFuelAverage < previousFuelAverage ? 'down' : 'up',
+                      amount: Math.abs(latestFuelAverage - previousFuelAverage),
+                    }
+                  : null;
+                const fuelUpdatedText = costcoFuelPrices?.updatedAt
+                  || (costcoFuelPrices?.fetchedAt ? new Date(costcoFuelPrices.fetchedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : '');
+                const formatFuelSnapshotTime = (snapshot) => {
+                  if (!snapshot?.fetchedAt) return snapshot?.cacheDateKey || 'Cached';
+                  try {
+                    return new Date(snapshot.fetchedAt).toLocaleString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    });
+                  } catch {
+                    return snapshot.cacheDateKey || 'Cached';
+                  }
+                };
 
                 return (
                   <div className="mb-6 w-full">
@@ -1855,8 +2798,24 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                               <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">
                                 {stockSymbol ? <span className="font-bold text-gray-800">{stockSymbol}</span> : 'Stock'} <span className={`${marketInfo.open ? 'text-green-600' : 'text-red-500'}`}>({marketInfo.label}{!marketInfo.open && marketInfo.countdown ? ` - ${marketInfo.countdown}` : ''})</span>
                               </div>
-                              <div className="text-base font-semibold text-gray-900 leading-tight truncate">
-                                {stockPrice != null ? `$${stockPrice.toFixed(2)}` : '—'}
+                              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 leading-tight">
+                                <span className="truncate">{stockPrice != null ? `$${stockPrice.toFixed(2)}` : '—'}</span>
+                                {stockPriceChange && (
+                                  <span
+                                    className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-lg font-black shadow-sm ring-1 ${
+                                      stockPriceChange.direction === 'same'
+                                        ? 'bg-gray-100 text-gray-600 ring-gray-200'
+                                        : stockPriceChange.direction === 'up'
+                                          ? 'bg-green-100 text-green-700 ring-green-200'
+                                          : 'bg-red-100 text-red-700 ring-red-200'
+                                    }`}
+                                    title={stockPriceChange.direction === 'same'
+                                      ? 'No change from previous call'
+                                      : `${stockPriceChange.direction === 'up' ? 'Up' : 'Down'} $${stockPriceChange.amount.toFixed(2)}${stockPriceChange.percent !== null ? ` (${stockPriceChange.percent.toFixed(2)}%)` : ''} from previous call`}
+                                  >
+                                    {stockPriceChange.direction === 'same' ? '○' : stockPriceChange.direction === 'up' ? '↑' : '↓'}
+                                  </span>
+                                )}
                               </div>
                               {stockPrice != null && (() => {
                                 const totalUsd = stockShares * stockPrice;
@@ -1927,14 +2886,141 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                           </div>
                         </div>
 
+                        {/* Costco Fuel Prices */}
+                        <div
+                          className="relative group flex-1 flex"
+                          onMouseEnter={() => setActivePopup('fuel')}
+                          onMouseLeave={() => { if (activePopup === 'fuel') setActivePopup(null); }}
+                        >
+                          <div className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
+                            <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-3 text-left">
+                              <div className="min-w-0">
+                                <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">
+                                  {costcoFuelPrices?.station || 'Costco Epping Fuel'}
+                                  {costcoFuelLoading && <span className="ml-1 text-blue-500">loading</span>}
+                                </div>
+                                <div className="mt-2 text-sm font-semibold text-gray-900 leading-snug">
+                                  ULP <span className="text-green-700">{formatFuelPrice(costcoFuelPrices?.unleaded)}</span>
+                                </div>
+                                <div className="text-sm font-semibold text-gray-900 leading-snug">
+                                  Diesel <span className="text-green-700">{formatFuelPrice(costcoFuelPrices?.diesel)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-center pr-1">
+                                {fuelTrend && (
+                                  <div
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xl font-black shadow-sm ring-1 ${
+                                      fuelTrend.direction === 'same'
+                                        ? 'bg-gray-100 text-gray-600 ring-gray-200'
+                                        : fuelTrend.direction === 'down'
+                                          ? 'bg-green-100 text-green-700 ring-green-200'
+                                          : 'bg-red-100 text-red-700 ring-red-200'
+                                    }`}
+                                    title={fuelTrend.direction === 'same'
+                                      ? 'No fuel price change from previous fetch'
+                                      : `${fuelTrend.direction === 'down' ? 'Down' : 'Up'} ${fuelTrend.amount.toFixed(1)}c/L average from previous fetch`}
+                                  >
+                                    {fuelTrend.direction === 'same' ? '○' : fuelTrend.direction === 'down' ? '↓' : '↑'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('refreshCostcoFuelPrices')); }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  document.dispatchEvent(new CustomEvent('refreshCostcoFuelPrices'));
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
+                              title="Refresh Costco fuel prices"
+                            >
+                              <ArrowPathIcon className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
+                          <div className={`absolute left-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${activePopup === 'fuel' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">{costcoFuelPrices?.station || 'Costco Epping'}</div>
+                            <div className="mt-2 space-y-1 text-sm text-gray-700">
+                              <div className="flex justify-between gap-3"><span>ULP</span><span className="font-semibold text-green-700">{formatFuelPrice(costcoFuelPrices?.unleaded)}</span></div>
+                              <div className="flex justify-between gap-3"><span>Diesel</span><span className="font-semibold text-green-700">{formatFuelPrice(costcoFuelPrices?.diesel)}</span></div>
+                            </div>
+                            {fuelTrend && (
+                              <div className={`mt-2 text-xs font-semibold ${
+                                fuelTrend.direction === 'same'
+                                  ? 'text-gray-500'
+                                  : fuelTrend.direction === 'down'
+                                    ? 'text-green-600'
+                                    : 'text-red-600'
+                              }`}>
+                                {fuelTrend.direction === 'same'
+                                  ? '○ Prices unchanged since last fetch'
+                                  : `${fuelTrend.direction === 'down' ? '↓ Prices fell' : '↑ Prices rose'} ${fuelTrend.amount.toFixed(1)}c/L avg since last fetch`}
+                              </div>
+                            )}
+                            <div className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-500">
+                              {fuelUpdatedText && <div>Updated: {fuelUpdatedText}</div>}
+                              <div className="flex items-center justify-between gap-2">
+                                <span>Stored snapshots: {Array.isArray(costcoFuelHistory) ? Math.min(costcoFuelHistory.length, 20) : 0}/20</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowCostcoFuelCache(value => !value)}
+                                  className="rounded border border-gray-200 bg-white px-2 py-0.5 font-semibold text-gray-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                                >
+                                  {showCostcoFuelCache ? 'Hide cache' : 'Show cache'}
+                                </button>
+                              </div>
+                              {showCostcoFuelCache && (
+                                <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-gray-100 bg-gray-50">
+                                  {Array.isArray(costcoFuelHistory) && costcoFuelHistory.length > 0 ? (
+                                    costcoFuelHistory.slice(0, 20).map((snapshot, index) => (
+                                      <div
+                                        key={`${snapshot?.fetchedAt || snapshot?.cacheDateKey || 'fuel'}-${index}`}
+                                        className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-b border-gray-100 px-2 py-1.5 last:border-b-0"
+                                      >
+                                        <span className="truncate font-medium text-gray-500">{formatFuelSnapshotTime(snapshot)}</span>
+                                        <span className="font-semibold text-green-700">ULP {formatFuelPrice(snapshot?.unleaded)}</span>
+                                        <span className="font-semibold text-green-700">D {formatFuelPrice(snapshot?.diesel)}</span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="px-2 py-2 text-gray-400">No cached values yet.</div>
+                                  )}
+                                </div>
+                              )}
+                              <a
+                                href={costcoFuelPrices?.sourceUrl || 'https://petrolmate.com.au/station/epping-26337'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                Source: Petrolmate / official fuel reporting
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Weather */}
                         <div
                           className="relative group flex-1 flex"
                           onMouseEnter={() => setActivePopup('weather')}
                           onMouseLeave={() => { if (activePopup === 'weather') setActivePopup(null); }}
                         >
-                          <div className="w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start">
-                            <div className="text-left min-w-0 flex-1">
+                          <div className={`relative w-full px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex items-start overflow-hidden ${isRainyWeather ? 'weather-rainy-card' : ''}`}>
+                            {isRainyWeather && (
+                              <div className="weather-rainy-animation" aria-hidden="true">
+                                <span />
+                                <span />
+                                <span />
+                                <span />
+                                <span />
+                                <span />
+                              </div>
+                            )}
+                            <div className="relative z-10 text-left min-w-0 flex-1">
                               <div className="text-[10px] uppercase tracking-wide font-medium text-gray-500">Weather</div>
                               {weather ? (
                                 <>
@@ -1976,15 +3062,8 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 );
               })()}
 
-              {/* Today Events Bar - Moved from AlertsProvider */}
-              <div className="mb-6 w-full">
-                <TodayEventsBar events={events} />
-              </div>
             </div>
           </div>
-
-          {/* Flagged Review Dues Section */}
-          <FlaggedReviewDues notes={notes} setNotes={setNotes} setActivePage={setActivePage} sectionHeader={true} />
 
           {/* Events Section */}
           <div className="mb-1 mt-2 border-b border-gray-200 pb-1">
@@ -2103,6 +3182,17 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
               </div>
 
               <div className="flex gap-2">
+                {eventNotesScrolledRight && (
+                  <button
+                    onClick={resetEventNotesScroll}
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+                    title="Reset event scroll"
+                    aria-label="Reset event scroll"
+                  >
+                    <ArrowPathIcon className="h-3 w-3" />
+                    Reset
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     // This will trigger the add event functionality
@@ -2117,7 +3207,17 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                 </button>
                 <button
                   onClick={() => {
+                    handleAddTemporaryEvent();
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-100"
+                >
+                  <PlusIcon className="h-3 w-3" />
+                  Add Temporary
+                </button>
+                <button
+                  onClick={() => {
                     setEditingEvent(null); // Set to null for new event
+                    setIsAddingTemporaryEvent(false);
                     setShowEditEventModal(true);
                   }}
                   className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
@@ -2147,10 +3247,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
                 }}
-                onScroll={(e) => {
-                  // Prevent manual scrolling, only allow programmatic scrolling
-                  e.preventDefault();
-                }}
+                onScroll={updateEventNotesScrollState}
               >
                 <div className="inline-flex gap-4 pb-1" style={{ minWidth: 'max-content' }}>
                   <EventManager
@@ -2162,6 +3259,7 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
                     eventTextFilter={eventTextFilter}
                     onEditEvent={(note) => {
                       setEditingEvent(note);
+                      setIsAddingTemporaryEvent(false);
                       setShowEditEventModal(true);
                     }}
                     onDeleteNote={async (noteId) => {
@@ -2252,7 +3350,20 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
 
           {/* Alerts & Reminders Section */}
           <div className="mb-1 mt-2 border-b border-gray-200 pb-1 flex items-center gap-2">
-            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Alerts & Reminders</h2>
+            <button
+              type="button"
+              onClick={() => setIsAlertsRemindersExpanded(expanded => !expanded)}
+              className="flex items-center gap-1 text-sm font-bold text-gray-400 uppercase tracking-wider transition-colors hover:text-gray-600"
+              aria-expanded={isAlertsRemindersExpanded}
+              title={isAlertsRemindersExpanded ? 'Collapse Alerts & Reminders' : 'Expand Alerts & Reminders'}
+            >
+              {isAlertsRemindersExpanded ? (
+                <ChevronUpIcon className="h-4 w-4" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4" />
+              )}
+              Alerts & Reminders
+            </button>
             <button 
               onClick={() => setShowAlertsHelpPopup(true)}
               className="text-gray-400 hover:text-blue-500 transition-colors"
@@ -2261,14 +3372,16 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
               <InformationCircleIcon className="h-5 w-5" />
             </button>
           </div>
-          <div className="mb-4">
-            <AlertsProvider
-              notes={notes}
-              events={events}
-              setNotes={setNotes}
-            >
-            </AlertsProvider>
-          </div>
+          {isAlertsRemindersExpanded && (
+            <div className="mb-4">
+              <AlertsProvider
+                notes={notes}
+                events={events}
+                setNotes={setNotes}
+              >
+              </AlertsProvider>
+            </div>
+          )}
 
           {/* Watched Trackers Section */}
           <div className="mb-4">
@@ -2282,9 +3395,20 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
           </div>{/* end main column */}
 
           {/* ── Right panel ── */}
-          <div className="flex-shrink-0 sticky top-4">
+          <div className="relative flex-shrink-0 sticky top-4">
             {showHabitsPanel ? (
-              <div className="w-72">
+              <div style={{ width: `${tinyHabitsPanelWidth}px` }}>
+                <button
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsResizingTinyHabitsPanel(true);
+                  }}
+                  className="absolute -left-2 top-0 h-full w-3 cursor-col-resize bg-transparent transition-colors hover:bg-blue-300/40"
+                  title="Resize Tiny Habits"
+                  aria-label="Resize Tiny Habits"
+                />
                 <TinyHabitsDashboardWidget
                   setActivePage={setActivePage}
                   onHide={() => { setShowHabitsPanel(false); localStorage.setItem('showHabitsPanel', 'false'); }}
@@ -2377,18 +3501,21 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             setEditingEvent(null);
             setIsAddingDeadline(false);
             setIsAddingHoliday(false);
+            setIsAddingTemporaryEvent(false);
           }}
           onCancel={() => {
             setShowEditEventModal(false);
             setEditingEvent(null);
             setIsAddingDeadline(false);
             setIsAddingHoliday(false);
+            setIsAddingTemporaryEvent(false);
           }}
           onSwitchToNormalEdit={() => {
             setShowEditEventModal(false);
             setEditingEvent(null);
             setIsAddingDeadline(false);
             setIsAddingHoliday(false);
+            setIsAddingTemporaryEvent(false);
           }}
           onDelete={async (noteId) => {
             console.log('[Dashboard] onDelete called with noteId:', noteId);
@@ -2417,9 +3544,11 @@ const Dashboard = ({ notes, setNotes, setActivePage }) => {
             setEditingEvent(null);
             setIsAddingDeadline(false);
             setIsAddingHoliday(false);
+            setIsAddingTemporaryEvent(false);
           }}
           notes={notes}
           isAddDeadline={isAddingDeadline}
+          isAddTemporary={isAddingTemporaryEvent && !editingEvent}
           prePopulatedTags={isAddingHoliday ? "holiday" : ""}
         />
       )}

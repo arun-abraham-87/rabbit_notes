@@ -7,6 +7,8 @@ const settingsRouter = require('./routes/settings');
 const journalsRouter = require('./routes/journals');
 const timelinesRouter = require('./routes/timelines');
 const habitsRouter = require('./routes/habits');
+const realestateRouter = require('./routes/realestate');
+const f1Router = require('./routes/f1');
 
 const app = express();
 app.use(express.json());
@@ -22,6 +24,8 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/journals', journalsRouter);
 app.use('/api/timelines', timelinesRouter);
 app.use('/api/habits', habitsRouter);
+app.use('/api/realestate', realestateRouter);
+app.use('/api/f1', f1Router);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
@@ -353,6 +357,65 @@ app.put('/api/notes/:id', (req, res) => {
   } catch (err) {
     console.error("Error updating the note:", err.message);
     res.status(500).json({ error: "Failed to update the note. Please try again later." });
+  }
+});
+
+app.post('/api/notes/:id/event-pin', (req, res) => {
+  const noteId = req.params.id;
+  const { pinned } = req.body;
+  let updatedNote = null;
+
+  if (typeof pinned !== 'boolean') {
+    return res.status(400).json({ error: 'pinned must be a boolean.' });
+  }
+
+  try {
+    const files = fs.readdirSync(NOTES_DIR);
+    let noteUpdated = false;
+
+    files.forEach((file) => {
+      const filePath = path.join(NOTES_DIR, file);
+      if (fs.lstatSync(filePath).isDirectory()) return;
+
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (!Array.isArray(notesInFile)) return;
+
+        const noteIndex = notesInFile.findIndex(note => note.id === noteId);
+        if (noteIndex === -1) return;
+
+        const note = notesInFile[noteIndex];
+        const lines = String(note.content || '')
+          .split('\n')
+          .filter(line => !line.trim().startsWith('meta::event_pinned'));
+
+        if (pinned) {
+          lines.push(`meta::event_pinned::${new Date().toISOString()}`);
+        }
+
+        notesInFile[noteIndex] = {
+          ...note,
+          content: lines.join('\n').trim()
+        };
+        updatedNote = notesInFile[noteIndex];
+        noteUpdated = true;
+
+        fs.writeFileSync(filePath, JSON.stringify(notesInFile, null, 2));
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+
+    if (noteUpdated) {
+      res.json(updatedNote);
+    } else {
+      res.status(404).json({ error: `Note with ID ${noteId} not found.` });
+    }
+  } catch (err) {
+    console.error('Error updating event pin:', err.message);
+    res.status(500).json({ error: 'Failed to update event pin. Please try again later.' });
   }
 });
 

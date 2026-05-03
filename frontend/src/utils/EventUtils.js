@@ -19,6 +19,8 @@ export const getEventDetails = (content) => {
   const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
   let recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
 
+  const isTemporary = lines.some(line => line.trim() === 'meta::event_temporary:true' || line.trim() === 'meta::event_temporary');
+
   // Find meta information
   const metaLine = lines.find(line => line.startsWith('meta::event::'));
   const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
@@ -47,7 +49,7 @@ export const getEventDetails = (content) => {
   // Calculate next occurrence for recurring events
   let nextOccurrence = null;
   let lastOccurrence = null;
-  if (recurrence === 'none') {
+  if (recurrence === 'none' && !isTemporary) {
     recurrence = "yearly";
   }
   else if (recurrence !== 'none' && dateTime) {
@@ -115,6 +117,7 @@ export const getEventDetails = (content) => {
     isDeadline,
     notes,
     recurrence,
+    isTemporary,
     metaDate,
     nextOccurrence,
     lastOccurrence,

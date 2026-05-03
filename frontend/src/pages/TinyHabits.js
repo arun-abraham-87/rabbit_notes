@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PlusIcon, PencilSquareIcon, TrashIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PencilSquareIcon, TrashIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon, ExclamationTriangleIcon, ListBulletIcon } from '@heroicons/react/24/solid';
 import { FireIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 
 const API_BASE = 'http://localhost:5001/api/habits';
+const QUICK_LISTS_API = `${API_BASE}/quick-lists`;
 
 const GROUP_ORDER = ['Morning', 'Afternoon', 'Evening', 'Weekly', 'Monthly', 'General'];
 const COLORS = ['blue', 'green', 'purple', 'red', 'orange', 'yellow', 'pink', 'indigo', 'teal', 'gray'];
@@ -525,10 +526,145 @@ function HabitStatsRow({ habit, completions, last30Dates, streak, rate30, rate7 
   );
 }
 
+function InlineTextEdit({ value, placeholder, className, inputClassName, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || '');
+  const inputRef = React.useRef(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(value || '');
+  }, [value, editing]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const save = () => {
+    const nextValue = draft.trim();
+    if (nextValue && nextValue !== value) onSave(nextValue);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') {
+            setDraft(value || '');
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        className={inputClassName}
+      />
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => setEditing(true)} className={className} title="Click to edit">
+      {value || placeholder}
+    </button>
+  );
+}
+
+function QuickListItemRow({ item, onToggle, onRename, onDelete }) {
+  return (
+    <div className="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-50">
+      <button
+        type="button"
+        onClick={() => onToggle(item)}
+        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
+          item.done ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300 hover:border-gray-400'
+        }`}
+      >
+        {item.done && <CheckIcon className="h-3.5 w-3.5" />}
+      </button>
+      <InlineTextEdit
+        value={item.text}
+        placeholder="List item"
+        onSave={text => onRename(item, text)}
+        className={`min-w-0 flex-1 cursor-text truncate text-left text-sm ${item.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+        inputClassName="min-w-0 flex-1 rounded border border-blue-300 px-2 py-0.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+      />
+      <button
+        type="button"
+        onClick={() => onDelete(item)}
+        className="p-1 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+        title="Delete item"
+      >
+        <TrashIcon className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function QuickListCard({ list, newItemValue, onNewItemChange, onAddItem, onRenameList, onDeleteList, onToggleItem, onRenameItem, onDeleteItem }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <InlineTextEdit
+          value={list.title}
+          placeholder="Untitled list"
+          onSave={onRenameList}
+          className="min-w-0 flex-1 cursor-text truncate text-left text-sm font-semibold text-gray-800"
+          inputClassName="min-w-0 flex-1 rounded border border-blue-300 px-2 py-0.5 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        />
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+          {list.items.filter(item => !item.done).length}/{list.items.length}
+        </span>
+        <button type="button" onClick={onDeleteList} className="p-1 text-gray-300 hover:text-red-500" title="Delete list">
+          <TrashIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="space-y-0.5">
+        {list.items.map(item => (
+          <QuickListItemRow
+            key={item.id}
+            item={item}
+            onToggle={onToggleItem}
+            onRename={onRenameItem}
+            onDelete={onDeleteItem}
+          />
+        ))}
+        {list.items.length === 0 && (
+          <div className="px-1 py-2 text-xs text-gray-400">No items yet.</div>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          value={newItemValue}
+          onChange={e => onNewItemChange(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') onAddItem();
+          }}
+          placeholder="Add item"
+          className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+        />
+        <button
+          type="button"
+          onClick={onAddItem}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700"
+          title="Add item"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function TinyHabits() {
   const [habits, setHabits] = useState([]);
   const [completions, setCompletions] = useState({});
+  const [quickLists, setQuickLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('today'); // today | week | stats
   const [groupBy, setGroupBy] = useState('tag');
@@ -538,6 +674,8 @@ export default function TinyHabits() {
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [quickAddTarget, setQuickAddTarget] = useState(null);
   const [quickAddName, setQuickAddName] = useState('');
+  const [newListTitle, setNewListTitle] = useState('');
+  const [newQuickListItems, setNewQuickListItems] = useState({});
   const quickAddInputRef = React.useRef(null);
 
   const today = toYMD(new Date());
@@ -545,12 +683,14 @@ export default function TinyHabits() {
   // ── Load data ────────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     try {
-      const [habitsRes, completionsRes] = await Promise.all([
+      const [habitsRes, completionsRes, quickListsRes] = await Promise.all([
         fetch(API_BASE).then(r => r.json()),
         fetch(`${API_BASE}/completions`).then(r => r.json()),
+        fetch(QUICK_LISTS_API).then(r => r.json()),
       ]);
       setHabits(Array.isArray(habitsRes) ? sortHabits(habitsRes.filter(h => h.active).map(normalizeHabit)) : []);
       setCompletions(typeof completionsRes === 'object' ? completionsRes : {});
+      setQuickLists(Array.isArray(quickListsRes) ? quickListsRes : []);
     } catch (err) {
       toast.error('Could not load habits');
     } finally {
@@ -818,6 +958,101 @@ export default function TinyHabits() {
       toast.success('Habit deleted');
     } catch {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleAddQuickList = async () => {
+    const title = newListTitle.trim();
+    if (!title) return;
+
+    try {
+      const res = await fetch(QUICK_LISTS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const created = await res.json();
+      setQuickLists(lists => [...lists, created]);
+      setNewListTitle('');
+    } catch {
+      toast.error('Failed to add list');
+    }
+  };
+
+  const handleRenameQuickList = async (listId, title) => {
+    try {
+      const res = await fetch(`${QUICK_LISTS_API}/${listId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const updated = await res.json();
+      setQuickLists(lists => lists.map(list => list.id === listId ? updated : list));
+    } catch {
+      toast.error('Failed to rename list');
+    }
+  };
+
+  const handleDeleteQuickList = async (listId) => {
+    if (!window.confirm('Delete this list?')) return;
+    try {
+      await fetch(`${QUICK_LISTS_API}/${listId}`, { method: 'DELETE' });
+      setQuickLists(lists => lists.filter(list => list.id !== listId));
+    } catch {
+      toast.error('Failed to delete list');
+    }
+  };
+
+  const handleAddQuickListItem = async (listId) => {
+    const text = (newQuickListItems[listId] || '').trim();
+    if (!text) return;
+
+    try {
+      const res = await fetch(`${QUICK_LISTS_API}/${listId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const created = await res.json();
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId
+          ? { ...list, items: [...list.items, created] }
+          : list
+      )));
+      setNewQuickListItems(values => ({ ...values, [listId]: '' }));
+    } catch {
+      toast.error('Failed to add item');
+    }
+  };
+
+  const handleUpdateQuickListItem = async (listId, itemId, updates) => {
+    try {
+      const res = await fetch(`${QUICK_LISTS_API}/${listId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const updated = await res.json();
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId
+          ? { ...list, items: list.items.map(item => item.id === itemId ? updated : item) }
+          : list
+      )));
+    } catch {
+      toast.error('Failed to save item');
+    }
+  };
+
+  const handleDeleteQuickListItem = async (listId, itemId) => {
+    try {
+      await fetch(`${QUICK_LISTS_API}/${listId}/items/${itemId}`, { method: 'DELETE' });
+      setQuickLists(lists => lists.map(list => (
+        list.id === listId
+          ? { ...list, items: list.items.filter(item => item.id !== itemId) }
+          : list
+      )));
+    } catch {
+      toast.error('Failed to delete item');
     }
   };
 
@@ -1188,6 +1423,57 @@ export default function TinyHabits() {
           )}
         </div>
       )}
+
+      <section className="mt-8 border-t border-gray-100 pt-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ListBulletIcon className="h-4 w-4 text-gray-400" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Quick Lists</h2>
+          </div>
+          <div className="flex min-w-0 flex-1 justify-end gap-2">
+            <input
+              value={newListTitle}
+              onChange={e => setNewListTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAddQuickList();
+              }}
+              placeholder="Add list"
+              className="min-w-0 max-w-[12rem] rounded-md border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <button
+              type="button"
+              onClick={handleAddQuickList}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700"
+              title="Add list"
+            >
+              <PlusIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {quickLists.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-400">
+            Add a quick list for anything that does not need habit tracking.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {quickLists.map(list => (
+              <QuickListCard
+                key={list.id}
+                list={{ ...list, items: Array.isArray(list.items) ? list.items : [] }}
+                newItemValue={newQuickListItems[list.id] || ''}
+                onNewItemChange={value => setNewQuickListItems(values => ({ ...values, [list.id]: value }))}
+                onAddItem={() => handleAddQuickListItem(list.id)}
+                onRenameList={title => handleRenameQuickList(list.id, title)}
+                onDeleteList={() => handleDeleteQuickList(list.id)}
+                onToggleItem={item => handleUpdateQuickListItem(list.id, item.id, { done: !item.done })}
+                onRenameItem={(item, text) => handleUpdateQuickListItem(list.id, item.id, { text })}
+                onDeleteItem={item => handleDeleteQuickListItem(list.id, item.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* ── Modal ── */}
       {showModal && (

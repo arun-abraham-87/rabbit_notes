@@ -312,10 +312,27 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   return nextDate;
 };
 
+const clampBookmarksPanelWidth = (width) => Math.min(560, Math.max(280, width));
+const BOOKMARK_GROUP_FALLBACK = 'Ungrouped';
+
+const normalizeBookmarkGroup = (group) => {
+  const trimmed = typeof group === 'string' ? group.trim() : '';
+  if (!trimmed || trimmed.toLowerCase() === 'uncategorized') return BOOKMARK_GROUP_FALLBACK;
+  return trimmed;
+};
+
 const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings, setActivePage }) => {
-  const { isPinned, isHovered, isVisible, togglePinned, setHovered } = useLeftPanel();
+  const { isPinned, isHovered, isVisible, panelWidth, togglePinned, setHovered, setPanelWidth } = useLeftPanel();
+  const [isResizingPanel, setIsResizingPanel] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [activeSection, setActiveSection] = useState(null);
+  const [groupBookmarks, setGroupBookmarks] = useState(() => {
+    try {
+      return localStorage.getItem('bookmarksGrouped') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [unsavedSettings, setUnsavedSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
@@ -333,6 +350,32 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const popupRef = useRef(null);
   const panelRef = useRef(null);
   const isPointerInsidePanelRef = useRef(false);
+
+  useEffect(() => {
+    if (!isResizingPanel) return;
+
+    const handleMouseMove = (event) => {
+      setPanelWidth(clampBookmarksPanelWidth(event.clientX));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingPanel(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingPanel, setPanelWidth]);
   const [showQuickNote, setShowQuickNote] = useState(false);
   const [quickNoteText, setQuickNoteText] = useState('');
   const quickNoteInputRef = useRef(null);
@@ -466,9 +509,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
-      if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
+      const lines = note?.content ? note.content.split('\n') : [];
+      if (note?.content && lines.some(line => line.trim().startsWith('meta::bookmark'))) {
         // Check if note has hidden tags
-        const hasHiddenTag = note.content.split('\n').some(line => 
+        const hasHiddenTag = lines.some(line => 
           line.trim() === 'meta::bookmark_hidden' || line.trim() === 'meta::bookmarks_hidden'
         );
         
@@ -485,9 +529,16 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           const key = `${url}|${label}`;
           if (!seen.has(key)) {
             seen.add(key);
-            const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
+            const isPinned = lines.some(line => line.trim().startsWith('meta::bookmark_pinned'));
+            const explicitGroupLine = lines.find(line => line.trim().startsWith('meta::bookmark_group::'));
+            const folderLine = lines.find(line => line.trim().startsWith('Folder:'));
+            const group = normalizeBookmarkGroup(
+              explicitGroupLine
+                ? explicitGroupLine.trim().replace('meta::bookmark_group::', '')
+                : folderLine?.trim().replace('Folder:', '')
+            );
             //
-            list.push({ url, label, noteId: note.id, isPinned });
+            list.push({ url, label, noteId: note.id, isPinned, group });
           }
         }
       }
@@ -500,6 +551,32 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       return 0; // Keep original order within each group
     });
   }, [notes, pinUpdateTrigger]);
+
+  const groupedBookmarks = useMemo(() => {
+    if (!groupBookmarks) return [{ group: null, bookmarks: bookmarkedUrls }];
+
+    const groups = bookmarkedUrls.reduce((acc, bookmark) => {
+      const group = normalizeBookmarkGroup(bookmark.group);
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(bookmark);
+      return acc;
+    }, {});
+
+    return Object.keys(groups)
+      .sort((a, b) => {
+        if (a === BOOKMARK_GROUP_FALLBACK) return 1;
+        if (b === BOOKMARK_GROUP_FALLBACK) return -1;
+        return a.localeCompare(b);
+      })
+      .map(group => ({ group, bookmarks: groups[group] }));
+  }, [bookmarkedUrls, groupBookmarks]);
+
+  const setStoredGroupBookmarks = (enabled) => {
+    setGroupBookmarks(enabled);
+    try {
+      localStorage.setItem('bookmarksGrouped', String(enabled));
+    } catch { /* ignore */ }
+  };
 
   // Keyboard navigation for bookmarks in left panel
   React.useEffect(() => {
@@ -643,6 +720,37 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       
     } catch (error) {
       console.error('Error updating bookmark pin status:', error);
+    }
+  };
+
+  const handleSetBookmarkGroup = async (bookmark) => {
+    try {
+      setHovered(true);
+      setActiveSection('bookmarks');
+
+      const note = notes.find(n => n.id === bookmark.noteId);
+      if (!note) return;
+
+      const nextGroup = window.prompt('Bookmark group', bookmark.group === BOOKMARK_GROUP_FALLBACK ? '' : bookmark.group);
+      if (nextGroup === null) return;
+
+      const normalizedGroup = normalizeBookmarkGroup(nextGroup);
+      const lines = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::bookmark_group::'));
+
+      if (normalizedGroup !== BOOKMARK_GROUP_FALLBACK) {
+        lines.push(`meta::bookmark_group::${normalizedGroup}`);
+      }
+
+      const updatedContent = lines.join('\n');
+      await updateNoteById(note.id, updatedContent);
+
+      setNotes(prevNotes => prevNotes.map(n => (
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      )));
+    } catch (error) {
+      console.error('Error updating bookmark group:', error);
     }
   };
 
@@ -919,7 +1027,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       <div 
         ref={panelRef}
         className={`fixed left-0 top-0 h-full bg-slate-50 shadow-lg transition-all duration-300 ease-in-out z-30 ${
-          isVisible ? 'w-80 opacity-100' : 'w-0 opacity-0'
+          isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         onMouseEnter={() => {
           isPointerInsidePanelRef.current = true;
@@ -930,9 +1038,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             setHovered(false);
           }
         }}
-        style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+        style={{ width: isVisible ? `${panelWidth}px` : 0, pointerEvents: isVisible ? 'auto' : 'none' }}
       >
-        <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
+        <div className={`h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}>
           {/* Pin/unpin sidebar button */}
@@ -988,6 +1096,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setStoredGroupBookmarks(!groupBookmarks);
+                    }}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                      groupBookmarks ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                    }`}
+                    title={groupBookmarks ? 'Show bookmarks as one list' : 'Group bookmarks'}
+                  >
+                    Group
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setShowAddBookmarkModal(true);
                     }}
                     className="p-1 rounded hover:bg-indigo-100"
@@ -1003,70 +1123,95 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 bookmarkedUrls.length === 0 ? (
                   <p className="text-gray-500 text-sm">No Bookmarks</p>
                 ) : (
-                  bookmarkedUrls.map(({ url, label, isPinned }, idx) => {
-                    let displayText = label || (() => {
-                      try { return new URL(url).hostname.replace(/^www\./, ''); }
-                      catch { return url; }
-                    })();
-                    const isFocused = idx === focusedBookmarkIndex;
-                    return (
-                      <div
-                        key={url}
-                        onContextMenu={e => handleBookmarkContextMenu(e, { url, label, isPinned, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
-                        className={`group/bookmark flex items-center mb-1.5 pl-3 p-2 rounded-lg border transition-all duration-150 ${
-                          isFocused ? 'bg-indigo-100 border-indigo-300 ring-1 ring-indigo-300' :
-                          idx % 2 === 0 ? 'bg-white border-transparent' : 'bg-slate-50 border-transparent'
-                        } hover:-translate-y-0.5 hover:bg-indigo-100 hover:border-indigo-400 hover:ring-1 hover:ring-indigo-300 hover:shadow-sm`}
-                      >
-                        <span className={`mr-2 text-xs font-medium ${
-                          isFocused ? 'text-indigo-700' : 'text-gray-500 group-hover/bookmark:text-indigo-700'
-                        }`}>
-                          {idx + 1}.
-                        </span>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex-1 truncate text-sm ${
-                            isFocused ? 'text-indigo-800 font-medium' : 'text-gray-700 group-hover/bookmark:text-indigo-800 hover:text-indigo-600'
-                          }`}
-                        >
-                          {displayText}
-                        </a>
-                        <button
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setHovered(true);
-                            setActiveSection('bookmarks');
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePinBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId });
-                          }}
-                          className={`ml-2 p-1 rounded transition-colors ${
-                            isPinned
-                              ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100'
-                              : bookmarkedUrls.filter(b => b.isPinned).length >= 7
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
-                          }`}
-                          title={
-                            isPinned 
-                              ? 'Unpin bookmark' 
-                              : bookmarkedUrls.filter(b => b.isPinned).length >= 7
-                                ? 'Maximum pinned bookmarks reached (7)'
-                                : 'Pin bookmark'
-                          }
-                          disabled={!isPinned && bookmarkedUrls.filter(b => b.isPinned).length >= 7}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                            <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })
+                  groupedBookmarks.map(({ group, bookmarks }) => (
+                    <div key={group || 'all-bookmarks'} className="mb-2 last:mb-0">
+                      {group && (
+                        <div className="mb-1 mt-2 flex items-center justify-between px-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                          <span className="truncate">{group}</span>
+                          <span>{bookmarks.length}</span>
+                        </div>
+                      )}
+                      {bookmarks.map((bookmark) => {
+                        const { url, label, isPinned, noteId, group: bookmarkGroup } = bookmark;
+                        const idx = bookmarkedUrls.findIndex(b => b.url === url && b.label === label);
+                        let displayText = label || (() => {
+                          try { return new URL(url).hostname.replace(/^www\./, ''); }
+                          catch { return url; }
+                        })();
+                        const isFocused = idx === focusedBookmarkIndex;
+                        return (
+                          <div
+                            key={`${url}|${label || ''}`}
+                            onContextMenu={e => handleBookmarkContextMenu(e, { url, label, isPinned, noteId, group: bookmarkGroup })}
+                            className={`group/bookmark flex items-center mb-1.5 pl-3 p-2 rounded-lg border transition-all duration-150 ${
+                              isFocused ? 'bg-indigo-100 border-indigo-300 ring-1 ring-indigo-300' :
+                              idx % 2 === 0 ? 'bg-white border-transparent' : 'bg-slate-50 border-transparent'
+                            } hover:-translate-y-0.5 hover:bg-indigo-100 hover:border-indigo-400 hover:ring-1 hover:ring-indigo-300 hover:shadow-sm`}
+                          >
+                            {!groupBookmarks && (
+                              <span className={`mr-2 text-xs font-medium ${
+                                isFocused ? 'text-indigo-700' : 'text-gray-500 group-hover/bookmark:text-indigo-700'
+                              }`}>
+                                {idx + 1}.
+                              </span>
+                            )}
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex-1 truncate text-sm ${
+                                isFocused ? 'text-indigo-800 font-medium' : 'text-gray-700 group-hover/bookmark:text-indigo-800 hover:text-indigo-600'
+                              }`}
+                              title={groupBookmarks ? displayText : `${displayText} · ${bookmarkGroup}`}
+                            >
+                              {displayText}
+                            </a>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetBookmarkGroup(bookmark);
+                              }}
+                              className="ml-1 rounded px-1 py-0.5 text-[10px] font-semibold text-gray-300 opacity-0 transition-colors group-hover/bookmark:opacity-100 hover:bg-indigo-50 hover:text-indigo-600"
+                              title="Set bookmark group"
+                            >
+                              Group
+                            </button>
+                            <button
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setHovered(true);
+                                setActiveSection('bookmarks');
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePinBookmark({ url, label, noteId });
+                              }}
+                              className={`ml-2 p-1 rounded transition-colors ${
+                                isPinned
+                                  ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100'
+                                  : bookmarkedUrls.filter(b => b.isPinned).length >= 7
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                              }`}
+                              title={
+                                isPinned 
+                                  ? 'Unpin bookmark' 
+                                  : bookmarkedUrls.filter(b => b.isPinned).length >= 7
+                                    ? 'Maximum pinned bookmarks reached (7)'
+                                    : 'Pin bookmark'
+                              }
+                              disabled={!isPinned && bookmarkedUrls.filter(b => b.isPinned).length >= 7}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                                <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
                 )
               )}
             </div>
@@ -1084,6 +1229,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             </button>
           </div>
         </div>
+        {isVisible && (
+          <button
+            type="button"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsResizingPanel(true);
+              setHovered(true);
+            }}
+            className="absolute right-0 top-0 h-full w-2 cursor-col-resize bg-transparent transition-colors hover:bg-indigo-300/40"
+            title="Resize bookmarks panel"
+            aria-label="Resize bookmarks panel"
+          />
+        )}
       </div>
 
       {/* NoteEditor modal */}

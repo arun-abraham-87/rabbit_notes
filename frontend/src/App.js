@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'r
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from './components/Navbar';
+import BookmarkedLinks from './components/BookmarkedLinks';
 import NotesMainContainer from './components/NotesMainContainer.js';
 import TagListing from './components/TagListing.js';
 // Removed TodoList
@@ -29,7 +30,8 @@ import TextPastePopup from './components/TextPastePopup';
 import { Alerts } from './components/Alerts';
 import CustomCalendar from './components/CustomCalendar';
 import BookmarkManager from './components/BookmarkManager';
-import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
+import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex, clearSearchIndex } from './utils/SearchUtils';
+import { installMemoryPurgeHelpers, purgeRabbitNotesCaches } from './utils/MemoryUtils';
 import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
 import Timelines from './pages/Timelines';
@@ -43,6 +45,8 @@ import Pomodoro from './components/Pomodoro';
 import TinyHabits from './pages/TinyHabits';
 import LifeTrackers from './pages/LifeTrackers';
 import Taxes from './pages/Taxes';
+import RealEstate from './pages/RealEstate';
+import F1Schedule from './pages/F1Schedule';
 import { applySavedAppFont } from './utils/FontUtils';
 import {
   applyThemePreference,
@@ -71,12 +75,12 @@ const MainContentArea = ({
   navigate,
   handleCreatePurchaseNote
 }) => {
-  const { isVisible } = useLeftPanel();
+  const { isVisible, panelWidth } = useLeftPanel();
 
   return (
     <div
-      className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${isVisible ? 'ml-80' : 'ml-0'
-        }`}
+      className="flex-1 overflow-y-auto transition-all duration-300 ease-in-out"
+      style={{ marginLeft: isVisible ? `${panelWidth}px` : 0 }}
     >
       <div className="h-full">
         <Routes>
@@ -314,6 +318,20 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <Taxes />
+              </div>
+            </div>
+          } />
+          <Route path="/realestate" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <RealEstate />
+              </div>
+            </div>
+          } />
+          <Route path="/f1-schedule" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full">
+                <F1Schedule allNotes={allNotes} setAllNotes={setAllNotes} />
               </div>
             </div>
           } />
@@ -635,6 +653,10 @@ const AppContent = () => {
       }
       const searchResults = searchNotes(searchText);
       setTotals(searchResults.length);
+    } else if (searchIndexNoteIdsRef.current) {
+      clearSearchIndex();
+      searchIndexNoteIdsRef.current = '';
+      setTotals(0);
     }
   };
 
@@ -686,6 +708,8 @@ const AppContent = () => {
   };
 
   useEffect(() => {
+    purgeRabbitNotesCaches();
+    installMemoryPurgeHelpers();
     fetchAllNotesFromServer()
     fetchTags()
   }, []);
@@ -746,6 +770,9 @@ const AppContent = () => {
           <LeftPanelProvider>
             <div className="App flex flex-col h-screen overflow-hidden bg-background text-card-foreground transition-colors duration-300">
               <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
+              <div className="px-2 py-1">
+                <BookmarkedLinks notes={allNotes} setNotes={setAllNotes} />
+              </div>
               <div className="flex flex-1 overflow-hidden">
                 {/* Left panel */}
                 <div className="relative">

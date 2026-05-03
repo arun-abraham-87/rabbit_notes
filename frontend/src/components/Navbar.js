@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Cog6ToothIcon, ChevronDownIcon, PencilSquareIcon, Bars2Icon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
+import React, { useEffect, useRef, useState } from 'react';
+import { Cog6ToothIcon, ChevronDownIcon, Bars2Icon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
+import { DEFAULT_APP_FONT, applyAppFont } from '../utils/FontUtils';
 import {
   DASHBOARD_NAV_MENU_SETTING_KEY,
   addNoteBackedSettingsListener,
@@ -17,6 +18,9 @@ const Navbar = ({ activePage, setActivePage }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
+  const [showFontSelector, setShowFontSelector] = useState(false);
+  const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem('appFont') || DEFAULT_APP_FONT);
+  const fontSelectorRef = useRef(null);
   const { isVisible } = useLeftPanel();
   const handleBrandClick = () => {
     setActivePage('dashboard');
@@ -27,7 +31,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     'dashboard', 'notes', 'watch', 'tags', 'journals', 'events',
     'timelines', 'purchases', 'payments', 'countdowns', 'people', 'family-tree',
     'news', 'expense', 'trackers', 'calendar', 'bookmarks', 'assets',
-    'stock-vesting', 'pomodoro', 'information', 'over-the-years', 'tiny-habits', 'life-trackers', 'taxes'
+    'stock-vesting', 'pomodoro', 'information', 'over-the-years', 'tiny-habits', 'life-trackers', 'taxes', 'realestate', 'f1-schedule'
   ];
 
   const applyNavbarSettings = (settings) => {
@@ -122,7 +126,58 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'tiny-habits', label: 'Tiny Habits' },
     { id: 'life-trackers', label: 'Life Trackers' },
     { id: 'taxes', label: 'Taxes' },
+    { id: 'realestate', label: 'Real Estate' },
+    { id: 'f1-schedule', label: 'F1 Schedule' },
   ];
+
+  const availableFonts = [
+    DEFAULT_APP_FONT,
+    'Arial',
+    'Helvetica',
+    'Verdana',
+    'Tahoma',
+    'Trebuchet MS',
+    'Georgia',
+    'Times New Roman',
+    'Garamond',
+    'Courier New',
+    'Monaco',
+    'Menlo',
+    'Consolas',
+    'SF Pro Display',
+    'SF Mono',
+    'Inter',
+    'Roboto',
+    'Open Sans',
+    'Lato',
+    'Montserrat',
+    'Raleway',
+    'Poppins',
+    'Nunito',
+    'Quicksand',
+    'Comic Sans MS',
+    'Impact',
+    'Lucida Console',
+    'Palatino Linotype',
+    'Book Antiqua',
+    'Segoe UI',
+  ];
+
+  useEffect(() => {
+    applyAppFont(selectedFont);
+    localStorage.setItem('appFont', selectedFont);
+  }, [selectedFont]);
+
+  useEffect(() => {
+    if (!showFontSelector) return;
+    const handleClick = (event) => {
+      if (fontSelectorRef.current && !fontSelectorRef.current.contains(event.target)) {
+        setShowFontSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showFontSelector]);
 
   // Filter visible pages
   const visibleButtons = allNavigationButtons.filter(button => navbarPagesVisibility[button.id]);
@@ -339,18 +394,38 @@ const Navbar = ({ activePage, setActivePage }) => {
             ))}
           </div>
 
-          {/* Edit mode toggle button */}
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`p-2 rounded-xl border transition ${
-              isEditMode
-                ? 'bg-indigo-100 text-indigo-600 border-indigo-200'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-            }`}
-            title={isEditMode ? 'Done editing' : 'Edit main bar'}
-          >
-            <PencilSquareIcon className="h-5 w-5" />
-          </button>
+          {/* Font Selector */}
+          <div className="relative" ref={fontSelectorRef}>
+            <button
+              onClick={() => setShowFontSelector(value => !value)}
+              className="p-2 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition"
+              title="Change font"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" y1="20" x2="15" y2="20" />
+                <line x1="12" y1="4" x2="12" y2="20" />
+              </svg>
+            </button>
+            {showFontSelector && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-72 overflow-y-auto">
+                <div className="p-2 border-b border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Font</div>
+                </div>
+                {availableFonts.map((font) => (
+                  <button
+                    key={font}
+                    onClick={() => { setSelectedFont(font); setShowFontSelector(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors ${selectedFont === font ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                    style={{ fontFamily: font === DEFAULT_APP_FONT ? 'inherit' : `"${font}", sans-serif` }}
+                  >
+                    {font}
+                    {selectedFont === font && <span className="float-right text-blue-500">&#10003;</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Dropdown for additional navigation buttons */}
           {dropdownButtons.length > 0 && (

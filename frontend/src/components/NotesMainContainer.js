@@ -90,6 +90,7 @@ const NotesMainContainer = ({
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
 
             img.onload = () => {
                 // Keep original dimensions
@@ -101,13 +102,21 @@ const NotesMainContainer = ({
 
                 // Convert to blob with compression
                 canvas.toBlob(
-                    (blob) => resolve(blob),
+                    (blob) => {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(blob);
+                    },
                     'image/jpeg', // Convert to JPEG for better compression
                     quality
                 );
             };
 
-            img.src = URL.createObjectURL(file);
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file);
+            };
+
+            img.src = objectUrl;
         });
     };
 
@@ -203,7 +212,10 @@ const NotesMainContainer = ({
                         const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
 
                         setPastedImage(file);
-                        setImagePreview(URL.createObjectURL(file));
+                        setImagePreview(previousPreview => {
+                            if (previousPreview) URL.revokeObjectURL(previousPreview);
+                            return URL.createObjectURL(file);
+                        });
                         console.log('📸 [NotesMainContainer] Image pasted and preview set');
                     }
                     return;

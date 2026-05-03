@@ -20,6 +20,7 @@ initHabitsDir().catch(console.error);
 
 const HABITS_FILE = path.join(HABITS_DIR, 'habits.json');
 const COMPLETIONS_FILE = path.join(HABITS_DIR, 'completions.json');
+const QUICK_LISTS_FILE = path.join(HABITS_DIR, 'quick-lists.json');
 
 async function readJson(filePath, defaultVal) {
   try {
@@ -61,6 +62,171 @@ function normalizeHabitUpdates(body, existingHabit = {}) {
 }
 
 // ── IMPORTANT: specific routes BEFORE /:id wildcard ──────────────────────────
+
+function normalizeQuickList(rawList, index = 0) {
+  const now = new Date().toISOString();
+  return {
+    id: rawList.id || uuidv4(),
+    title: normalizeString(rawList.title, 'Untitled list'),
+    createdAt: rawList.createdAt || now,
+    updatedAt: rawList.updatedAt || rawList.createdAt || now,
+    order: Number.isFinite(rawList.order) ? rawList.order : index,
+    items: Array.isArray(rawList.items)
+      ? rawList.items.map((item, itemIndex) => ({
+          id: item.id || uuidv4(),
+          text: normalizeString(item.text, 'Untitled item'),
+          done: !!item.done,
+          createdAt: item.createdAt || now,
+          updatedAt: item.updatedAt || item.createdAt || now,
+          order: Number.isFinite(item.order) ? item.order : itemIndex,
+        }))
+      : [],
+  };
+}
+
+async function readQuickLists() {
+  const lists = await readJson(QUICK_LISTS_FILE, []);
+  return Array.isArray(lists)
+    ? lists.map(normalizeQuickList).sort((a, b) => a.order - b.order)
+    : [];
+}
+
+// GET /api/habits/quick-lists — list all quick lists
+router.get('/quick-lists', async (req, res) => {
+  try {
+    res.json(await readQuickLists());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/habits/quick-lists — create quick list
+router.post('/quick-lists', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const now = new Date().toISOString();
+    const list = normalizeQuickList({
+      id: uuidv4(),
+      title: req.body.title,
+      createdAt: now,
+      updatedAt: now,
+      order: lists.length,
+      items: [],
+    });
+    lists.push(list);
+    await writeJson(QUICK_LISTS_FILE, lists);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/habits/quick-lists/:listId — update quick list
+router.put('/quick-lists/:listId', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const idx = lists.findIndex(list => list.id === req.params.listId);
+    if (idx === -1) return res.status(404).json({ error: 'Quick list not found' });
+
+    lists[idx] = normalizeQuickList({
+      ...lists[idx],
+      title: Object.prototype.hasOwnProperty.call(req.body, 'title') ? req.body.title : lists[idx].title,
+      updatedAt: new Date().toISOString(),
+    }, idx);
+
+    await writeJson(QUICK_LISTS_FILE, lists);
+    res.json(lists[idx]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/habits/quick-lists/:listId
+router.delete('/quick-lists/:listId', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const updated = lists.filter(list => list.id !== req.params.listId);
+    await writeJson(QUICK_LISTS_FILE, updated.map((list, index) => ({ ...list, order: index })));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/habits/quick-lists/:listId/items — create quick list item
+router.post('/quick-lists/:listId/items', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const idx = lists.findIndex(list => list.id === req.params.listId);
+    if (idx === -1) return res.status(404).json({ error: 'Quick list not found' });
+
+    const now = new Date().toISOString();
+    const item = {
+      id: uuidv4(),
+      text: normalizeString(req.body.text, 'Untitled item'),
+      done: false,
+      createdAt: now,
+      updatedAt: now,
+      order: lists[idx].items.length,
+    };
+    lists[idx].items.push(item);
+    lists[idx].updatedAt = now;
+
+    await writeJson(QUICK_LISTS_FILE, lists);
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/habits/quick-lists/:listId/items/:itemId — update quick list item
+router.put('/quick-lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const listIdx = lists.findIndex(list => list.id === req.params.listId);
+    if (listIdx === -1) return res.status(404).json({ error: 'Quick list not found' });
+
+    const itemIdx = lists[listIdx].items.findIndex(item => item.id === req.params.itemId);
+    if (itemIdx === -1) return res.status(404).json({ error: 'Quick list item not found' });
+
+    const now = new Date().toISOString();
+    lists[listIdx].items[itemIdx] = {
+      ...lists[listIdx].items[itemIdx],
+      text: Object.prototype.hasOwnProperty.call(req.body, 'text')
+        ? normalizeString(req.body.text, lists[listIdx].items[itemIdx].text)
+        : lists[listIdx].items[itemIdx].text,
+      done: Object.prototype.hasOwnProperty.call(req.body, 'done')
+        ? !!req.body.done
+        : lists[listIdx].items[itemIdx].done,
+      updatedAt: now,
+    };
+    lists[listIdx].updatedAt = now;
+
+    await writeJson(QUICK_LISTS_FILE, lists);
+    res.json(lists[listIdx].items[itemIdx]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/habits/quick-lists/:listId/items/:itemId
+router.delete('/quick-lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const lists = await readQuickLists();
+    const listIdx = lists.findIndex(list => list.id === req.params.listId);
+    if (listIdx === -1) return res.status(404).json({ error: 'Quick list not found' });
+
+    lists[listIdx].items = lists[listIdx].items
+      .filter(item => item.id !== req.params.itemId)
+      .map((item, index) => ({ ...item, order: index }));
+    lists[listIdx].updatedAt = new Date().toISOString();
+
+    await writeJson(QUICK_LISTS_FILE, lists);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/habits/completions?from=YYYY-MM-DD&to=YYYY-MM-DD
 router.get('/completions', async (req, res) => {

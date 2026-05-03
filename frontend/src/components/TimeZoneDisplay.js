@@ -1,8 +1,16 @@
 // src/components/TimeZoneDisplay.js
 import React, { useState, useEffect } from 'react';
 
-const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
+const TimeZoneDisplay = ({ selectedTimezones = [], showAnalogClock = true, showTimeBuddy = true, clockFace = 'classic' }) => {
   const [time, setTime] = useState(new Date());
+  const [referenceMinuteOverride, setReferenceMinuteOverride] = useState(null);
+  const [referenceTimezone, setReferenceTimezone] = useState(() => {
+    try {
+      return localStorage.getItem('timeBuddyReferenceTimezone') || 'Australia/Melbourne';
+    } catch {
+      return 'Australia/Melbourne';
+    }
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -14,11 +22,11 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
 
   // Default timezones if none are selected
   const defaultTimezones = [
-    { label: baseTimezone.split('/').pop().replace('_', ' '), timeZone: baseTimezone },
-    { label: 'IST', timeZone: 'Asia/Kolkata' },
-    { label: 'EST', timeZone: 'America/New_York' },
-    { label: 'PST', timeZone: 'America/Los_Angeles' },
-    { label: 'GMT', timeZone: 'Europe/London' },
+    { label: getCityLabel(baseTimezone), timeZone: baseTimezone },
+    { label: 'Mumbai', timeZone: 'Asia/Kolkata' },
+    { label: 'New York', timeZone: 'America/New_York' },
+    { label: 'San Francisco', timeZone: 'America/Los_Angeles' },
+    { label: 'London', timeZone: 'Europe/London' },
   ];
 
   // Map zone labels to flag emojis
@@ -60,16 +68,138 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     };
   };
 
-  const AnalogClock = ({ hour, minute, second, isDay }) => {
+  const getZonedDateTimeParts = (date, timeZone) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(date);
+
+    return parts.reduce((acc, part) => {
+      if (part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+  };
+
+  const getMinutesInZone = (date, timeZone) => {
+    const parts = getZonedDateTimeParts(date, timeZone);
+    return (parseInt(parts.hour, 10) * 60) + parseInt(parts.minute, 10);
+  };
+
+  const formatSliderTime = (minutes) => {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${String(displayHour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${suffix}`;
+  };
+
+  function getCityLabel(timeZone) {
+    const cityLabelMap = {
+      'America/Los_Angeles': 'San Francisco',
+      'America/New_York': 'New York',
+      'Europe/London': 'London',
+      'Asia/Kolkata': 'Mumbai',
+      'Australia/Sydney': 'Sydney',
+    };
+
+    return cityLabelMap[timeZone] || timeZone.split('/').pop().replace('_', ' ');
+  }
+
+  const getNewYorkMarketTimer = (date) => {
+    const nyParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      hourCycle: 'h23',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).formatToParts(date);
+
+    const valueByType = nyParts.reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+    const weekday = valueByType.weekday;
+    const minutes = parseInt(valueByType.hour, 10) * 60 + parseInt(valueByType.minute, 10);
+    const marketOpenMinutes = 9 * 60 + 30;
+    const marketCloseMinutes = 16 * 60;
+    const weekdayIndex = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].indexOf(weekday);
+    const isWeekday = weekdayIndex !== -1;
+
+    const formatDuration = (totalMinutes) => {
+      const days = Math.floor(totalMinutes / (24 * 60));
+      const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+      const mins = totalMinutes % 60;
+
+      if (days > 0) return `${days}d ${hours}h ${mins}m`;
+      if (hours > 0) return `${hours}h ${mins}m`;
+      return `${mins}m`;
+    };
+
+    if (isWeekday && minutes >= marketOpenMinutes && minutes < marketCloseMinutes) {
+      return {
+        label: 'Market closes in',
+        duration: formatDuration(marketCloseMinutes - minutes),
+        isOpen: true
+      };
+    }
+
+    let minutesUntilOpen;
+    if (isWeekday && minutes < marketOpenMinutes) {
+      minutesUntilOpen = marketOpenMinutes - minutes;
+    } else if (isWeekday && weekdayIndex < 4) {
+      minutesUntilOpen = (24 * 60 - minutes) + marketOpenMinutes;
+    } else {
+      const daysUntilMonday = weekday === 'Fri' ? 3 : weekday === 'Sat' ? 2 : 1;
+      minutesUntilOpen = (24 * 60 - minutes) + ((daysUntilMonday - 1) * 24 * 60) + marketOpenMinutes;
+    }
+
+    return {
+      label: 'Market opens in',
+      duration: formatDuration(minutesUntilOpen),
+      isOpen: false
+    };
+  };
+
+  const AnalogClock = ({ hour, minute, second, isDay, face = 'classic' }) => {
     const hourAngle = ((hour % 12) + minute / 60) * 30;
     const minuteAngle = (minute + second / 60) * 6;
     const secondAngle = second * 6;
-    const tickColor = isDay ? '#475569' : '#cbd5e1';
-    const faceFill = isDay ? 'rgba(255, 255, 255, 0.78)' : 'rgba(15, 23, 42, 0.64)';
-    const faceStroke = isDay ? 'rgba(148, 163, 184, 0.55)' : 'rgba(226, 232, 240, 0.32)';
-    const handColor = isDay ? '#111827' : '#f8fafc';
-    const accentColor = isDay ? '#2563eb' : '#38bdf8';
-    const secondColor = isDay ? '#ef4444' : '#fb7185';
+    const palettes = {
+      classic: {
+        tickColor: isDay ? '#475569' : '#cbd5e1',
+        faceFill: isDay ? 'rgba(255, 255, 255, 0.78)' : 'rgba(15, 23, 42, 0.64)',
+        faceStroke: isDay ? 'rgba(148, 163, 184, 0.55)' : 'rgba(226, 232, 240, 0.32)',
+        handColor: isDay ? '#111827' : '#f8fafc',
+        accentColor: isDay ? '#2563eb' : '#38bdf8',
+        secondColor: isDay ? '#ef4444' : '#fb7185',
+      },
+      minimal: {
+        tickColor: isDay ? '#94a3b8' : '#94a3b8',
+        faceFill: isDay ? 'rgba(248, 250, 252, 0.7)' : 'rgba(2, 6, 23, 0.24)',
+        faceStroke: isDay ? 'rgba(203, 213, 225, 0.75)' : 'rgba(148, 163, 184, 0.26)',
+        handColor: isDay ? '#334155' : '#e2e8f0',
+        accentColor: isDay ? '#64748b' : '#93c5fd',
+        secondColor: isDay ? '#94a3b8' : '#bfdbfe',
+      },
+      numbers: {
+        tickColor: isDay ? '#0f766e' : '#99f6e4',
+        faceFill: isDay ? 'rgba(240, 253, 250, 0.86)' : 'rgba(19, 78, 74, 0.46)',
+        faceStroke: isDay ? 'rgba(20, 184, 166, 0.38)' : 'rgba(153, 246, 228, 0.3)',
+        handColor: isDay ? '#134e4a' : '#ecfeff',
+        accentColor: isDay ? '#0d9488' : '#5eead4',
+        secondColor: isDay ? '#f97316' : '#fdba74',
+      },
+    };
+    const { tickColor, faceFill, faceStroke, handColor, accentColor, secondColor } = palettes[face] || palettes.classic;
+    const showTicks = face !== 'minimal';
+    const numbersToShow = face === 'numbers' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : [12, 3, 6, 9];
 
     return (
       <svg
@@ -80,7 +210,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       >
         <circle cx="60" cy="60" r="55" fill={faceFill} stroke={faceStroke} strokeWidth="3" />
         <circle cx="60" cy="60" r="48" fill="none" stroke={faceStroke} strokeWidth="1" />
-        {Array.from({ length: 12 }).map((_, index) => {
+        {showTicks && Array.from({ length: 12 }).map((_, index) => {
           const angle = index * 30;
           const isQuarter = index % 3 === 0;
           return (
@@ -97,9 +227,9 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
             />
           );
         })}
-        {[12, 3, 6, 9].map((number) => {
+        {numbersToShow.map((number) => {
           const angle = (number % 12) * 30 - 90;
-          const radius = 36;
+          const radius = face === 'numbers' ? 39 : 36;
           const x = 60 + Math.cos((angle * Math.PI) / 180) * radius;
           const y = 60 + Math.sin((angle * Math.PI) / 180) * radius + 4;
           return (
@@ -108,7 +238,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
               x={x}
               y={y}
               textAnchor="middle"
-              fontSize="12"
+              fontSize={face === 'numbers' ? '10' : '12'}
               fontWeight="700"
               fill={tickColor}
             >
@@ -166,13 +296,11 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   /**
    * Compute the hour‑difference between base timezone and any other zone.
    */
-  const getTimeDiffFromBase = (targetZone) => {
+  const getTimeDiffFromBase = (targetZone, date = time, compareTimezone = baseTimezone) => {
     try {
-      const now = new Date();
-      
       // Use Intl.DateTimeFormat to get timezone offsets
       const baseFormatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: baseTimezone,
+        timeZone: compareTimezone,
         year: 'numeric',
         month: 'numeric',
         day: 'numeric',
@@ -193,8 +321,8 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
         hour12: false
       });
       
-      const baseParts = baseFormatter.formatToParts(now);
-      const targetParts = targetFormatter.formatToParts(now);
+      const baseParts = baseFormatter.formatToParts(date);
+      const targetParts = targetFormatter.formatToParts(date);
       
       const baseHour = parseInt(baseParts.find(p => p.type === 'hour').value);
       const targetHour = parseInt(targetParts.find(p => p.type === 'hour').value);
@@ -221,13 +349,11 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   /**
    * Returns the numeric hour-difference between base timezone and the given zone.
    */
-  const getTimeDiffHours = (targetZone) => {
+  const getTimeDiffHours = (targetZone, date = time, compareTimezone = baseTimezone) => {
     try {
-      const now = new Date();
-      
       // Use Intl.DateTimeFormat to get timezone offsets
       const baseFormatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: baseTimezone,
+        timeZone: compareTimezone,
         year: 'numeric',
         month: 'numeric',
         day: 'numeric',
@@ -248,8 +374,8 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
         hour12: false
       });
       
-      const baseParts = baseFormatter.formatToParts(now);
-      const targetParts = targetFormatter.formatToParts(now);
+      const baseParts = baseFormatter.formatToParts(date);
+      const targetParts = targetFormatter.formatToParts(date);
       
       const baseHour = parseInt(baseParts.find(p => p.type === 'hour').value);
       const targetHour = parseInt(targetParts.find(p => p.type === 'hour').value);
@@ -274,7 +400,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
    * A single card showing the time in one zone.
    */
   const ZoneCard = ({ label, timeZone }) => {
-    const now = time;
+    const now = displayTime;
     const { hour, minute, second } = getZonedTimeParts(now, timeZone);
 
     // Determine day vs. night for icon + animation
@@ -288,9 +414,10 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       ? 'bg-gradient-to-br from-yellow-100 via-white to-blue-100 text-gray-700 border border-yellow-200/70'
       : 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-white border border-gray-700';
 
-    // Compute offset relative to base timezone
-    const baseLabel = baseTimezone.split('/').pop().replace('_', ' ');
-    const diff = label === baseLabel ? null : getTimeDiffFromBase(timeZone);
+    // Compute offset relative to the active reference timezone.
+    const compareTimezone = showTimeBuddy ? referenceTimezone : baseTimezone;
+    const isReference = timeZone === compareTimezone;
+    const diff = isReference ? null : getTimeDiffFromBase(timeZone, now, compareTimezone);
 
     // Format time as 12-hour format for display in brackets
     const formattedTime12 = new Intl.DateTimeFormat('en-US', {
@@ -310,9 +437,22 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     const color = isDay ? 'text-green-600' : 'text-orange-300';
     const mutedText = isDay ? 'text-gray-500' : 'text-gray-300';
     const quietText = isDay ? 'text-gray-400' : 'text-gray-400';
+    const marketTimer = timeZone === 'America/New_York' ? getNewYorkMarketTimer(now) : null;
 
     return (
-      <div className={`${cardBgClasses} shadow-md rounded-lg p-3 sm:p-4 flex min-w-[176px] flex-1 flex-col items-center overflow-hidden`}>
+      <button
+        type="button"
+        onClick={() => {
+          if (!showTimeBuddy) return;
+          setReferenceTimezone(timeZone);
+          setReferenceMinuteOverride(getMinutesInZone(displayTime, timeZone));
+          try {
+            localStorage.setItem('timeBuddyReferenceTimezone', timeZone);
+          } catch { /* ignore */ }
+        }}
+        className={`${cardBgClasses} shadow-md rounded-lg p-3 sm:p-4 flex min-w-[176px] flex-1 flex-col items-center overflow-hidden text-left transition ${showTimeBuddy ? 'cursor-pointer hover:ring-2 hover:ring-blue-300' : 'cursor-default'} ${isReference && showTimeBuddy ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+        title={showTimeBuddy ? `Use ${label} as Time Buddy reference` : label}
+      >
         <div className="mb-2 flex w-full items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-xs font-bold sm:text-sm" title={label}>
@@ -326,7 +466,9 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
           </div>
         </div>
 
-        <AnalogClock hour={hour} minute={minute} second={second} isDay={isDay} />
+        {showAnalogClock && (
+          <AnalogClock hour={hour} minute={minute} second={second} isDay={isDay} face={clockFace} />
+        )}
 
         <div className={`mt-2 flex w-full items-center justify-between gap-2 text-[10px] sm:text-xs ${mutedText}`}>
           <span className="whitespace-nowrap">{formattedDate}</span>
@@ -336,18 +478,35 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
             </span>
           )}
         </div>
+
+        {marketTimer && (
+          <div className={`mt-2 w-full rounded px-2 py-1 text-center text-[10px] font-semibold sm:text-xs ${
+            marketTimer.isOpen
+              ? 'bg-green-100 text-green-700'
+              : isDay ? 'bg-blue-100 text-blue-700' : 'bg-slate-700 text-blue-200'
+          }`}>
+            {marketTimer.label}: {marketTimer.duration}
+          </div>
+        )}
   
-      </div>
+      </button>
     );
   };
 
   // Use selected timezones or default ones
   const timezonesToShow = selectedTimezones.length > 0
     ? selectedTimezones.map(tz => ({
-        label: tz.split('/').pop().replace('_', ' '),
+        label: getCityLabel(tz),
         timeZone: tz
       }))
     : defaultTimezones;
+
+  const activeReferenceTimezone = showTimeBuddy ? referenceTimezone : baseTimezone;
+  const currentReferenceMinutes = getMinutesInZone(time, activeReferenceTimezone);
+  const effectiveReferenceMinuteOverride = showTimeBuddy ? referenceMinuteOverride : null;
+  const selectedReferenceMinutes = effectiveReferenceMinuteOverride ?? currentReferenceMinutes;
+  const displayTime = new Date(time.getTime() + ((selectedReferenceMinutes - currentReferenceMinutes) * 60000));
+  const isViewingCurrentTime = effectiveReferenceMinuteOverride === null || effectiveReferenceMinuteOverride === currentReferenceMinutes;
 
   // Function to get time tier based on hour (morning, afternoon, late night, early morning)
   const getTimeTier = (hour) => {
@@ -360,9 +519,9 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   // Enrich with numeric diff/date/tier for stable display ordering.
   const enrichedZones = timezonesToShow
     .map(z => {
-      const diffHrs = getTimeDiffHours(z.timeZone);
-      const zoneYMD = formatYMD(time, z.timeZone);
-      const { hour } = getZonedTimeParts(time, z.timeZone);
+      const diffHrs = getTimeDiffHours(z.timeZone, displayTime, activeReferenceTimezone);
+      const zoneYMD = formatYMD(displayTime, z.timeZone);
+      const { hour } = getZonedTimeParts(displayTime, z.timeZone);
       const hourNum = hour;
       const tier = getTimeTier(hourNum);
       
@@ -389,6 +548,85 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
           <ZoneCard key={label} label={label} timeZone={timeZone} />
         ))}
       </div>
+      {showTimeBuddy && (
+      <div className="mt-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+          <div className="min-w-0 font-semibold text-gray-700">
+            {getCityLabel(activeReferenceTimezone)} time
+            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+              {formatSliderTime(selectedReferenceMinutes)}
+            </span>
+          </div>
+          {!isViewingCurrentTime && (
+            <button
+              type="button"
+              onClick={() => setReferenceMinuteOverride(null)}
+              className="flex-shrink-0 rounded-full border border-gray-200 px-2 py-0.5 font-semibold text-gray-500 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              Now
+            </button>
+          )}
+        </div>
+        <div className="mb-1 flex items-end gap-2">
+          <span className="w-5" aria-hidden="true" />
+          <div className="relative h-4 flex-1" aria-hidden="true">
+            {[
+              { hour: 0, label: '12 AM' },
+              { hour: 6, label: '6 AM' },
+              { hour: 12, label: '12 PM' },
+              { hour: 18, label: '6 PM' },
+              { hour: 24, label: '12 AM' },
+            ].map(({ hour, label }) => (
+              <span
+                key={`${hour}-${label}`}
+                className="absolute top-0 -translate-x-1/2 text-[10px] font-semibold text-gray-500"
+                style={{ left: `${(hour / 24) * 100}%` }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+          <span className="w-5" aria-hidden="true" />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-5 text-right text-[10px] font-semibold text-gray-400">00</span>
+          <input
+            type="range"
+            min="0"
+            max="1439"
+            step="5"
+            value={selectedReferenceMinutes}
+            onChange={(event) => setReferenceMinuteOverride(parseInt(event.target.value, 10))}
+            className="h-2 w-full cursor-pointer accent-blue-600"
+            aria-label={`${getCityLabel(activeReferenceTimezone)} time`}
+          />
+          <span className="w-5 text-[10px] font-semibold text-gray-400">24</span>
+        </div>
+        <div className="mt-1 flex items-start gap-2">
+          <span className="w-5" aria-hidden="true" />
+          <div className="relative h-7 flex-1" aria-hidden="true">
+            {Array.from({ length: 25 }, (_, hour) => {
+              const isMajor = hour % 6 === 0;
+              return (
+                <div
+                  key={hour}
+                  className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
+                  style={{ left: `${(hour / 24) * 100}%` }}
+                >
+                  <span className={`${isMajor ? 'h-3 bg-gray-400' : 'h-2 bg-gray-300'} w-px`} />
+                  {isMajor && (
+                    <span className="mt-1 text-[10px] font-semibold text-gray-400">
+                      {String(hour).padStart(2, '0')}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <span className="w-5" aria-hidden="true" />
+        </div>
+      </div>
+      )}
     </div>
   );
 };

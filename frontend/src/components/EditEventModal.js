@@ -4,7 +4,7 @@ import { deleteNoteById, updateNoteById, getNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false, isInformationPage = false }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, isAddTemporary = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false, isInformationPage = false }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -15,6 +15,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
   const [isDeadline, setIsDeadline] = useState(isAddDeadline);
+  const [isTemporary, setIsTemporary] = useState(isAddTemporary);
   const [isTracked, setIsTracked] = useState(false);
   const [price, setPrice] = useState('');
   const [normalEditMode, setNormalEditMode] = useState(false);
@@ -37,6 +38,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (!note || !note.content) {
       // If no note is provided (new event), set deadline based on isAddDeadline prop
       setIsDeadline(isAddDeadline);
+      setIsTemporary(isAddTemporary);
       // Set pre-populated tags for new events
       setTags(prePopulatedTags);
       // Reset normal edit mode
@@ -135,6 +137,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       setIsDeadline(isDeadlineLine.includes('true'));
     }
 
+    setIsTemporary(lines.some(line => line.trim() === 'meta::event_temporary:true' || line.trim() === 'meta::event_temporary'));
+
     // Parse price if exists
     const priceLine = lines.find(line => line.startsWith('event_$:'));
     if (priceLine) {
@@ -155,7 +159,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       description: !parsedDescription,
       eventDate: !parsedEventDate
     });
-  }, [note, isInformationPage]);
+  }, [note, isInformationPage, isAddDeadline, isAddTemporary, prePopulatedTags]);
 
   // Load timelines when modal opens
   useEffect(() => {
@@ -531,10 +535,10 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     let content = `event_description:${description.trim()}\n`;
     content += `event_date:${formatDateWithNoonTime(eventDate)}`;
 
-    if (endDate) {
+    if (!isTemporary && endDate) {
       content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
     }
-    if (location) {
+    if (!isTemporary && location) {
       content += `\nevent_location:${location}`;
     }
     if (eventNotes) {
@@ -543,7 +547,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
 
     // Add tags if any (including deadline tag if needed)
     let finalTags = tags || '';
-    if (isDeadline && !finalTags.includes('deadline')) {
+    if (!isTemporary && isDeadline && !finalTags.includes('deadline')) {
       finalTags = finalTags ? `${finalTags},deadline` : 'deadline';
     }
     if (finalTags) {
@@ -551,7 +555,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     }
 
     // Add price if it exists (always, not just for purchases)
-    if (price && price.trim()) {
+    if (!isTemporary && price && price.trim()) {
       content += `\nevent_$:${price.trim()}`;
     }
 
@@ -564,14 +568,18 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     const timelineChanged = selectedTimeline !== previousTimelineId;
 
     // Add timeline link if selected
-    if (selectedTimeline) {
+    if (!isTemporary && selectedTimeline) {
       content += `\nmeta::linked_to_timeline::${selectedTimeline}`;
     }
 
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
-    if (isDeadline) {
+    if (!isTemporary && isDeadline) {
       content += `\nmeta::event_deadline:true`;
+    }
+    if (isTemporary) {
+      content += `\nmeta::event_temporary:true`;
+      content += `\nmeta::event_pinned::${new Date().toISOString()}`;
     }
     // For Information page, add meta::info:: tag and info tags
     if (isInformationPage) {
@@ -604,7 +612,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     });
 
     // If timeline is selected, update the timeline note (whether new or existing event)
-    if (selectedTimeline) {
+    if (!isTemporary && selectedTimeline) {
       const submitDebugPrefix = `[📝 HANDLE SUBMIT] [${new Date().toISOString()}]`;
       console.log(`${submitDebugPrefix} ========== TIMELINE LINKING FROM handleSubmit ==========`);
       console.log(`${submitDebugPrefix} Selected timeline: ${selectedTimeline}`);
@@ -698,6 +706,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsDeadline(false);
+    setIsTemporary(false);
     setPrice('');
     setSelectedTimeline('');
     setNormalEditMode(false);
@@ -757,6 +766,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsDeadline(false);
+    setIsTemporary(false);
     setPrice('');
     setSelectedTimeline('');
     setNormalEditMode(false);
@@ -811,7 +821,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">
-                {normalEditMode ? 'Normal Edit Mode' : (note?.id ? (isInformationPage ? 'Edit Information' : 'Edit Event') : (isInformationPage ? 'Add Information' : 'Add Event'))}
+                {normalEditMode ? 'Normal Edit Mode' : (note?.id ? (isInformationPage ? 'Edit Information' : 'Edit Event') : (isInformationPage ? 'Add Information' : (isTemporary ? 'Add Temporary Event' : 'Add Event')))}
               </h2>
               {!normalEditMode && (
                 <button
@@ -858,7 +868,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               // Form edit mode: show structured form
               <>
                 <div className="space-y-4">
-                  {!(isInformationPage) && (
+                  {!(isInformationPage || isTemporary) && (
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -905,7 +915,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
 
                   {!(isInformationPage) && (
                     <>
-                      <div>
+                      {!isTemporary && (
+                        <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Location (optional)
                         </label>
@@ -917,6 +928,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                           placeholder="Event location..."
                         />
                       </div>
+                      )}
 
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -981,7 +993,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                         )}
                       </div>
 
-                      <div>
+                      {!isTemporary && (
+                        <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           End Date (optional)
                         </label>
@@ -993,8 +1006,10 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
+                      )}
 
-                      <div>
+                      {!isTemporary && (
+                        <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Price ($) (optional)
                         </label>
@@ -1008,8 +1023,10 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                           step="0.01"
                         />
                       </div>
+                      )}
 
-                      <div>
+                      {!isTemporary && (
+                        <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Link to Timeline (optional)
                         </label>
@@ -1031,6 +1048,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                           </p>
                         )}
                       </div>
+                      )}
                     </>
                   )}
 
@@ -1140,7 +1158,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                     </div>
                   )}
 
-                  {!(isInformationPage) && (
+                  {!(isInformationPage || isTemporary) && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Tags
@@ -1215,24 +1233,26 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                   )}
                   {!note && <div></div>}
                   <div className="flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsTracked(v => !v)}
-                      className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        isTracked
-                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                      title={isTracked ? 'Stop tracking this event on dashboard' : 'Show this event on dashboard as a tracked card'}
-                    >
-                      {isTracked ? '📌 Tracked' : '📌 Track'}
-                    </button>
+                    {!isTemporary && (
+                      <button
+                        type="button"
+                        onClick={() => setIsTracked(v => !v)}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                          isTracked
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title={isTracked ? 'Stop tracking this event on dashboard' : 'Show this event on dashboard as a tracked card'}
+                      >
+                        {isTracked ? 'Tracked' : 'Track'}
+                      </button>
+                    )}
                     <button
                       onClick={handleSubmit}
                       disabled={!description.trim() || !eventDate}
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {note?.id ? 'Save Changes' : (isInformationPage ? 'Add Information' : 'Add Event')}
+                      {note?.id ? 'Save Changes' : (isInformationPage ? 'Add Information' : (isTemporary ? 'Add Temporary Event' : 'Add Event'))}
                     </button>
                     <button
                       onClick={handleCancel}

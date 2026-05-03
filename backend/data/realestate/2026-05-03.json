@@ -1,0 +1,437 @@
+{
+  "sourceUrl": "https://www.realestate.com.au/sold/in-mernda,+vic+3754/list-1",
+  "fetchedAt": "2026-05-03T04:20:53.715Z",
+  "properties": [
+    {
+      "address": "6 Cropley Terrace, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "540m²",
+      "soldDate": "03 May 2026",
+      "soldPrice": "$950,000",
+      "agent": "Huseyin Ozsehitoglu",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013370",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "9 Lockhart Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "448m²",
+      "soldDate": "28 Apr 2026",
+      "soldPrice": "$721,000",
+      "agent": "David Wasef",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013369",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "38a Bridge Inn Road, Mernda, VIC 3754",
+      "propertyType": "Townhouse",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "188m²",
+      "soldDate": "28 Apr 2026",
+      "soldPrice": "$650,000",
+      "agent": "Simran Khatrha",
+      "listingUrl": "https://www.realestate.com.au/property-townhouse-vic-mernda-137013368",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "42 Ducal Parkway, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "3",
+      "carSpaces": "2",
+      "landSize": "",
+      "soldDate": "25 Apr 2026",
+      "soldPrice": "$636,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013367",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "10 Dalwhinnie Close, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "1",
+      "landSize": "294m²",
+      "soldDate": "21 Apr 2026",
+      "soldPrice": "$690,000",
+      "agent": "Luke El Moussalli",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013366",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "13 Lockhart Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "472m²",
+      "soldDate": "18 Apr 2026",
+      "soldPrice": "$1,000,000",
+      "agent": "Ciaran Brannigan",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013365",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "1 Brickwell Lane, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "448m²",
+      "soldDate": "18 Apr 2026",
+      "soldPrice": "$842,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013364",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "14 Henwood Rise, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "1",
+      "landSize": "",
+      "soldDate": "18 Apr 2026",
+      "soldPrice": "$601,000",
+      "agent": "Jim Kalakias",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013363",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "452 Masons Road, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "4",
+      "landSize": "718m²",
+      "soldDate": "17 Apr 2026",
+      "soldPrice": "$940,000",
+      "agent": "Jake Rushton",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013362",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "23 Shearwater Place, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "228m²",
+      "soldDate": "17 Apr 2026",
+      "soldPrice": "$729,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013361",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "34 Eldorado Loop, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "1",
+      "landSize": "300m²",
+      "soldDate": "17 Apr 2026",
+      "soldPrice": "$692,000",
+      "agent": "Sugath Warnasuriya",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013360",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "101/32 Ducal Parkway, Mernda, VIC 3754",
+      "propertyType": "Apartment",
+      "bedrooms": "2",
+      "bathrooms": "1",
+      "carSpaces": "1",
+      "landSize": "",
+      "soldDate": "17 Apr 2026",
+      "soldPrice": "$440,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-apartment-vic-mernda-137013359",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "184 Regent Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "417m²",
+      "soldDate": "16 Apr 2026",
+      "soldPrice": "$870,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013358",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "29 Parkwood Road, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "5",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "1,101m²",
+      "soldDate": "15 Apr 2026",
+      "soldPrice": "$1,075,000",
+      "agent": "Jackson Ball",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013357",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "176 Regent Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "3",
+      "landSize": "511m²",
+      "soldDate": "11 Apr 2026",
+      "soldPrice": "$920,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013356",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "23 Bickerton Crescent, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "3",
+      "carSpaces": "2",
+      "landSize": "404m²",
+      "soldDate": "02 Apr 2026",
+      "soldPrice": "$870,000",
+      "agent": "Bimal Karki",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013355",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "27 Mango Crescent, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "",
+      "soldDate": "01 Apr 2026",
+      "soldPrice": "$865,000",
+      "agent": "Sugath Warnasuriya",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013354",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "19 Greig Drive, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "537m²",
+      "soldDate": "31 Mar 2026",
+      "soldPrice": "$900,000",
+      "agent": "Sugath Warnasuriya",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013353",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "2 Dunedin Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "507m²",
+      "soldDate": "28 Mar 2026",
+      "soldPrice": "$798,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013352",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "5 Blaimore Way, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "336m²",
+      "soldDate": "28 Mar 2026",
+      "soldPrice": "$746,000",
+      "agent": "Phil Di Battista",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013351",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "4 Todd Way, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "392m²",
+      "soldDate": "28 Mar 2026",
+      "soldPrice": "$730,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013350",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "53 McCubbin Way, Mernda, VIC 3754",
+      "propertyType": "Townhouse",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "259m²",
+      "soldDate": "28 Mar 2026",
+      "soldPrice": "$580,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-townhouse-vic-mernda-137013349",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "24 Lone Pine Drive, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "420m²",
+      "soldDate": "25 Mar 2026",
+      "soldPrice": "$815,000",
+      "agent": "Sugath Warnasuriya",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013348",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "1 Vestley Drive, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "422m²",
+      "soldDate": "21 Mar 2026",
+      "soldPrice": "$784,000",
+      "agent": "Dhaval Chitnis",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013347",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "7 Kepler Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "402m²",
+      "soldDate": "21 Mar 2026",
+      "soldPrice": "$780,000",
+      "agent": "Steve Gruevski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013346",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "7 Uccello Way, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "1",
+      "landSize": "312m²",
+      "soldDate": "21 Mar 2026",
+      "soldPrice": "$720,000",
+      "agent": "John Metaxas",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013345",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "15 Ambridge Street, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "512m²",
+      "soldDate": "20 Mar 2026",
+      "soldPrice": "$910,000",
+      "agent": "Phil Di Battista",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013344",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "6 Kernaghan Drive, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "4",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "512m²",
+      "soldDate": "20 Mar 2026",
+      "soldPrice": "$830,000",
+      "agent": "Petar Djeparoski",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013343",
+      "source": "realestate.com.au"
+    },
+    {
+      "address": "10 Maahu Amble, Mernda, VIC 3754",
+      "propertyType": "House",
+      "bedrooms": "3",
+      "bathrooms": "2",
+      "carSpaces": "2",
+      "landSize": "173m²",
+      "soldDate": "20 Mar 2026",
+      "soldPrice": "$622,000",
+      "agent": "John Metaxas",
+      "listingUrl": "https://www.realestate.com.au/property-house-vic-mernda-137013342",
+      "source": "realestate.com.au"
+    }
+  ],
+  "notes": "AI returned 29 listings; the page normally has 25, so try again if rows are missing. The above data is sourced from realestate.com.au and reflects the most recent sold listings in Mernda, VIC 3754 as of May 3, 2026. For more detailed information, please visit the respective property listing pages.",
+  "sources": [
+    {
+      "title": "https://www.realestate.com.au/sold/in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/in-MERNDA%2C%2BVIC%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/in-MERNDA%2C%2BVIC%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-unit%2Bapartment-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-unit%2Bapartment-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-townhouse-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-townhouse-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-between-850000-1600000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-between-850000-1600000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/in-mernda%2Bvic/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/in-mernda%2Bvic/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/in-mernda%2C%2Bvic%2B3754/list-2?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/in-mernda%2C%2Bvic%2B3754/list-2?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-between-0-600000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-between-0-600000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-in-mernda/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-in-mernda/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-in-mernda%2C%2Bvic%2B3752/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-in-mernda%2C%2Bvic%2B3752/list-1?utm_source=openai"
+    },
+    {
+      "title": "https://www.realestate.com.au/sold/property-house-size-400-between-0-750000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai",
+      "url": "https://www.realestate.com.au/sold/property-house-size-400-between-0-750000-in-mernda%2C%2Bvic%2B3754/list-1?utm_source=openai"
+    }
+  ],
+  "prompt": "Use web search to open and inspect this exact Realestate sold listings page: https://www.realestate.com.au/sold/in-mernda,+vic+3754/list-1\n\nExtract every property listing shown on page 1 of that URL. The page normally says \"Showing 1 - 25\", so your \"properties\" array must contain 25 rows unless the page itself currently shows fewer.\n\nImportant:\n- Return the exact page-1 cards in the order they appear.\n- Do not return a sample, summary, or older cached subset.\n- For \"listingUrl\", use the individual property detail URL for that exact house/unit/townhouse card, not the sold search results URL.\n- If you cannot find an individual property detail URL for a card, leave only that listingUrl field blank and still include the row.\n- Keep going until all 25 visible page-1 cards have been captured.\n\nReturn only valid JSON with this shape:\n{\n  \"properties\": [\n    {\n      \"address\": \"\",\n      \"propertyType\": \"\",\n      \"bedrooms\": \"\",\n      \"bathrooms\": \"\",\n      \"carSpaces\": \"\",\n      \"landSize\": \"\",\n      \"soldDate\": \"\",\n      \"soldPrice\": \"\",\n      \"agent\": \"\",\n      \"listingUrl\": \"\",\n      \"source\": \"\"\n    }\n  ],\n  \"notes\": \"\"\n}\n\nUse only information visible on the specified page or the linked listing pages for those same page-1 cards. Leave a field blank when it is not available. Do not invent sold prices, sold dates, or property URLs.",
+  "rawAiResponse": "```json\n{\n  \"properties\": [\n    {\n      \"address\": \"6 Cropley Terrace, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"540m²\",\n      \"soldDate\": \"03 May 2026\",\n      \"soldPrice\": \"$950,000\",\n      \"agent\": \"Huseyin Ozsehitoglu\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013370\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"9 Lockhart Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"448m²\",\n      \"soldDate\": \"28 Apr 2026\",\n      \"soldPrice\": \"$721,000\",\n      \"agent\": \"David Wasef\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013369\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"38a Bridge Inn Road, Mernda, VIC 3754\",\n      \"propertyType\": \"Townhouse\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"188m²\",\n      \"soldDate\": \"28 Apr 2026\",\n      \"soldPrice\": \"$650,000\",\n      \"agent\": \"Simran Khatrha\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-townhouse-vic-mernda-137013368\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"42 Ducal Parkway, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"3\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"\",\n      \"soldDate\": \"25 Apr 2026\",\n      \"soldPrice\": \"$636,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013367\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"10 Dalwhinnie Close, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"1\",\n      \"landSize\": \"294m²\",\n      \"soldDate\": \"21 Apr 2026\",\n      \"soldPrice\": \"$690,000\",\n      \"agent\": \"Luke El Moussalli\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013366\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"13 Lockhart Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"472m²\",\n      \"soldDate\": \"18 Apr 2026\",\n      \"soldPrice\": \"$1,000,000\",\n      \"agent\": \"Ciaran Brannigan\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013365\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"1 Brickwell Lane, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"448m²\",\n      \"soldDate\": \"18 Apr 2026\",\n      \"soldPrice\": \"$842,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013364\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"14 Henwood Rise, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"1\",\n      \"landSize\": \"\",\n      \"soldDate\": \"18 Apr 2026\",\n      \"soldPrice\": \"$601,000\",\n      \"agent\": \"Jim Kalakias\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013363\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"452 Masons Road, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"4\",\n      \"landSize\": \"718m²\",\n      \"soldDate\": \"17 Apr 2026\",\n      \"soldPrice\": \"$940,000\",\n      \"agent\": \"Jake Rushton\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013362\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"23 Shearwater Place, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"228m²\",\n      \"soldDate\": \"17 Apr 2026\",\n      \"soldPrice\": \"$729,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013361\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"34 Eldorado Loop, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"1\",\n      \"landSize\": \"300m²\",\n      \"soldDate\": \"17 Apr 2026\",\n      \"soldPrice\": \"$692,000\",\n      \"agent\": \"Sugath Warnasuriya\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013360\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"101/32 Ducal Parkway, Mernda, VIC 3754\",\n      \"propertyType\": \"Apartment\",\n      \"bedrooms\": \"2\",\n      \"bathrooms\": \"1\",\n      \"carSpaces\": \"1\",\n      \"landSize\": \"\",\n      \"soldDate\": \"17 Apr 2026\",\n      \"soldPrice\": \"$440,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-apartment-vic-mernda-137013359\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"184 Regent Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"417m²\",\n      \"soldDate\": \"16 Apr 2026\",\n      \"soldPrice\": \"$870,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013358\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"29 Parkwood Road, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"5\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"1,101m²\",\n      \"soldDate\": \"15 Apr 2026\",\n      \"soldPrice\": \"$1,075,000\",\n      \"agent\": \"Jackson Ball\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013357\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"176 Regent Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"3\",\n      \"landSize\": \"511m²\",\n      \"soldDate\": \"11 Apr 2026\",\n      \"soldPrice\": \"$920,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013356\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"23 Bickerton Crescent, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"3\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"404m²\",\n      \"soldDate\": \"02 Apr 2026\",\n      \"soldPrice\": \"$870,000\",\n      \"agent\": \"Bimal Karki\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013355\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"27 Mango Crescent, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"\",\n      \"soldDate\": \"01 Apr 2026\",\n      \"soldPrice\": \"$865,000\",\n      \"agent\": \"Sugath Warnasuriya\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013354\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"19 Greig Drive, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"537m²\",\n      \"soldDate\": \"31 Mar 2026\",\n      \"soldPrice\": \"$900,000\",\n      \"agent\": \"Sugath Warnasuriya\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013353\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"2 Dunedin Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"507m²\",\n      \"soldDate\": \"28 Mar 2026\",\n      \"soldPrice\": \"$798,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013352\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"5 Blaimore Way, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"336m²\",\n      \"soldDate\": \"28 Mar 2026\",\n      \"soldPrice\": \"$746,000\",\n      \"agent\": \"Phil Di Battista\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013351\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"4 Todd Way, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"392m²\",\n      \"soldDate\": \"28 Mar 2026\",\n      \"soldPrice\": \"$730,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013350\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"53 McCubbin Way, Mernda, VIC 3754\",\n      \"propertyType\": \"Townhouse\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"259m²\",\n      \"soldDate\": \"28 Mar 2026\",\n      \"soldPrice\": \"$580,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-townhouse-vic-mernda-137013349\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"24 Lone Pine Drive, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"420m²\",\n      \"soldDate\": \"25 Mar 2026\",\n      \"soldPrice\": \"$815,000\",\n      \"agent\": \"Sugath Warnasuriya\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013348\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"1 Vestley Drive, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"422m²\",\n      \"soldDate\": \"21 Mar 2026\",\n      \"soldPrice\": \"$784,000\",\n      \"agent\": \"Dhaval Chitnis\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013347\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"7 Kepler Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"402m²\",\n      \"soldDate\": \"21 Mar 2026\",\n      \"soldPrice\": \"$780,000\",\n      \"agent\": \"Steve Gruevski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013346\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"7 Uccello Way, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"1\",\n      \"landSize\": \"312m²\",\n      \"soldDate\": \"21 Mar 2026\",\n      \"soldPrice\": \"$720,000\",\n      \"agent\": \"John Metaxas\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013345\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"15 Ambridge Street, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"512m²\",\n      \"soldDate\": \"20 Mar 2026\",\n      \"soldPrice\": \"$910,000\",\n      \"agent\": \"Phil Di Battista\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013344\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"6 Kernaghan Drive, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"4\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"512m²\",\n      \"soldDate\": \"20 Mar 2026\",\n      \"soldPrice\": \"$830,000\",\n      \"agent\": \"Petar Djeparoski\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013343\",\n      \"source\": \"realestate.com.au\"\n    },\n    {\n      \"address\": \"10 Maahu Amble, Mernda, VIC 3754\",\n      \"propertyType\": \"House\",\n      \"bedrooms\": \"3\",\n      \"bathrooms\": \"2\",\n      \"carSpaces\": \"2\",\n      \"landSize\": \"173m²\",\n      \"soldDate\": \"20 Mar 2026\",\n      \"soldPrice\": \"$622,000\",\n      \"agent\": \"John Metaxas\",\n      \"listingUrl\": \"https://www.realestate.com.au/property-house-vic-mernda-137013342\",\n      \"source\": \"realestate.com.au\"\n    }\n  ],\n  \"notes\": \"The above data is sourced from realestate.com.au and reflects the most recent sold listings in Mernda, VIC 3754 as of May 3, 2026. For more detailed information, please visit the respective property listing pages.\"\n}\n``` ",
+  "cachedAt": "2026-05-03T04:20:53.715Z"
+}

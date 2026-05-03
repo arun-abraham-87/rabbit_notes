@@ -91,6 +91,25 @@ export const deleteNoteById = async (id) => {
   return await response.json();
 };
 
+export const updateEventPin = async (id, pinned) => {
+  const response = await fetch(`${API_BASE_URL}/notes/${id}/event-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pinned }),
+  });
+  if (!response.ok) throw new Error('Failed to update event pin');
+  return await response.json();
+};
+
+export const fetchF1Schedule2026 = async () => {
+  const response = await fetch(`${API_BASE_URL}/f1/schedule/2026`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch F1 schedule');
+  }
+  return await response.json();
+};
+
 // Image deletion functions
 export const deleteImageById = async (imageId) => {
   const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {

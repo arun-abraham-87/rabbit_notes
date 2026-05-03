@@ -3,7 +3,7 @@ import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, MagnifyingGlassIcon, XMarkI
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateEventPin, updateNoteById } from '../utils/ApiUtils';
 import { getEventDetails } from '../utils/EventUtils';
 import { parseTimerMeta, removeTimerMetaLines, withOneTimeTimerDueDate } from '../utils/TimerUtils';
 
@@ -51,6 +51,27 @@ const matchesEventFilter = (note, eventFilter) => {
   });
 };
 
+const isEventPinned = (note) => Boolean(note?.content?.split('\n').some(line => line.trim().startsWith('meta::event_pinned')));
+
+const parseUniqueEventTags = (content = '') => {
+  const tagsLine = content.split('\n').find(line => line.startsWith('event_tags:'));
+  if (!tagsLine) return [];
+
+  const seen = new Set();
+  return tagsLine
+    .replace('event_tags:', '')
+    .trim()
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => {
+      if (!tag) return false;
+      const normalized = tag.toLowerCase();
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+};
+
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
   const navigate = useNavigate();
 
@@ -85,17 +106,6 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   // Refs for event card elements (for scroll-to-card)
   const eventCardRefs = useRef({});
 
-  // State for pinned events
-  const [pinnedEvents, setPinnedEvents] = useState(() => {
-    try {
-      const stored = localStorage.getItem('pinnedEvents');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error loading pinned events:', error);
-      return [];
-    }
-  });
-
   // Format date to YYYY-MM-DD without timezone conversion
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -113,11 +123,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
   });
 
   // Helper function to calculate next occurrence for recurring events
-  const calculateNextOccurrence = (originalDate, isDeadline = false) => {
+  const calculateNextOccurrence = (originalDate, isDeadline = false, isTemporary = false) => {
     if (!originalDate) return null;
 
-    // For deadline events, don't calculate next occurrence - just return the original date
-    if (isDeadline) {
+    // For deadline and temporary events, don't calculate an anniversary.
+    if (isDeadline || isTemporary) {
       return new Date(originalDate);
     }
 
@@ -213,7 +223,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
         if (!event.dateTime) return false; // Only include events with valid dates
 
         // Calculate next occurrence for recurring events
-        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline, event.isTemporary);
         if (!nextOccurrence) return false;
 
         // Calculate days until event using the next occurrence
@@ -225,7 +235,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
       })
       .map(event => {
         // Calculate next occurrence and add it to the event object
-        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline, event.isTemporary);
         return {
           ...event,
           nextOccurrence: nextOccurrence
@@ -444,7 +454,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
       .filter(note => {
         if (!note?.content) return false;
         if (!note.content.includes('meta::event')) return false;
-        return pinnedEvents.includes(note.id); // Filter for pinned events
+        return isEventPinned(note);
       })
       .filter(note => {
         const content = note.content.toLowerCase();
@@ -498,14 +508,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
       })
       .filter(event => {
         if (!event.dateTime) return false;
-        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline, event.isTemporary);
         if (!nextOccurrence) return false;
         nextOccurrence.setHours(0, 0, 0, 0);
         const daysUntilEvent = Math.ceil((nextOccurrence - now) / (1000 * 60 * 60 * 24));
         return daysUntilEvent >= 0;
       })
       .map(event => {
-        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline, event.isTemporary);
         return {
           ...event,
           nextOccurrence: nextOccurrence
@@ -527,6 +537,36 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
       }));
     }
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (!notes || !setNotes) return;
+
+    let storedPinnedEvents = [];
+    try {
+      storedPinnedEvents = JSON.parse(localStorage.getItem('pinnedEvents') || '[]');
+    } catch (error) {
+      console.error('Error reading old pinned events:', error);
+      localStorage.removeItem('pinnedEvents');
+      return;
+    }
+
+    if (!Array.isArray(storedPinnedEvents) || storedPinnedEvents.length === 0) return;
+
+    const notesToMigrate = notes.filter(note => storedPinnedEvents.includes(note.id) && !isEventPinned(note));
+    if (notesToMigrate.length === 0) {
+      localStorage.removeItem('pinnedEvents');
+      return;
+    }
+
+    Promise.all(notesToMigrate.map(note => updateEventPin(note.id, true)))
+      .then(updatedNotes => {
+        setNotes(prevNotes => prevNotes.map(note => updatedNotes.find(updated => updated.id === note.id) || note));
+        localStorage.removeItem('pinnedEvents');
+      })
+      .catch(error => {
+        console.error('Error migrating pinned events to backend:', error);
+      });
+  }, [notes, setNotes]);
 
   // Save events to localStorage when changed
   useEffect(() => {
@@ -702,22 +742,22 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     }
   };
 
-  // Function to handle pinning/unpinning events
-  const handlePinEvent = (eventId) => {
-    setPinnedEvents(prev => {
-      const isPinned = prev.includes(eventId);
-      const newPinnedEvents = isPinned
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId];
+  // Function to handle pinning/unpinning event notes
+  const handlePinEvent = async (eventId) => {
+    if (!notes || !setNotes) return;
 
-      try {
-        localStorage.setItem('pinnedEvents', JSON.stringify(newPinnedEvents));
-      } catch (error) {
-        console.error('Error saving pinned events:', error);
-      }
+    const note = notes.find(n => n.id === eventId);
+    if (!note) return;
 
-      return newPinnedEvents;
-    });
+    const nextPinned = !isEventPinned(note);
+
+    try {
+      const updatedNote = await updateEventPin(eventId, nextPinned);
+      setNotes(prevNotes => prevNotes.map(n => n.id === eventId ? updatedNote : n));
+    } catch (error) {
+      console.error('Error updating pinned event:', error);
+      alert('Failed to update pinned event. Please try again.');
+    }
   };
 
   // Toggle a tag (e.g. 'deadline', 'holiday') on an event note
@@ -730,7 +770,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
     const tagsLineIdx = lines.findIndex(l => l.startsWith('event_tags:'));
     let currentTags = [];
     if (tagsLineIdx !== -1) {
-      currentTags = lines[tagsLineIdx].replace('event_tags:', '').trim().split(',').map(t => t.trim()).filter(Boolean);
+      currentTags = parseUniqueEventTags(rawNote.content);
     }
 
     const hasTag = currentTags.some(t => t.toLowerCase() === tag.toLowerCase());
@@ -905,9 +945,15 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                     <div className="text-[11px] font-medium text-gray-500">
                       {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
                     </div>
-                    <div className="text-sm font-bold text-gray-900 truncate">
-                      {note.description}
-                    </div>
+                    {note.isTemporary ? (
+                      <div className="text-3xl font-black leading-none text-amber-700" title={note.description}>
+                        T
+                      </div>
+                    ) : (
+                      <div className="text-sm font-bold text-gray-900 truncate">
+                        {note.description}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
@@ -1179,7 +1225,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
             const isToday = totalDays === 0;
 
             // Don't show anniversary for deadline events
-            const shouldShowAnniversary = isRecurring && !note.isDeadline;
+            const shouldShowAnniversary = isRecurring && !note.isDeadline && !note.isTemporary;
             const isTimed = !!parseTimerMeta(note.content);
             const anniversaryAgeInYears = new Date().getFullYear() - originalDate.getFullYear();
             const anniversaryAgeText = `${anniversaryAgeInYears} year${anniversaryAgeInYears !== 1 ? 's' : ''}`;
@@ -1189,11 +1235,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
               <div
                 key={note.id}
                 ref={(el) => { eventCardRefs.current[note.id] = el; }}
-                className={`group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md px-4 py-3 min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-lg transition-shadow relative`}
+                className={`group flex flex-col items-start bg-gray-50 border border-gray-200 rounded-lg shadow-md py-3 pr-4 ${note.isTemporary ? 'pl-12' : 'pl-4'} min-w-[220px] max-w-xs min-h-[10rem] cursor-pointer hover:shadow-lg transition-shadow relative`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
               >
+                {note.isTemporary && (
+                  <div
+                    className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-amber-100 text-lg font-black leading-none text-amber-700 ring-1 ring-amber-300"
+                    title="Temporary event"
+                    aria-label="Temporary event"
+                  >
+                    T
+                  </div>
+                )}
                 {isToday && (
                   <div className="flex items-center gap-2 mb-1">
                     <div className="text-green-600">🎉</div>
@@ -1224,14 +1279,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
 
                 {/* Tags */}
 	                  {(() => {
-                  const lines = note.content.split('\n');
-                  const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-                  const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+                  const tags = parseUniqueEventTags(note.content);
                   return tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1 mt-2 w-full">
-                      {tags.map(tag => (
+                      {tags.map((tag, tagIndex) => (
                         <span
-                          key={tag}
+                          key={`${note.id}-event-tag-${tag.toLowerCase()}-${tagIndex}`}
                           className="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full cursor-pointer hover:bg-indigo-200 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1261,8 +1314,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                 <div className="absolute top-2 right-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}
-                    className={`p-1 rounded-full transition-colors ${pinnedEvents.includes(note.id) ? 'text-red-500 hover:text-red-600 bg-red-50' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
-                    title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
+                    className={`p-1 rounded-full transition-colors ${isEventPinned(note) ? 'text-red-500 hover:text-red-600 bg-red-50' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                    title={isEventPinned(note) ? 'Unpin Event' : 'Pin Event'}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
                       <path d="M16 2H8a1 1 0 0 0-1 1v3.28a2 2 0 0 0-.6 1.42L6 12a1 1 0 0 0 1 1h4v8l1 1 1-1v-8h4a1 1 0 0 0 1-1l-.4-4.3a2 2 0 0 0-.6-1.42V3a1 1 0 0 0-1-1z"/>

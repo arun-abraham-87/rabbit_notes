@@ -69,6 +69,10 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   // Default to yearly if no recurrence type is specified
   const effectiveRecurrenceType = recurrenceType ? recurrenceType.trim() : 'yearly';
 
+  if (effectiveRecurrenceType === 'none') {
+    return formatDateString(nextDate) >= todayStr && !ackDates.includes(formatDateString(nextDate)) ? nextDate : null;
+  }
+
   switch (effectiveRecurrenceType) {
     case 'weekly':
       while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
@@ -288,7 +292,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           if (!baseEventDate) return;
   
           const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-          const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'yearly';  // Default to yearly if no recurrence type
+          const isTemporary = lines.some(line => line.trim() === 'meta::event_temporary:true' || line.trim() === 'meta::event_temporary');
+          const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : (isTemporary ? 'none' : 'yearly');  // Default legacy events to yearly
   
           const locationLine = lines.find(line => line.startsWith('event_location:'));
           const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;

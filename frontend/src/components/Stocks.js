@@ -5,6 +5,71 @@ import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils';
 import { InformationCircleIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const SYMBOL = 'XYZ'; // e.g., Apple Inc.
+const STOCK_PRICE_HISTORY_KEY = 'stockPriceHistory';
+
+const loadStockPriceHistory = () => {
+  try {
+    const cached = localStorage.getItem(STOCK_PRICE_HISTORY_KEY);
+    const parsed = cached ? JSON.parse(cached) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(item => item && typeof item.price === 'number' && item.timestamp)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStockPriceHistoryEntry = (price) => {
+  const nextEntry = {
+    timestamp: new Date().getTime(),
+    price,
+    symbol: SYMBOL
+  };
+  const history = [...loadStockPriceHistory(), nextEntry].slice(-10);
+  localStorage.setItem(STOCK_PRICE_HISTORY_KEY, JSON.stringify(history));
+  return history;
+};
+
+const formatHistoryDate = (timestamp) => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const getStockPriceChange = (history) => {
+  if (!history || history.length < 2) return null;
+  const latest = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (!latest || !previous || latest.price === previous.price) return null;
+  return {
+    direction: latest.price > previous.price ? 'up' : 'down',
+    amount: Math.abs(latest.price - previous.price),
+    percent: previous.price ? Math.abs(((latest.price - previous.price) / previous.price) * 100) : null
+  };
+};
+
+const buildStockHistoryPolyline = (history, width = 220, height = 84, padding = 10) => {
+  if (!history || history.length === 0) return '';
+  if (history.length === 1) {
+    const x = width / 2;
+    const y = height / 2;
+    return `${x},${y}`;
+  }
+
+  const prices = history.map(item => item.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
+
+  return history
+    .map((item, index) => {
+      const x = padding + (index / (history.length - 1)) * innerWidth;
+      const y = padding + (1 - ((item.price - min) / range)) * innerHeight;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+};
 
 const StockPrice = ({ forceExpanded = false }) => {
   const [price, setPrice] = useState(null);
@@ -30,6 +95,7 @@ const StockPrice = ({ forceExpanded = false }) => {
   const [customPrice, setCustomPrice] = useState(null); // null = use live price
   const [usdToAud, setUsdToAud] = useState(null);
   const [stockNoteId, setStockNoteId] = useState(null);
+  const [priceHistory, setPriceHistory] = useState(() => loadStockPriceHistory());
 
   // Initialize or update API call count
   useEffect(() => {
@@ -61,6 +127,9 @@ const StockPrice = ({ forceExpanded = false }) => {
           price: newPrice,
           symbol: SYMBOL
         }));
+        const updatedHistory = saveStockPriceHistoryEntry(newPrice);
+        setPriceHistory(updatedHistory);
+        document.dispatchEvent(new CustomEvent('stockPriceUpdated'));
         
         // Update API call count
         const today = new Date().toISOString().split('T')[0];
@@ -338,6 +407,12 @@ const StockPrice = ({ forceExpanded = false }) => {
     return () => document.removeEventListener('exchangeRatesUpdated', handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setPriceHistory(loadStockPriceHistory());
+    document.addEventListener('stockPriceUpdated', handler);
+    return () => document.removeEventListener('stockPriceUpdated', handler);
+  }, []);
+
   const handleValueSubmit = (e) => {
     e.preventDefault();
     const newValue = parseFloat(tempValue);
@@ -360,6 +435,9 @@ const StockPrice = ({ forceExpanded = false }) => {
     setTempValue(value.toString());
     setShowPopup(true);
   };
+
+  const priceChange = getStockPriceChange(priceHistory);
+  const stockHistoryPolyline = buildStockHistoryPolyline(priceHistory);
 
   if (loading) {
     return (
@@ -430,6 +508,14 @@ const StockPrice = ({ forceExpanded = false }) => {
               </div>
               <div className="flex items-center gap-2">
                 <p className="text-green-700 text-xl">${price?.toFixed(2)}</p>
+                {priceChange && (
+                  <span
+                    className={`text-sm font-semibold ${priceChange.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}
+                    title={`${priceChange.direction === 'up' ? 'Up' : 'Down'} $${priceChange.amount.toFixed(2)}${priceChange.percent !== null ? ` (${priceChange.percent.toFixed(2)}%)` : ''} from previous call`}
+                  >
+                    {priceChange.direction === 'up' ? '↑' : '↓'}
+                  </span>
+                )}
                 <button 
                   className="p-1 hover:bg-gray-200 rounded-full transition-colors"
                   title="Refresh price"
@@ -449,6 +535,51 @@ const StockPrice = ({ forceExpanded = false }) => {
                   {marketStatus}
                 </p>
               </div>
+              {priceHistory.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+                    <span>Last {priceHistory.length} calls</span>
+                    {priceChange && (
+                      <span className={priceChange.direction === 'up' ? 'text-green-600' : 'text-red-600'}>
+                        {priceChange.direction === 'up' ? '↑' : '↓'} ${priceChange.amount.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <svg viewBox="0 0 220 84" className="w-full h-20 overflow-visible" role="img" aria-label={`Stock price history for the last ${priceHistory.length} calls`}>
+                    <line x1="10" y1="74" x2="210" y2="74" stroke="#e5e7eb" strokeWidth="1" />
+                    <polyline
+                      points={stockHistoryPolyline}
+                      fill="none"
+                      stroke="#16a34a"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {priceHistory.map((entry, index) => {
+                      const points = stockHistoryPolyline.split(' ');
+                      const [x, y] = points[index]?.split(',') || [];
+                      return (
+                        <g key={`${entry.timestamp}-${index}`}>
+                          <circle cx={x} cy={y} r="2.5" fill="#16a34a" />
+                          {(index === 0 || index === priceHistory.length - 1) && (
+                            <text x={x} y="83" textAnchor={index === 0 ? 'start' : 'end'} fontSize="8" fill="#6b7280">
+                              {formatHistoryDate(entry.timestamp)}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div className="mt-1 max-h-16 overflow-y-auto text-[10px] text-gray-500 space-y-0.5">
+                    {priceHistory.slice().reverse().map((entry, index) => (
+                      <div key={`${entry.timestamp}-row-${index}`} className="flex justify-between gap-2">
+                        <span>{new Date(entry.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                        <span className="font-medium text-gray-700">${entry.price.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button 
                 className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                 onClick={() => setIsFlipped(true)}

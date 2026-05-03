@@ -935,7 +935,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
             />
           )}
           <div className="w-full" data-section="review-overdue">
-            <ReviewOverdueAlert notes={notes} expanded={true} setNotes={setNotes} />
+            <ReviewOverdueAlert notes={notes} expanded={false} setNotes={setNotes} />
           </div>
           <UnacknowledgedMeetingsAlert
             notes={notes}

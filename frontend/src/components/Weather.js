@@ -7,6 +7,7 @@ const Weather = ({ forceExpanded = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showMoreDays, setShowMoreDays] = useState(false);
   const [location, setLocation] = useState({
     latitude: -37.6007,
     longitude: 145.0956,
@@ -20,6 +21,7 @@ const Weather = ({ forceExpanded = false }) => {
     hourly: ['temperature_2m', 'rain', 'precipitation_probability', 'precipitation', 'showers', 'apparent_temperature'],
     current: ['temperature_2m', 'precipitation', 'rain', 'is_day', 'showers', 'apparent_temperature', 'relative_humidity_2m', 'wind_speed_10m'],
     timezone: location.timezone,
+    forecast_days: 14,
   };
 
   const url = 'https://api.open-meteo.com/v1/forecast';
@@ -196,6 +198,43 @@ const Weather = ({ forceExpanded = false }) => {
     }
   };
 
+  const getWeatherAnimationType = (rain, precipitation, temperature) => {
+    if (rain > 0 || precipitation > 0) {
+      return 'rainy';
+    }
+    if (temperature > 25) {
+      return 'sunny';
+    }
+    return 'cloudy';
+  };
+
+  const renderWeatherAnimation = (type) => {
+    if (type === 'sunny') {
+      return (
+        <div className="weather-forecast-animation weather-forecast-animation-sunny" aria-hidden="true">
+          <span />
+        </div>
+      );
+    }
+
+    if (type === 'rainy') {
+      return (
+        <div className="weather-forecast-animation weather-forecast-animation-rainy" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      );
+    }
+
+    return (
+      <div className="weather-forecast-animation weather-forecast-animation-cloudy" aria-hidden="true">
+        <span />
+        <span />
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="p-4 rounded-md bg-gray-100 shadow-md w-fit">
@@ -242,8 +281,8 @@ const Weather = ({ forceExpanded = false }) => {
     }))
     .slice(0, 24);
 
-  // Get next 7 days of daily data
-  const next7Days = daily.time
+  // Get daily forecast data
+  const forecastDays = daily.time
     .map((time, index) => ({
       time,
       sunrise: daily.sunrise[index],
@@ -258,11 +297,12 @@ const Weather = ({ forceExpanded = false }) => {
       wind_gusts_10m_max: daily.wind_gusts_10m_max[index],
       daylight_duration: daily.daylight_duration[index],
       showers_sum: daily.showers_sum[index],
-    }))
-    .slice(0, 7);
+    }));
+  const visibleForecastDays = forecastDays.slice(0, showMoreDays ? 14 : 7);
+  const hasMoreForecastDays = forecastDays.length > 7;
 
   // Get today's data (first day)
-  const today = next7Days[0] || null;
+  const today = forecastDays[0] || null;
 
   return (
     <div className="w-full group relative">
@@ -429,7 +469,7 @@ const Weather = ({ forceExpanded = false }) => {
           {/* 7-Day Forecast Section */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">7-Day Forecast</h3>
+              <h3 className="text-sm font-semibold text-gray-900">{showMoreDays ? '14-Day Forecast' : '7-Day Forecast'}</h3>
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
@@ -438,14 +478,17 @@ const Weather = ({ forceExpanded = false }) => {
               >
                 <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
-        </div>
+            </div>
 
             <div className="space-y-2.5">
-          {next7Days.map((day, index) => (
+          {visibleForecastDays.map((day, index) => {
+            const animationType = getWeatherAnimationType(day.rain_sum, day.precipitation_sum, day.temperature_2m_max);
+            return (
             <div
               key={index}
-                  className="border-b border-gray-100 pb-2.5 last:border-b-0 last:pb-0"
+                  className="relative overflow-hidden rounded-md border-b border-gray-100 pb-2.5 last:border-b-0 last:pb-0"
             >
+                  <div className="relative z-10">
                   <div className="flex items-center justify-between mb-1.5">
                   <div className="text-xs font-medium text-gray-900">
                     {formatDate(day.time, loc.timezone)}
@@ -465,9 +508,21 @@ const Weather = ({ forceExpanded = false }) => {
                   <div className="text-[10px] text-gray-500 mt-1">
                     Wind {day.wind_speed_10m_max?.toFixed(0)} km/h
                   </div>
+                  </div>
+                  {renderWeatherAnimation(animationType)}
                 </div>
-          ))}
+            );
+          })}
         </div>
+            {hasMoreForecastDays && (
+              <button
+                type="button"
+                onClick={() => setShowMoreDays(value => !value)}
+                className="mt-3 w-full rounded-md border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                {showMoreDays ? 'Show 7 days' : 'Show 7 more days'}
+              </button>
+            )}
         </div>
         </div>
       </div>

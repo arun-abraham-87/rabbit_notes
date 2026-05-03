@@ -229,6 +229,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [excludeTimelineLinked, setExcludeTimelineLinked] = useState(initialState.excludeTimelineLinked);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [isAddingTemporaryEvent, setIsAddingTemporaryEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [pastEventsCount, setPastEventsCount] = useState(0);
@@ -1234,6 +1235,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     if (originalNote) {
       // Pass the original note directly to the modal
       setEditingEvent(originalNote);
+      setIsAddingTemporaryEvent(false);
       setShowEditEventModal(true);
     } else {
       
@@ -1244,6 +1246,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const handleDateClick = (date) => {
     setSelectedDate(date);
     setEditingEvent(null);
+    setIsAddingTemporaryEvent(false);
     setShowEditEventModal(true);
   };
 
@@ -1345,6 +1348,19 @@ event_tags:${expense.tag.join(',')}`;
               onClick={() => {
                 setEditingEvent(null);
                 setSelectedDate(null);
+                setIsAddingTemporaryEvent(true);
+                setShowEditEventModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+            >
+              <PlusIcon className="h-5 w-5" />
+              <span>Add Temporary Event</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditingEvent(null);
+                setSelectedDate(null);
+                setIsAddingTemporaryEvent(false);
                 setShowEditEventModal(true);
               }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -1698,6 +1714,7 @@ event_tags:${expense.tag.join(',')}`;
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          setIsAddingTemporaryEvent(false);
           return result; // Return the event for timeline linking
         }}
         onTimelineUpdated={handleTimelineUpdated}
@@ -1705,6 +1722,7 @@ event_tags:${expense.tag.join(',')}`;
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          setIsAddingTemporaryEvent(false);
         }}
         onSwitchToNormalEdit={() => {
           if (editingEvent && editingEvent.id) {
@@ -1713,6 +1731,7 @@ event_tags:${expense.tag.join(',')}`;
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          setIsAddingTemporaryEvent(false);
         }}
         onDelete={(eventId) => {
           console.log('[EventsPage] onDelete called with eventId:', eventId, 'Type:', typeof eventId);
@@ -1741,9 +1760,11 @@ event_tags:${expense.tag.join(',')}`;
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          setIsAddingTemporaryEvent(false);
           console.log('[EventsPage] State update completed, modal closing');
         }}
         notes={allNotes}
+        isAddTemporary={isAddingTemporaryEvent && !editingEvent}
       />
 
       {/* Compare Events Modal */}

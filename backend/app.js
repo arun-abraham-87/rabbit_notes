@@ -18,6 +18,8 @@ const tagsRouter = require('./routes/tags');
 const journalsRouter = require('./routes/journals');
 
 const timelinesRouter = require('./routes/timelines');
+const realestateRouter = require('./routes/realestate');
+const f1Router = require('./routes/f1');
 
 const app = express();
 
@@ -80,6 +82,8 @@ app.use('/api/tags', tagsRouter);
 app.use('/api/journals', journalsRouter);
 
 app.use('/api/timelines', timelinesRouter);
+app.use('/api/realestate', realestateRouter);
+app.use('/api/f1', f1Router);
 
 
 // Test endpoint

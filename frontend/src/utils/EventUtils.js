@@ -3,17 +3,33 @@
 export const getEventDetails = (content) => {
   const lines = content.split('\n');
 
+  const readEventField = (fieldName) => {
+    const prefix = `${fieldName}:`;
+    const startIndex = lines.findIndex(line => line.startsWith(prefix));
+    if (startIndex === -1) return '';
+
+    const firstValue = lines[startIndex].slice(prefix.length).trim();
+    const continuationLines = [];
+    for (let index = startIndex + 1; index < lines.length; index += 1) {
+      const trimmed = lines[index].trim();
+      if (trimmed.startsWith('event_') || trimmed.startsWith('meta::')) break;
+      continuationLines.push(lines[index]);
+    }
+
+    return [firstValue, ...continuationLines]
+      .join('\n')
+      .trim();
+  };
+
   // Find the description
-  const descriptionLine = lines.find(line => line.startsWith('event_description:'));
-  const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+  const description = readEventField('event_description');
 
   // Find the event date
   const eventDateLine = lines.find(line => line.startsWith('event_date:'));
   const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
 
   // Find event notes
-  const notesLine = lines.find(line => line.startsWith('event_notes:'));
-  const notes = notesLine ? notesLine.replace('event_notes:', '').trim() : '';
+  const notes = readEventField('event_notes');
 
   // Find recurring info
   const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));

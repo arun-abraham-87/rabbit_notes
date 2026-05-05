@@ -12,6 +12,7 @@ import { getInstagramReelsUrl } from '../utils/InstagramUrlUtils';
 const NoteCard = ({
   note,
   searchQuery,
+  showOnlyMatchedLines = false,
   duplicatedUrlColors,
   editingLine,
   setEditingLine,
@@ -873,10 +874,11 @@ const NoteCard = ({
 	              allNotes={allNotes}
 	              setSearchQuery={setSearchQuery}
         />
-        <NoteCardContent
-          note={note}
-          searchQuery={searchQuery}
-          duplicatedUrlColors={duplicatedUrlColors}
+      <NoteCardContent
+        note={note}
+        searchQuery={searchQuery}
+        showOnlyMatchedLines={showOnlyMatchedLines}
+        duplicatedUrlColors={duplicatedUrlColors}
           editingLine={editingLine}
           setEditingLine={setEditingLine}
           editedLineContent={editedLineContent}

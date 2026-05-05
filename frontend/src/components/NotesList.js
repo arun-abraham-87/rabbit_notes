@@ -65,6 +65,7 @@ const NotesList = ({
   addObjects,
   searchQuery,
   setSearchQuery,
+  showOnlyMatchedLines = false,
   onWordClick,
   settings,
   activePage = 'notes',
@@ -2142,6 +2143,7 @@ const NotesList = ({
                     key={note.id}
                     note={note}
                     searchQuery={searchQuery}
+                    showOnlyMatchedLines={showOnlyMatchedLines}
                     duplicatedUrlColors={duplicatedUrlColors}
                     editingLine={editingLine}
                     setEditingLine={setEditingLine}
@@ -2229,6 +2231,7 @@ const NotesList = ({
                     key={note.id}
                     note={note}
                     searchQuery={searchQuery}
+                    showOnlyMatchedLines={showOnlyMatchedLines}
                     duplicatedUrlColors={duplicatedUrlColors}
                     editingLine={editingLine}
                     setEditingLine={setEditingLine}
@@ -2338,6 +2341,7 @@ const NotesList = ({
                   key={note.id}
                   note={note}
                   searchQuery={searchQuery}
+                  showOnlyMatchedLines={showOnlyMatchedLines}
                   duplicatedUrlColors={duplicatedUrlColors}
                   editingLine={editingLine}
                   setEditingLine={setEditingLine}

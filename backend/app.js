@@ -20,12 +20,13 @@ const journalsRouter = require('./routes/journals');
 const timelinesRouter = require('./routes/timelines');
 const realestateRouter = require('./routes/realestate');
 const f1Router = require('./routes/f1');
+const iplRouter = require('./routes/ipl');
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Debug route - should be before other routes
 app.get('/debug/routes', (req, res) => {
@@ -84,6 +85,7 @@ app.use('/api/journals', journalsRouter);
 app.use('/api/timelines', timelinesRouter);
 app.use('/api/realestate', realestateRouter);
 app.use('/api/f1', f1Router);
+app.use('/api/ipl', iplRouter);
 
 
 // Test endpoint

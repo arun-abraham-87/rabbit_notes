@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rabbit Notes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f3;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #687386;
+      --line: #d8dde6;
+      --accent: #0f766e;
+      --accent-ink: #ffffff;
+      --danger: #b42318;
+      --shadow: 0 18px 45px rgba(31, 41, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+      font-weight: 760;
+    }
+
+    .summary {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    input,
+    button {
+      height: 42px;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    input {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      padding: 0 13px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+    }
+
+    button {
+      border: 0;
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 0 16px;
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+
+    .status {
+      min-height: 24px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .notes {
+      display: grid;
+      gap: 10px;
+    }
+
+    .note {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+    }
+
+    .note-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .note-id {
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .note-content {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: inherit;
+      cursor: text;
+    }
+
+    .note-content a {
+      color: var(--accent);
+      font-weight: 650;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .note-code {
+      display: block;
+      margin: 0;
+      border: 1px solid #c8d0dc;
+      border-radius: 6px;
+      background: #111827;
+      color: #f8fafc;
+      padding: 12px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre;
+    }
+
+    .code-wrap {
+      display: block;
+      position: relative;
+      margin: 10px 0;
+    }
+
+    .copy-code {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: auto;
+      height: 30px;
+      border: 1px solid rgba(248, 250, 252, 0.26);
+      background: rgba(17, 24, 39, 0.82);
+      color: #f8fafc;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    mark {
+      border-radius: 3px;
+      background: #ffe08a;
+      color: inherit;
+      padding: 0 2px;
+    }
+
+    .show-more {
+      width: auto;
+      height: 34px;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      background: #eef6f5;
+      color: var(--accent);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .collapse-top {
+      margin: 0 0 12px;
+    }
+
+    .note-editor {
+      display: block;
+      width: 100%;
+      min-height: 220px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .editor-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .editor-actions button {
+      width: auto;
+      height: 34px;
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .cancel-edit {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    @media (max-width: 640px) {
+      header,
+      .toolbar,
+      .note-header {
+        display: block;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      button,
+      input {
+        width: 100%;
+      }
+
+      button {
+        margin-top: 10px;
+      }
+
+      .note-id {
+        margin-top: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Rabbit Notes</h1>
+        <p class="summary" id="summary">Loading notes...</p>
+      </div>
+    </header>
+
+    <form class="toolbar" id="search-form">
+      <input id="search-input" type="search" autocomplete="off" placeholder="Search notes">
+      <button id="search-button" type="submit">Search</button>
+    </form>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+    <section class="notes" id="notes-list" aria-label="Notes"></section>
+  </main>
+
+  <script>
+    class NotesApi {
+      constructor(baseUrl = 'http://localhost:5001/api') {
+        this.baseUrl = baseUrl;
+      }
+
+      async listNotes(searchText = '', currentDateOnly = false) {
+        const url = new URL(`${this.baseUrl}/notes`);
+        url.searchParams.set('search', encodeURIComponent(searchText));
+        url.searchParams.set('currentDate', String(currentDateOnly));
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Notes API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+          notes: Array.isArray(data.notes) ? data.notes : [],
+          totals: Number.isFinite(data.totals) ? data.totals : 0
+        };
+      }
+
+      async updateNote(id, content, tags) {
+        const response = await fetch(`${this.baseUrl}/notes/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, tags })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Notes API returned ${response.status}`);
+        }
+
+        return response.json();
+      }
+    }
+
+    const api = new NotesApi();
+    const form = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const statusEl = document.getElementById('status');
+    const summaryEl = document.getElementById('summary');
+    const notesListEl = document.getElementById('notes-list');
+    const COLLAPSED_LINE_COUNT = 20;
+    const SEARCH_DEBOUNCE_MS = 450;
+    let searchTimer = null;
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle('error', isError);
+    }
+
+    function getContent(note) {
+      if (typeof note.content === 'string') return note.content;
+      if (note.content && typeof note.content.content === 'string') return note.content.content;
+      return '';
+    }
+
+    function appendLinkedContent(parent, text) {
+      const markdownLinkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = markdownLinkPattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          appendBareUrlContent(parent, text.slice(lastIndex, match.index));
+        }
+
+        const link = document.createElement('a');
+        link.href = match[2];
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        appendHighlightedText(link, match[1]);
+        parent.append(link);
+
+        lastIndex = markdownLinkPattern.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        appendBareUrlContent(parent, text.slice(lastIndex));
+      }
+    }
+
+    function appendBareUrlContent(parent, text) {
+      const bareUrlPattern = /https?:\/\/[^\s<>"')]+/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = bareUrlPattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          appendHighlightedText(parent, text.slice(lastIndex, match.index));
+        }
+
+        const link = document.createElement('a');
+        link.href = match[0];
+        link.textContent = match[0];
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        parent.append(link);
+
+        lastIndex = bareUrlPattern.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        appendHighlightedText(parent, text.slice(lastIndex));
+      }
+    }
+
+    function escapeRegExp(text) {
+      return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function getSearchTerms() {
+      return searchInput.value
+        .trim()
+        .split(/\|\||\s+/)
+        .map((term) => term.trim())
+        .filter(Boolean);
+    }
+
+    function appendHighlightedText(parent, text) {
+      const terms = getSearchTerms();
+      if (terms.length === 0) {
+        parent.append(document.createTextNode(text));
+        return;
+      }
+
+      const pattern = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          parent.append(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+
+        const mark = document.createElement('mark');
+        mark.textContent = match[0];
+        parent.append(mark);
+        lastIndex = pattern.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        parent.append(document.createTextNode(text.slice(lastIndex)));
+      }
+    }
+
+    function getCollapsedText(text) {
+      const lines = text.split('\n');
+      if (lines.length <= COLLAPSED_LINE_COUNT) {
+        return { text, remainingText: '', isLong: false };
+      }
+
+      return {
+        text: lines.slice(0, COLLAPSED_LINE_COUNT).join('\n'),
+        remainingText: lines.slice(COLLAPSED_LINE_COUNT).join('\n'),
+        isLong: true
+      };
+    }
+
+    function renderContent(contentEl, text) {
+      contentEl.replaceChildren();
+      appendRenderedBlocks(contentEl, text);
+    }
+
+    function appendRenderedBlocks(parent, text) {
+      const fencePattern = /```[^\n]*\n?([\s\S]*?)```/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = fencePattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          appendLinkedContent(parent, text.slice(lastIndex, match.index));
+        }
+
+        const wrap = document.createElement('span');
+        wrap.className = 'code-wrap';
+
+        const codeText = match[1].replace(/\n$/, '');
+        const code = document.createElement('code');
+        code.className = 'note-code';
+        code.textContent = codeText;
+
+        const copy = document.createElement('button');
+        copy.className = 'copy-code';
+        copy.type = 'button';
+        copy.textContent = 'Copy';
+        copy.addEventListener('click', async (event) => {
+          event.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(codeText);
+            copy.textContent = 'Copied';
+            setTimeout(() => {
+              copy.textContent = 'Copy';
+            }, 1200);
+          } catch (error) {
+            console.error(error);
+            copy.textContent = 'Failed';
+            setTimeout(() => {
+              copy.textContent = 'Copy';
+            }, 1200);
+          }
+        });
+
+        wrap.append(code, copy);
+        parent.append(wrap);
+
+        lastIndex = fencePattern.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        appendLinkedContent(parent, text.slice(lastIndex));
+      }
+    }
+
+    function getClickOffset(event, contentEl) {
+      let range = null;
+
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(event.clientX, event.clientY);
+      } else if (document.caretPositionFromPoint) {
+        const position = document.caretPositionFromPoint(event.clientX, event.clientY);
+        if (position) {
+          range = document.createRange();
+          range.setStart(position.offsetNode, position.offset);
+          range.collapse(true);
+        }
+      }
+
+      if (!range || !contentEl.contains(range.startContainer)) {
+        return getContentOffsetFromLineClick(event, contentEl);
+      }
+
+      const prefix = document.createRange();
+      prefix.selectNodeContents(contentEl);
+      prefix.setEnd(range.startContainer, range.startOffset);
+      return prefix.toString().length;
+    }
+
+    function getContentOffsetFromLineClick(event, contentEl) {
+      const lineHeight = parseFloat(getComputedStyle(contentEl).lineHeight) || 24;
+      const lineIndex = Math.max(0, Math.floor((event.clientY - contentEl.getBoundingClientRect().top) / lineHeight));
+      const lines = contentEl.textContent.split('\n');
+      return lines.slice(0, lineIndex).join('\n').length + (lineIndex > 0 ? 1 : 0);
+    }
+
+    function enterEditMode(article, contentEl, toggle, note, originalText, cursorOffset) {
+      if (article.querySelector('.note-editor')) return;
+      const remainingContent = article.querySelector('.note-remaining');
+      const topToggle = article.querySelector('.collapse-top');
+      const editTarget = article.querySelector('.note-content:not(.note-remaining)') || contentEl;
+
+      const editor = document.createElement('textarea');
+      editor.className = 'note-editor';
+      editor.value = originalText;
+      editor.rows = Math.min(Math.max(originalText.split('\n').length, 8), 28);
+
+      const actions = document.createElement('div');
+      actions.className = 'editor-actions';
+
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.textContent = 'Save';
+
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.className = 'cancel-edit';
+      cancelButton.textContent = 'Cancel';
+
+      actions.append(saveButton, cancelButton);
+      editTarget.replaceWith(editor);
+      editor.after(actions);
+      if (toggle) toggle.hidden = true;
+      if (topToggle) topToggle.hidden = true;
+      if (remainingContent) remainingContent.hidden = true;
+
+      const safeOffset = Math.min(Math.max(cursorOffset, 0), originalText.length);
+      editor.focus();
+      editor.setSelectionRange(safeOffset, safeOffset);
+
+      let isFinishing = false;
+
+      async function finishEdit(shouldSave) {
+        if (isFinishing) return;
+        isFinishing = true;
+
+        const nextText = shouldSave ? editor.value : originalText;
+        const nextContent = document.createElement('pre');
+        nextContent.className = 'note-content';
+
+        const collapsed = getCollapsedText(nextText);
+        renderContent(nextContent, collapsed.isLong ? collapsed.text : nextText);
+        editor.replaceWith(nextContent);
+        actions.remove();
+
+        if (note.content && typeof note.content === 'object') {
+          note.content.content = nextText;
+        } else {
+          note.content = nextText;
+        }
+        if (toggle) {
+          toggle.hidden = !collapsed.isLong;
+          toggle.textContent = 'Show more';
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+        if (remainingContent) {
+          renderContent(remainingContent, '');
+          remainingContent.hidden = true;
+        }
+
+        attachEditHandler(article, nextContent, toggle, note, nextText);
+
+        if (shouldSave && note.id) {
+          try {
+            await api.updateNote(note.id, nextText, note.tags);
+            setStatus('Saved.');
+          } catch (error) {
+            console.error(error);
+            setStatus('Could not save note changes.', true);
+          }
+        }
+      }
+
+      saveButton.addEventListener('click', () => finishEdit(true));
+      cancelButton.addEventListener('click', () => finishEdit(false));
+      editor.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+          event.preventDefault();
+          finishEdit(true);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          finishEdit(false);
+        }
+      });
+    }
+
+    function attachEditHandler(article, contentEl, toggle, note, fullText, baseOffset = 0) {
+      contentEl.addEventListener('click', (event) => {
+        if (event.target.closest('a')) return;
+
+        const offset = baseOffset + getClickOffset(event, contentEl);
+        const isExpanded = !toggle || toggle.getAttribute('aria-expanded') === 'true';
+        enterEditMode(article, contentEl, toggle, note, fullText, isExpanded ? offset : Math.min(offset, fullText.length));
+      });
+    }
+
+    function renderNotes(notes, totals) {
+      summaryEl.textContent = `${totals} note${totals === 1 ? '' : 's'} loaded`;
+      notesListEl.replaceChildren();
+
+      if (notes.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No notes found.';
+        notesListEl.append(empty);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      notes.forEach((note) => {
+        const article = document.createElement('article');
+        article.className = 'note';
+
+        const header = document.createElement('div');
+        header.className = 'note-header';
+
+        const date = document.createElement('span');
+        date.textContent = note.created_datetime || 'No date';
+
+        const id = document.createElement('span');
+        id.className = 'note-id';
+        id.textContent = note.id || '';
+
+        const noteText = getContent(note);
+        const collapsed = getCollapsedText(noteText);
+        const content = document.createElement('pre');
+        content.className = 'note-content';
+        renderContent(content, collapsed.text);
+
+        header.append(date, id);
+        article.append(header, content);
+
+        let toggle = null;
+        if (collapsed.isLong) {
+          const topToggle = document.createElement('button');
+          topToggle.className = 'show-more collapse-top';
+          topToggle.type = 'button';
+          topToggle.textContent = 'Collapse';
+          topToggle.hidden = true;
+
+          toggle = document.createElement('button');
+          toggle.className = 'show-more';
+          toggle.type = 'button';
+          toggle.textContent = 'Show more';
+          toggle.setAttribute('aria-expanded', 'false');
+
+          function setExpanded(nextExpanded) {
+            const currentContent = article.querySelector('.note-content');
+            const remainingContent = article.querySelector('.note-remaining');
+            const currentText = getContent(note);
+            const currentCollapsed = getCollapsedText(currentText);
+
+            if (!currentContent || !remainingContent) return;
+
+            toggle.setAttribute('aria-expanded', String(nextExpanded));
+            toggle.textContent = nextExpanded ? 'Show less' : 'Show more';
+            topToggle.hidden = !nextExpanded;
+            renderContent(currentContent, currentCollapsed.text);
+            renderContent(remainingContent, nextExpanded ? currentCollapsed.remainingText : '');
+            remainingContent.hidden = !nextExpanded;
+          }
+
+          toggle.addEventListener('click', () => {
+            setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+          });
+
+          topToggle.addEventListener('click', () => {
+            setExpanded(false);
+          });
+
+          article.insertBefore(topToggle, content);
+          article.append(toggle);
+
+          const remaining = document.createElement('pre');
+          remaining.className = 'note-content note-remaining';
+          remaining.hidden = true;
+          article.append(remaining);
+          attachEditHandler(article, remaining, toggle, note, noteText, collapsed.text.length + 1);
+        }
+
+        attachEditHandler(article, content, toggle, note, noteText);
+
+        fragment.append(article);
+      });
+
+      notesListEl.append(fragment);
+    }
+
+    async function loadNotes({ currentDateOnly = false } = {}) {
+      searchButton.disabled = true;
+      setStatus('Loading notes...');
+
+      try {
+        const result = await api.listNotes(searchInput.value.trim(), currentDateOnly);
+        renderNotes(result.notes, result.totals);
+        setStatus('');
+      } catch (error) {
+        console.error(error);
+        summaryEl.textContent = 'Unable to load notes';
+        notesListEl.replaceChildren();
+        setStatus('Could not load notes. Make sure the backend is running on http://localhost:5001.', true);
+      } finally {
+        searchButton.disabled = false;
+      }
+    }
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      clearTimeout(searchTimer);
+      loadNotes();
+    });
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        loadNotes();
+      }, SEARCH_DEBOUNCE_MS);
+    });
+
+    loadNotes({ currentDateOnly: true });
+  </script>
+</body>
+</html>

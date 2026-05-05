@@ -64,6 +64,7 @@ function SensitiveScrambleOverlay({ content }) {
 export default function NoteContent({
     note,
     searchQuery,
+    showOnlyMatchedLines = false,
     duplicatedUrlColors,
     editingLine,
     setEditingLine,
@@ -164,6 +165,7 @@ export default function NoteContent({
     const [hoveredSection, setHoveredSection] = useState(null);
     const [showSectionQuickAccess, setShowSectionQuickAccess] = useState(false);
     const [highlightedQuickAccessSection, setHighlightedQuickAccessSection] = useState(null);
+    const [selectedSectionActualIndex, setSelectedSectionActualIndex] = useState(null);
     const [sectionActionPopup, setSectionActionPopup] = useState(null);
     const [sectionAppendText, setSectionAppendText] = useState('');
     const [undoAction, setUndoAction] = useState(null);
@@ -1201,20 +1203,14 @@ export default function NoteContent({
         }
     };
 
-    const scrollToSection = (actualIndex) => {
-        const sectionEl = document.getElementById(`note-${note.id}-line-${actualIndex}`);
-        if (!sectionEl) return;
-
+    const selectSection = (actualIndex) => {
         if (quickAccessHighlightTimeoutRef.current) {
             clearTimeout(quickAccessHighlightTimeoutRef.current);
+            quickAccessHighlightTimeoutRef.current = null;
         }
 
-        setHighlightedQuickAccessSection(actualIndex);
-        sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        quickAccessHighlightTimeoutRef.current = setTimeout(() => {
-            setHighlightedQuickAccessSection(null);
-            quickAccessHighlightTimeoutRef.current = null;
-        }, 3000);
+        setHighlightedQuickAccessSection(null);
+        setSelectedSectionActualIndex(current => current === actualIndex ? null : actualIndex);
     };
 
     // Build set of actualIndices hidden due to collapsed sections,
@@ -1302,7 +1298,22 @@ export default function NoteContent({
         onCopyUrl: handleCopyUrl
     });
 
+    const searchLineTerms = (searchQuery || '')
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(term => term.length > 0);
+
     const displayedLineIndices = (() => {
+        if (showOnlyMatchedLines && searchLineTerms.length > 0 && !(searchQuery || '').trim().startsWith('id:')) {
+            return visibleLineEntries
+                .map(({ line }, idx) => ({ line, idx }))
+                .filter(({ line }) => {
+                    const lowerLine = line.toLowerCase();
+                    return searchLineTerms.some(term => lowerLine.includes(term));
+                })
+                .map(({ idx }) => idx);
+        }
+
         if (!activeVisibleLineTagFilter) {
             return contentLines.map((_, idx) => idx);
         }
@@ -1325,7 +1336,23 @@ export default function NoteContent({
         return [...included].sort((a, b) => a - b);
     })();
 
+    const selectedSectionVisibleIndex = selectedSectionActualIndex === null
+        ? -1
+        : visibleLineEntries.findIndex(entry => entry.actualIndex === selectedSectionActualIndex);
+    const nextSectionVisibleIndex = selectedSectionVisibleIndex === -1
+        ? -1
+        : visibleLineEntries.findIndex((entry, idx) => (
+            idx > selectedSectionVisibleIndex && entry.line.trim().startsWith('{#h2#}')
+        ));
+
+    const isLineInSelectedSection = (visibleIndex) => {
+        if (selectedSectionVisibleIndex === -1) return true;
+        return visibleIndex >= selectedSectionVisibleIndex &&
+            (nextSectionVisibleIndex === -1 || visibleIndex < nextSectionVisibleIndex);
+    };
+
     const displayedContentLines = displayedLineIndices
+        .filter(idx => isLineInSelectedSection(idx))
         .map(idx => ({
             line: contentLines[idx],
             idx,
@@ -3524,12 +3551,26 @@ export default function NoteContent({
                         Sections
                     </div>
                     <div className="flex flex-wrap gap-1.5">
+                        {selectedSectionActualIndex !== null && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSectionActualIndex(null)}
+                                className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                title="Show all sections"
+                            >
+                                All
+                            </button>
+                        )}
                         {h2Sections.map(section => (
                             <button
                                 key={`section-quick-access-${section.actualIndex}`}
-                                onClick={() => scrollToSection(section.actualIndex)}
-                                className="max-w-full truncate rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:border-indigo-200 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                                title={`Scroll to ${section.label}`}
+                                onClick={() => selectSection(section.actualIndex)}
+                                className={`max-w-full truncate rounded-full border px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+                                    selectedSectionActualIndex === section.actualIndex
+                                        ? 'border-indigo-300 bg-indigo-600 text-white'
+                                        : 'border-indigo-100 bg-indigo-50 text-indigo-700 hover:border-indigo-200 hover:bg-indigo-100'
+                                }`}
+                                title={`Show ${section.label}`}
                             >
                                 {section.label}
                             </button>
@@ -3590,7 +3631,7 @@ export default function NoteContent({
             }`}>
                 {displayedContentLines.map(({ line, idx, actualIndex }) => {
                     const actualIdx = actualIndex;
-                    const isHidden = !activeVisibleLineTagFilter && (
+                    const isHidden = selectedSectionActualIndex === null && !activeVisibleLineTagFilter && (
                         collapsedLineIndices.has(actualIdx) ||
                         isVisibleLineIndexInCollapsedSection(idx)
                     );

@@ -4,6 +4,14 @@ import JSZip from 'jszip';
 
 // API Base URL
 const API_BASE_URL = 'http://localhost:5001/api';
+const SCRAPED_INFO_META = 'meta::scraped_info';
+
+const normalizeNoteContent = (note) => ({
+  ...note,
+  content: typeof note.content === 'object' ? note.content.content : note.content
+});
+
+const isScrapedInfoNote = (note) => String(note?.content || '').includes(SCRAPED_INFO_META);
 
 // Notes API functions
 export const addNewNoteCommon = async (content, tags, noteDate) => {
@@ -110,6 +118,60 @@ export const fetchF1Schedule2026 = async () => {
   return await response.json();
 };
 
+export const fetchF1Data2026 = async () => {
+  const response = await fetch(`${API_BASE_URL}/f1/2026`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch F1 data');
+  }
+  return await response.json();
+};
+
+export const fetchF1DriverProfile = async (name) => {
+  const response = await fetch(`${API_BASE_URL}/f1/driver-profile?name=${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch F1 driver profile');
+  }
+  return await response.json();
+};
+
+export const fetchF1DriverBirthDate = async (name) => {
+  const response = await fetch(`${API_BASE_URL}/f1/driver-birthdate?name=${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch F1 driver birth date');
+  }
+  return await response.json();
+};
+
+export const fetchIplPointsTable = async () => {
+  const response = await fetch(`${API_BASE_URL}/ipl/points-table`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch IPL points table');
+  }
+  return await response.json();
+};
+
+export const fetchIplPlayerProfile = async (name) => {
+  const response = await fetch(`${API_BASE_URL}/ipl/player-profile?name=${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch IPL player profile');
+  }
+  return await response.json();
+};
+
+export const fetchIplPlayerBirthDate = async (name) => {
+  const response = await fetch(`${API_BASE_URL}/ipl/player-birthdate?name=${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to fetch IPL player birth date');
+  }
+  return await response.json();
+};
+
 // Image deletion functions
 export const deleteImageById = async (imageId) => {
   const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
@@ -178,10 +240,7 @@ export const loadAllNotes = async (searchText, noteDate) => {
   if (!response.ok) throw new Error('Failed to load all notes');
   const data = await response.json();
   return {
-    notes: data.notes.map(note => ({
-      ...note,
-      content: typeof note.content === 'object' ? note.content.content : note.content
-    })),
+    notes: data.notes.map(normalizeNoteContent),
     totals: data.totals
   };
 };
@@ -196,12 +255,10 @@ export const loadNotes = async (searchText, noteDate) => {
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to load notes');
   const data = await response.json();
+  const notes = data.notes.map(normalizeNoteContent).filter(note => !isScrapedInfoNote(note));
   return {
-    notes: data.notes.map(note => ({
-      ...note,
-      content: typeof note.content === 'object' ? note.content.content : note.content
-    })),
-    totals: data.totals
+    notes,
+    totals: typeof data.totals === 'number' ? Math.min(data.totals, notes.length) : notes.length
   };
 };
 

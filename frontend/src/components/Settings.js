@@ -63,6 +63,10 @@ const NAVBAR_PAGES = [
   { id: 'over-the-years', label: 'Over the Years' },
   { id: 'tiny-habits', label: 'Tiny Habits' },
   { id: 'life-trackers', label: 'Life Trackers' },
+  { id: 'taxes', label: 'Taxes' },
+  { id: 'realestate', label: 'Real Estate' },
+  { id: 'f1-schedule', label: 'F1 Schedule' },
+  { id: 'ipl', label: 'IPL' },
 ];
 
 const NAVBAR_PAGE_IDS = NAVBAR_PAGES.map(page => page.id);

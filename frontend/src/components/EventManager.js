@@ -945,15 +945,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setNotes, se
                     <div className="text-[11px] font-medium text-gray-500">
                       {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
                     </div>
-                    {note.isTemporary ? (
-                      <div className="text-3xl font-black leading-none text-amber-700" title={note.description}>
-                        T
-                      </div>
-                    ) : (
-                      <div className="text-sm font-bold text-gray-900 truncate">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {note.isTemporary && (
+                        <span
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-amber-100 text-sm font-black leading-none text-amber-700 ring-1 ring-amber-300"
+                          title="Temporary event"
+                          aria-label="Temporary event"
+                        >
+                          T
+                        </span>
+                      )}
+                      <div className="min-w-0 truncate text-sm font-bold text-gray-900" title={note.description}>
                         {note.description}
                       </div>
-                    )}
+                    </div>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePinEvent(note.id); }}

@@ -31,7 +31,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     'dashboard', 'notes', 'watch', 'tags', 'journals', 'events',
     'timelines', 'purchases', 'payments', 'countdowns', 'people', 'family-tree',
     'news', 'expense', 'trackers', 'calendar', 'bookmarks', 'assets',
-    'stock-vesting', 'pomodoro', 'information', 'over-the-years', 'tiny-habits', 'life-trackers', 'taxes', 'realestate', 'f1-schedule'
+    'stock-vesting', 'pomodoro', 'information', 'over-the-years', 'tiny-habits', 'life-trackers', 'taxes', 'realestate', 'f1-schedule', 'ipl'
   ];
 
   const applyNavbarSettings = (settings) => {
@@ -128,6 +128,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'taxes', label: 'Taxes' },
     { id: 'realestate', label: 'Real Estate' },
     { id: 'f1-schedule', label: 'F1 Schedule' },
+    { id: 'ipl', label: 'IPL' },
   ];
 
   const availableFonts = [
@@ -244,6 +245,7 @@ const Navbar = ({ activePage, setActivePage }) => {
   const handleDragStart = (e, id) => {
     setDraggedItem(id);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
   };
 
   const handleDragOver = (e) => {
@@ -268,7 +270,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     }
 
     // Create new order by moving dragged item to target position
-    const newOrder = [...navbarPagesOrder];
+    const newOrder = navbarPagesOrder.length > 0 ? [...navbarPagesOrder] : [...allPageIds];
     const draggedPageIndex = newOrder.indexOf(draggedItem);
     const targetPageIndex = newOrder.indexOf(targetId);
 
@@ -310,6 +312,7 @@ const Navbar = ({ activePage, setActivePage }) => {
             {label}
           </span>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               handleRemoveFromMainBar(id);
@@ -325,6 +328,7 @@ const Navbar = ({ activePage, setActivePage }) => {
 
     return (
       <button
+        type="button"
         onClick={() => setActivePage(id)}
         className={`rounded-xl border px-3 py-2 text-sm transition ${
           activePage === id
@@ -340,6 +344,7 @@ const Navbar = ({ activePage, setActivePage }) => {
   const DropdownButton = ({ id, label }) => (
     <div className="group">
       <button
+        type="button"
         onClick={() => {
           setActivePage(id);
           setShowDropdown(false);
@@ -352,6 +357,7 @@ const Navbar = ({ activePage, setActivePage }) => {
       >
         <span>{label}</span>
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleMoveToMainBar(id);
@@ -397,6 +403,7 @@ const Navbar = ({ activePage, setActivePage }) => {
           {/* Font Selector */}
           <div className="relative" ref={fontSelectorRef}>
             <button
+              type="button"
               onClick={() => setShowFontSelector(value => !value)}
               className="p-2 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition"
               title="Change font"
@@ -431,6 +438,7 @@ const Navbar = ({ activePage, setActivePage }) => {
           {dropdownButtons.length > 0 && (
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowDropdown(!showDropdown)}
                 className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:text-black hover:bg-gray-50 hover:border-gray-300 transition"
               >
@@ -450,8 +458,31 @@ const Navbar = ({ activePage, setActivePage }) => {
             </div>
           )}
 
+          {/* Reorder main menu button */}
+          {mainMenuButtons.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditMode(value => !value);
+                setShowDropdown(false);
+                setDraggedItem(null);
+              }}
+              className={`p-2 rounded-xl border transition ${
+                isEditMode
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+              }`}
+              title={isEditMode ? 'Done reordering main menu' : 'Reorder main menu'}
+              aria-pressed={isEditMode}
+              aria-label={isEditMode ? 'Done reordering main menu' : 'Reorder main menu'}
+            >
+              <Bars2Icon className="h-5 w-5" />
+            </button>
+          )}
+
           {/* Settings button */}
           <button
+            type="button"
             onClick={() => setActivePage('manage-notes')}
             className={`p-2 rounded-xl border ${
               activePage === 'manage-notes' 

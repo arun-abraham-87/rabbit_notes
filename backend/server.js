@@ -9,15 +9,29 @@ const timelinesRouter = require('./routes/timelines');
 const habitsRouter = require('./routes/habits');
 const realestateRouter = require('./routes/realestate');
 const f1Router = require('./routes/f1');
+const iplRouter = require('./routes/ipl');
 
 const app = express();
-app.use(express.json());
+const cors = require('cors');
+const allowedOrigins = new Set([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'null'
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  }
+}));
+app.use(express.json({ limit: '2mb' }));
 
 const moment = require('moment'); // Assuming moment is available
-const cors = require('cors');
-app.use(cors({
-  origin: 'http://localhost:3000', // Allow requests only from this origin
-}));
 
 // Mount routers
 app.use('/api/settings', settingsRouter);
@@ -26,6 +40,7 @@ app.use('/api/timelines', timelinesRouter);
 app.use('/api/habits', habitsRouter);
 app.use('/api/realestate', realestateRouter);
 app.use('/api/f1', f1Router);
+app.use('/api/ipl', iplRouter);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
@@ -122,7 +137,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
       if (isCurrentDaySearch) {
         const noteRecordedDate = (note.created_datetime || "").split(',')[0].trim();
         const isNoteFromToday = noteRecordedDate === noteDate;
-        return !searchQuery || (matchesSearchQuery && isNoteFromToday);
+        return isNoteFromToday && (!searchQuery || matchesSearchQuery);
       }
 
       return matchesSearchQuery;

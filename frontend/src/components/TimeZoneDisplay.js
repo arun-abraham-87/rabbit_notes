@@ -432,6 +432,10 @@ const TimeZoneDisplay = ({ selectedTimezones = [], showAnalogClock = true, showT
       month: 'short',
       day: 'numeric',
     }).format(now);
+    const formattedWeekday = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+    }).format(now);
 
     // Color code based on hour: morning/afternoon green, evening/night orange
     const color = isDay ? 'text-green-600' : 'text-orange-300';
@@ -471,7 +475,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [], showAnalogClock = true, showT
         )}
 
         <div className={`mt-2 flex w-full items-center justify-between gap-2 text-[10px] sm:text-xs ${mutedText}`}>
-          <span className="whitespace-nowrap">{formattedDate}</span>
+          <span className="whitespace-nowrap">{formattedDate} ({formattedWeekday})</span>
           {diff && (
             <span className={`text-[10px] sm:text-xs ${quietText} whitespace-nowrap`}>
               {diff}

@@ -6,7 +6,7 @@ import { decodeSensitiveContent, isSensitiveContent, removeSensitiveMetadata } f
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
-import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteWithImages, getSettings, updateSettings } from '../utils/ApiUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { isBackupDoneMessageNote, isTimelineNote } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
@@ -16,6 +16,8 @@ import { createRecentLinksNote } from '../utils/LinkClickHistoryUtils';
 
 // API Base URL for image uploads
 const API_BASE_URL = 'http://localhost:5001/api';
+const SCRAPED_INFO_META = 'meta::scraped_info';
+const SAVED_SEARCHES_SETTING_KEY = 'savedNoteSearches';
 
 const NotesMainContainer = ({
     objList = [],
@@ -52,9 +54,8 @@ const NotesMainContainer = ({
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const deferredSearchQuery = useDeferredValue(searchQuery);
     const [isSearchPending, startSearchTransition] = useTransition();
-    const [savedSearches, setSavedSearches] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('savedNoteSearches') || '[]'); } catch { return []; }
-    });
+    const [showOnlyMatchedLines, setShowOnlyMatchedLines] = useState(false);
+    const [savedSearches, setSavedSearches] = useState([]);
     const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
     const [saveSearchName, setSaveSearchName] = useState('');
     const [savedSearchMenu, setSavedSearchMenu] = useState(null);
@@ -75,14 +76,74 @@ const NotesMainContainer = ({
     const [mainMergeNoteId, setMainMergeNoteId] = useState(null);
     const [mergeUndoState, setMergeUndoState] = useState(null); // { mainNoteId, originalMainContent, deletedNotes, timeoutId }
     const [showSensitiveMergeConfirm, setShowSensitiveMergeConfirm] = useState(false);
+    const [pendingSensitiveMergeOptions, setPendingSensitiveMergeOptions] = useState(null);
+    const [showMergeAllConfirm, setShowMergeAllConfirm] = useState(false);
+    const [pendingMergeAllOptions, setPendingMergeAllOptions] = useState(null);
     const mergeUndoTimeoutRef = React.useRef(null);
     const searchInputRef = useRef(null);
     const hasParsedInitialUrl = useRef(false);
+    const savedSearchesSettingsRef = useRef(null);
 
     // Image handling state
     const [pastedImage, setPastedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSavedSearches = async () => {
+            try {
+                const savedSettings = await getSettings();
+                if (!isMounted) return;
+
+                savedSearchesSettingsRef.current = savedSettings || {};
+                const apiSavedSearches = Array.isArray(savedSettings?.[SAVED_SEARCHES_SETTING_KEY])
+                    ? savedSettings[SAVED_SEARCHES_SETTING_KEY]
+                    : [];
+                const localSavedSearches = (() => {
+                    try {
+                        return JSON.parse(localStorage.getItem(SAVED_SEARCHES_SETTING_KEY) || '[]');
+                    } catch {
+                        return [];
+                    }
+                })();
+
+                if (apiSavedSearches.length > 0) {
+                    setSavedSearches(apiSavedSearches);
+                    return;
+                }
+
+                if (Array.isArray(localSavedSearches) && localSavedSearches.length > 0) {
+                    setSavedSearches(localSavedSearches);
+                    const updatedSettings = {
+                        ...(savedSettings || {}),
+                        [SAVED_SEARCHES_SETTING_KEY]: localSavedSearches,
+                    };
+                    savedSearchesSettingsRef.current = updatedSettings;
+                    await updateSettings(updatedSettings);
+                }
+            } catch (error) {
+                console.error('Failed to load saved searches:', error);
+            }
+        };
+
+        loadSavedSearches();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const persistSavedSearches = async (nextSavedSearches) => {
+        const baseSettings = savedSearchesSettingsRef.current || await getSettings();
+        const updatedSettings = {
+            ...(baseSettings || {}),
+            [SAVED_SEARCHES_SETTING_KEY]: nextSavedSearches,
+        };
+        savedSearchesSettingsRef.current = updatedSettings;
+        await updateSettings(updatedSettings);
+    };
 
     // Compress image while maintaining dimensions
     const compressImage = (file, quality = 0.8) => {
@@ -499,15 +560,21 @@ const NotesMainContainer = ({
 
     const handleMergeNotes = async (options = {}) => {
         const unmarkSensitive = options?.unmarkSensitive === true;
-        if (!mainMergeNoteId || selectedMergeNotes.length < 2) return;
+        const mergeNoteIds = options.noteIds || selectedMergeNotes;
+        const mergeMainNoteId = options.mainNoteId || mainMergeNoteId;
+        if (!mergeMainNoteId || mergeNoteIds.length < 2) return;
         try {
-            const selectedNotesToMerge = allNotes.filter(n => selectedMergeNotes.includes(n.id));
+            const selectedNotesToMerge = mergeNoteIds
+                .map(id => allNotes.find(note => note.id === id))
+                .filter(Boolean);
             const sensitiveNotes = selectedNotesToMerge.filter(n => isSensitiveContent(n?.content));
 
             if (sensitiveNotes.length > 0 && !unmarkSensitive) {
+                setPendingSensitiveMergeOptions({ noteIds: mergeNoteIds, mainNoteId: mergeMainNoteId });
                 setShowSensitiveMergeConfirm(true);
                 return;
             }
+            setPendingSensitiveMergeOptions(null);
 
             let workingNotes = selectedNotesToMerge;
             if (unmarkSensitive) {
@@ -525,10 +592,13 @@ const NotesMainContainer = ({
                 ));
             }
 
-            const mainNote = workingNotes.find(n => n.id === mainMergeNoteId);
-            const otherNotes = workingNotes.filter(n => n.id !== mainMergeNoteId);
-            const originalMainNote = allNotes.find(n => n.id === mainMergeNoteId);
-            const originalOtherNotes = allNotes.filter(n => selectedMergeNotes.includes(n.id) && n.id !== mainMergeNoteId);
+            const mainNote = workingNotes.find(n => n.id === mergeMainNoteId);
+            const otherNotes = workingNotes.filter(n => n.id !== mergeMainNoteId);
+            const originalMainNote = allNotes.find(n => n.id === mergeMainNoteId);
+            const originalOtherNotes = mergeNoteIds
+                .filter(id => id !== mergeMainNoteId)
+                .map(id => allNotes.find(note => note.id === id))
+                .filter(Boolean);
             if (!mainNote || otherNotes.length === 0 || !originalMainNote) return;
 
             const getDecodedContentLines = (note) => (
@@ -552,19 +622,19 @@ const NotesMainContainer = ({
 
             // Save undo state before modifying
             const undoSnapshot = {
-                mainNoteId: mainMergeNoteId,
+                mainNoteId: mergeMainNoteId,
                 originalMainContent: originalMainNote.content,
                 deletedNotes: originalOtherNotes.map(n => ({ id: n.id, content: n.content, tags: n.tags })),
             };
 
-            await updateNoteById(mainMergeNoteId, mergedContent);
+            await updateNoteById(mergeMainNoteId, mergedContent);
             for (const n of otherNotes) {
                 await deleteNoteById(n.id);
             }
 
             // Update local state
             setAllNotes(prev => {
-                const updated = prev.map(n => n.id === mainMergeNoteId ? { ...n, content: mergedContent } : n);
+                const updated = prev.map(n => n.id === mergeMainNoteId ? { ...n, content: mergedContent } : n);
                 return updated.filter(n => !otherNotes.some(o => o.id === n.id));
             });
 
@@ -581,6 +651,20 @@ const NotesMainContainer = ({
         } catch (err) {
             console.error('Error merging notes:', err);
         }
+    };
+
+    const handleMergeAllShownNotes = () => {
+        const noteIds = filteredNotes.map(note => note.id).filter(id => id !== undefined && id !== null);
+        if (noteIds.length < 2) return;
+        setPendingMergeAllOptions({ noteIds, mainNoteId: noteIds[0] });
+        setShowMergeAllConfirm(true);
+    };
+
+    const handleConfirmMergeAllShownNotes = () => {
+        if (!pendingMergeAllOptions) return;
+        setShowMergeAllConfirm(false);
+        handleMergeNotes(pendingMergeAllOptions);
+        setPendingMergeAllOptions(null);
     };
 
     const handleUndoMerge = async () => {
@@ -666,6 +750,7 @@ const NotesMainContainer = ({
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
         const passesExclusionFilters = (note) => {
+            if (note.content && note.content.includes(SCRAPED_INFO_META)) return false;
             if (excludeEventNotes && note.content && note.content.includes('meta::event::')) return false;
             if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) return false;
             if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) return false;
@@ -701,6 +786,29 @@ const NotesMainContainer = ({
     useEffect(() => {
         setTotals({ totals: filteredNotes.length });
     }, [filteredNotes.length]);
+
+    const matchedLineCount = useMemo(() => {
+        if (searchTerms.length === 0 || (deferredSearchQuery || '').trim().startsWith('id:')) {
+            return 0;
+        }
+
+        return filteredNotes.reduce((count, note) => {
+            const visibleLines = decodeSensitiveContent(note.content || '')
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::'));
+
+            return count + visibleLines.filter(line => {
+                const lowerLine = line.toLowerCase();
+                return searchTerms.some(term => lowerLine.includes(term));
+            }).length;
+        }, 0);
+    }, [filteredNotes, searchTerms, deferredSearchQuery]);
+
+    useEffect(() => {
+        if (!deferredSearchQuery.trim()) {
+            setShowOnlyMatchedLines(false);
+        }
+    }, [deferredSearchQuery]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -745,15 +853,21 @@ const NotesMainContainer = ({
         excludeTrackers, excludeTimelines, excludeBackupDoneMessages, excludePeople, showDeadlinePassedFilter,
     });
 
-    const handleSaveSearch = () => {
+    const handleSaveSearch = async () => {
         const name = saveSearchName.trim();
         if (!name) return;
         const entry = { name, filters: getCurrentFilterState(), createdAt: Date.now() };
         const updated = [...savedSearches.filter(s => s.name !== name), entry];
         setSavedSearches(updated);
-        localStorage.setItem('savedNoteSearches', JSON.stringify(updated));
-        setSaveSearchName('');
-        setShowSaveSearchModal(false);
+        try {
+            await persistSavedSearches(updated);
+            localStorage.removeItem(SAVED_SEARCHES_SETTING_KEY);
+            setSaveSearchName('');
+            setShowSaveSearchModal(false);
+        } catch (error) {
+            console.error('Failed to save search:', error);
+            setSavedSearches(savedSearches);
+        }
     };
 
     const handleApplySavedSearch = (entry) => {
@@ -775,11 +889,17 @@ const NotesMainContainer = ({
         setShowDeadlinePassedFilter(f.showDeadlinePassedFilter ?? false);
     };
 
-    const handleDeleteSavedSearch = (name) => {
+    const handleDeleteSavedSearch = async (name) => {
         const updated = savedSearches.filter(s => s.name !== name);
         setSavedSearches(updated);
-        localStorage.setItem('savedNoteSearches', JSON.stringify(updated));
         setSavedSearchMenu(null);
+        try {
+            await persistSavedSearches(updated);
+            localStorage.removeItem(SAVED_SEARCHES_SETTING_KEY);
+        } catch (error) {
+            console.error('Failed to delete saved search:', error);
+            setSavedSearches(savedSearches);
+        }
     };
 
     useEffect(() => {
@@ -884,6 +1004,7 @@ const NotesMainContainer = ({
                                     onClick={() => {
                                         setLocalSearchQuery('');
                                         setSearchQuery('');
+                                        setShowOnlyMatchedLines(false);
 
                                         // Clear image state too
                                         setPastedImage(null);
@@ -899,6 +1020,25 @@ const NotesMainContainer = ({
                                 </button>
                             )}
                         </div>
+                        {searchTerms.length > 0 && !(deferredSearchQuery || '').trim().startsWith('id:') && (
+                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                                <span>
+                                    Found {matchedLineCount} {matchedLineCount === 1 ? 'match' : 'matches'}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowOnlyMatchedLines(value => !value)}
+                                    disabled={matchedLineCount === 0}
+                                    className={`rounded-md border px-2.5 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                                        showOnlyMatchedLines
+                                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {showOnlyMatchedLines ? 'Show all' : 'Show only'}
+                                </button>
+                            </div>
+                        )}
                         {/* Save search button — shown when there's an active search or filter */}
                         <div className="flex justify-end mt-1">
                             <button
@@ -1023,6 +1163,15 @@ const NotesMainContainer = ({
                                     <ArrowsPointingInIcon className="h-4 w-4" />
                                     {mergeMode ? 'Exit Merge' : 'Merge Notes'}
                                 </button>
+                                {filteredNotes.length >= 2 && (
+                                    <button
+                                        onClick={handleMergeAllShownNotes}
+                                        className="flex items-center gap-2 px-3 py-1 text-xs font-medium rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors duration-150"
+                                        title={`Merge all ${filteredNotes.length} shown notes into the first shown note`}
+                                    >
+                                        Merge All Shown
+                                    </button>
+                                )}
                                 {mergeMode && selectedMergeNotes.length >= 2 && mainMergeNoteId && (
                                     <button
                                         onClick={handleMergeNotes}
@@ -1047,6 +1196,7 @@ const NotesMainContainer = ({
                             addObjects={addTag}
                             searchQuery={deferredSearchQuery}
                             setSearchQuery={setSearchQuery}
+                            showOnlyMatchedLines={showOnlyMatchedLines}
                             onWordClick={handleTagClick}
                             settings={settings}
                             focusMode={focusMode}
@@ -1078,6 +1228,48 @@ const NotesMainContainer = ({
             </div>
         </div>
 
+        {showMergeAllConfirm && (
+            <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 px-4">
+                <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl border border-purple-100">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Merge all shown notes?</h3>
+                            <p className="mt-2 text-sm text-gray-600">
+                                This will merge {pendingMergeAllOptions?.noteIds?.length || 0} currently shown notes into the first shown note and delete the rest. You can undo for 10 seconds after merging.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowMergeAllConfirm(false);
+                                setPendingMergeAllOptions(null);
+                            }}
+                            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                            title="Cancel merge"
+                        >
+                            <XMarkIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-2">
+                        <button
+                            onClick={() => {
+                                setShowMergeAllConfirm(false);
+                                setPendingMergeAllOptions(null);
+                            }}
+                            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmMergeAllShownNotes}
+                            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700"
+                        >
+                            Merge all shown
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {showSensitiveMergeConfirm && (
             <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 px-4">
                 <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl border border-red-100">
@@ -1089,7 +1281,10 @@ const NotesMainContainer = ({
                             </p>
                         </div>
                         <button
-                            onClick={() => setShowSensitiveMergeConfirm(false)}
+                            onClick={() => {
+                                setShowSensitiveMergeConfirm(false);
+                                setPendingSensitiveMergeOptions(null);
+                            }}
                             className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                             title="Cancel merge"
                         >
@@ -1098,13 +1293,19 @@ const NotesMainContainer = ({
                     </div>
                     <div className="mt-5 flex justify-end gap-2">
                         <button
-                            onClick={() => setShowSensitiveMergeConfirm(false)}
+                            onClick={() => {
+                                setShowSensitiveMergeConfirm(false);
+                                setPendingSensitiveMergeOptions(null);
+                            }}
                             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                         >
                             Cancel
                         </button>
                         <button
-                            onClick={() => handleMergeNotes({ unmarkSensitive: true })}
+                            onClick={() => handleMergeNotes({
+                                ...(pendingSensitiveMergeOptions || {}),
+                                unmarkSensitive: true,
+                            })}
                             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
                         >
                             Unmark and merge

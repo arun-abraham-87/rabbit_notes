@@ -47,6 +47,7 @@ import LifeTrackers from './pages/LifeTrackers';
 import Taxes from './pages/Taxes';
 import RealEstate from './pages/RealEstate';
 import F1Schedule from './pages/F1Schedule';
+import IPLPage from './pages/IPLPage';
 import { applySavedAppFont } from './utils/FontUtils';
 import {
   applyThemePreference,
@@ -332,6 +333,13 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full">
                 <F1Schedule allNotes={allNotes} setAllNotes={setAllNotes} />
+              </div>
+            </div>
+          } />
+          <Route path="/ipl" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full">
+                <IPLPage allNotes={allNotes} setAllNotes={setAllNotes} />
               </div>
             </div>
           } />
